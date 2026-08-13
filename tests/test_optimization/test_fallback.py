@@ -213,8 +213,7 @@ def test_fallback_factor_model(X, y):
     assert isinstance(model.fallback_, MeanRisk)
     assert model.fallback_chain_ == [
         (
-            "CustomOptimization(fail=True,\n                   "
-            "fallback=MeanRisk(prior_estimator=TimeSeriesFactorModel()))",
+            "CustomOptimization(fail=True,\n                   fallback=MeanRisk(prior_estimator=TimeSeriesFactorModel()))",
             "CustomOptimization forced failure",
         ),
         ("MeanRisk(prior_estimator=TimeSeriesFactorModel())", "success"),

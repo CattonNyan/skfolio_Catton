@@ -757,6 +757,13 @@ class TestShrunkMu:
             ),
         )
 
+    def test_james_stein_outputs_are_real(self, X):
+        model = ShrunkMu(method=ShrunkMuMethods.JAMES_STEIN)
+        model.fit(X)
+        assert not np.iscomplexobj(model.mu_)
+        assert np.isreal(model.alpha_)
+        assert np.isreal(model.beta_)
+
     def test_metadata_routing(self, X, implied_vol):
         with config_context(enable_metadata_routing=True):
             model = ShrunkMu(

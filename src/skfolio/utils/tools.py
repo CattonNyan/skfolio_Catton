@@ -344,7 +344,7 @@ def args_names(func: object) -> list[str]:
 
 
 def check_estimator(
-    estimator: skb.BaseEstimator | None | Literal["passthrough"],
+    estimator: skb.BaseEstimator | Literal["passthrough"] | None,
     default: skb.BaseEstimator | None,
     check_type: Any,
 ):
