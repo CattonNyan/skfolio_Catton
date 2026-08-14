@@ -2263,7 +2263,7 @@ class TestFactorModelAttribution:
         sum_vol = (
             np.sum(result.factors.vol_contrib)
             + result.idio.vol_contrib
-            + result.unexplained.vol_contrib
+            + result.unattributed.vol_contrib
         )
         np.testing.assert_almost_equal(sum_vol, result.total.vol, decimal=10)
 
@@ -2314,7 +2314,7 @@ class TestFactorModelAttribution:
             sum_vol = (
                 np.sum(result.factors.vol_contrib[i])
                 + result.idio.vol_contrib[i]
-                + result.unexplained.vol_contrib[i]
+                + result.unattributed.vol_contrib[i]
             )
             np.testing.assert_almost_equal(sum_vol, result.total.vol[i], decimal=10)
 

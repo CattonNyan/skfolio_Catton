@@ -26,11 +26,11 @@ class EWDownsideBeta(BaseDescriptor):
     r"""Exponentially weighted downside beta descriptor.
 
     Measures the sensitivity of each asset to market downturns using lower partial
-    moment co-moments. Unlike standard beta, which treats up-moves and down-moves
+    co-moments. Unlike standard beta, which treats up-moves and down-moves
     symmetrically, downside beta captures how much an asset tends to drop when the
-    market drops.
+    market drops [1]_ [2]_.
 
-    The lower partial moment co-moment formulation is:
+    The lower partial co-moment formulation is:
 
     .. math::
         :nowrap:
@@ -60,7 +60,7 @@ class EWDownsideBeta(BaseDescriptor):
     half_life : float, default=60.0
         EWMA half-life in observations. Controls how fast old observations decay. The
         default of 60 trading days (~3 months) balances responsiveness and stability.
-        Adjust for other frequencies (e.g., `half_life=12` for weekly data).
+        Adjust for other frequencies (e.g. `half_life=12` for weekly data).
 
     min_acceptable_return : float, default=0.0
         Threshold below which returns are considered "downside". The default of `0.0`
@@ -186,8 +186,7 @@ class EWDownsideBeta(BaseDescriptor):
         Returns
         -------
         downside_beta : ndarray of shape (n_observations, n_assets)
-            Downside beta at each observation. Values are NaN until the global market
-            state and the asset-specific valid return count both reach `min_periods`.
+            Downside beta for each observation and asset.
         """
         first_call = not hasattr(self, _FITTED_ATTR)
 
@@ -241,7 +240,7 @@ class EWDownsideBeta(BaseDescriptor):
             else:
                 down_beta[t] = np.nan
 
-        # Mask for inactive assets.
+        # Mask for inactive assets
         down_beta = np.where(X.active_mask, down_beta, np.nan)
 
         self.downside_beta_ = (

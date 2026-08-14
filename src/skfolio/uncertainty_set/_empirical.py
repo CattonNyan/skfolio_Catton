@@ -68,7 +68,7 @@ class EmpiricalMuUncertaintySet(BaseMuUncertaintySet):
         The :ref:`prior estimator <prior>` used to estimate the assets covariance
         matrix. The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
 
-    confidence_level : float , default=0.95
+    confidence_level : float, default=0.95
         Confidence level :math:`\beta` of the inverse cumulative distribution function
         of the chi-squared distribution. The default value is `0.95`.
 

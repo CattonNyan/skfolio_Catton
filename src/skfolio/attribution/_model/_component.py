@@ -18,7 +18,7 @@ class Component:
     r"""Portfolio attribution component.
 
     Represents one component of the portfolio attribution: systematic, idiosyncratic,
-    unexplained, or total. Each component stores volatility and return contributions,
+    unattributed, or total. Each component stores volatility and return contributions,
     the percentage of total portfolio variance, standalone volatility, correlation
     with the portfolio and optional return uncertainty.
 

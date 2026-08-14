@@ -17,7 +17,7 @@ optimization problem over a Wasserstein ball can be reformulated as finite conve
 programs.
 
 It's advised to use a solver that handles a high number of constraints like `Mosek`.
-For accessibility, this example uses the default open source solver `CLARABEL`, so, to
+For accessibility, this example uses the default open source solver `CLARABEL` and to
 increase convergence speed, we only use 3 years of data.
 
 The radius of the Wasserstein ball is controlled with the `wasserstein_ball_radius`

@@ -27,9 +27,9 @@ class DebtToAssets(BaseDescriptor, stateless=True):
 
     Debt-to-assets is the most widely used leverage descriptor in equity risk models.
     It measures the proportion of a firm's asset base financed by debt. Higher values
-    indicate greater financial risk: the firm has less equity cushion to absorb losses,
-    making it more vulnerable to earnings shocks, rising interest rates and credit
-    deterioration [1]_.
+    indicate greater reliance on debt financing and, all else equal, a smaller equity
+    cushion to absorb losses, increasing the firm's vulnerability to earnings shocks,
+    adverse financing conditions and credit deterioration [1]_.
 
     The ratio is naturally bounded between 0 (no debt) and approximately 1 (assets fully
     debt-financed), though it can exceed 1 when accumulated losses erode equity below
@@ -89,7 +89,7 @@ class DebtToAssets(BaseDescriptor, stateless=True):
         Returns
         -------
         debt_to_assets : ndarray of shape (n_observations, n_assets)
-            Debt-to-assets ratio, with NaN where total assets is not positive.
+            Debt-to-assets ratio for each observation and asset.
         """
         validate_asset_panel(
             self,

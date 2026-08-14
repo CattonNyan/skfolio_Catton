@@ -48,8 +48,9 @@ class BookLeverage(BaseDescriptor, stateless=True):
     - **Denominator > 0 and book_equity < 0**: the ratio exceeds 1. The firm is extremely
       leveraged, with debt exceeding total book capital. The value is a valid distress
       signal and is preserved in the output.
-    - **Denominator <= 0**: the ratio is undefined or negative, which is economically
-      meaningless. These observations are masked to NaN.
+    - **Denominator <= 0**: the ratio is undefined or negative, and no longer has its
+      intended interpretation as a measure of book leverage. These observations are
+      masked to NaN.
 
     This differs from :class:`ReturnOnEquity`, where any negative equity makes the
     concept meaningless. Here, a ratio above 1 carries real information about financial
@@ -105,8 +106,7 @@ class BookLeverage(BaseDescriptor, stateless=True):
         Returns
         -------
         book_leverage : ndarray of shape (n_observations, n_assets)
-            Book leverage ratio, with NaN where total debt plus book equity is not
-            positive.
+            Book leverage ratio for each observation and asset.
         """
         validate_asset_panel(
             self,

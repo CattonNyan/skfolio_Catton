@@ -1,9 +1,9 @@
-:og:description: API reference for skfolio: detailed documentation of functions, classes, and modules for portfolio optimization and risk management in Python.
+:og:description: API reference for skfolio: detailed documentation of functions, classes, and modules for portfolio optimization, factor model construction, and risk management in Python.
 
 .. meta::
     :description: API reference for skfolio: detailed documentation of functions,
-                  classes, and modules for portfolio optimization and risk management
-                  in Python.
+                  classes, and modules for portfolio optimization, factor model
+                  construction, and risk management in Python.
 
 .. _api:
 

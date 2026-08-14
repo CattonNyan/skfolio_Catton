@@ -105,8 +105,7 @@ class _BaseEWVolatility(BaseDescriptor):
         Returns
         -------
         volatility : ndarray of shape (n_observations, n_assets)
-            Total (or downside) return volatility at each observation.
-            Outputs are NaN until each asset reaches `min_periods` valid returns.
+            EWMA volatility (or downside volatility) for each observation and asset.
         """
         first_call = not hasattr(self, _FITTED_ATTR)
 

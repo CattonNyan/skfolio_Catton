@@ -28,8 +28,8 @@ class EarningsChangeToPrice(ChangeToScale):
     Non-missing `market_cap` values must be finite and strictly positive.
 
     This descriptor captures earnings momentum: whether a firm's profitability is
-    improving or deteriorating relative to its market value. A positive value indicates
-    earnings improvement and a negative value indicates deterioration.
+    improving or deteriorating relative to its market value [1]_. A positive value
+    indicates earnings improvement and a negative value indicates deterioration.
 
     Unlike :class:`GrowthRate`, which computes `x(t) / x(t-lag) - 1`, this formulation
     is well-defined when earnings are negative. A standard growth rate with a negative

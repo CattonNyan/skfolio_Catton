@@ -90,11 +90,6 @@ class EWResidualDownsideVolatility(_BaseEWResidualVolatility):
     returns and finite `market_cap` at an observation, the market return is undefined
     and a `ValueError` is raised.
 
-    References
-    ----------
-    .. [1] "The cross-section of volatility and expected returns"
-        The Journal of Finance. Ang, A., Hodrick, R. J., Xing, Y., & Zhang, X. (2006).
-
     See Also
     --------
     EWResidualVolatility : Total (non-downside) variant.

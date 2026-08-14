@@ -975,6 +975,6 @@ class TestMultiPeriodPortfolioFactorAttribution:
             sum_vol = (
                 np.sum(result.factors.vol_contrib[i])
                 + result.idio.vol_contrib[i]
-                + result.unexplained.vol_contrib[i]
+                + result.unattributed.vol_contrib[i]
             )
             np.testing.assert_almost_equal(sum_vol, result.total.vol[i], decimal=8)

@@ -24,7 +24,7 @@ class AssetTurnover(BaseDescriptor, stateless=True):
 
         \text{asset\_turnover}(t) = \frac{\text{sales\_ttm}(t)}{\text{total\_assets}(t)}
 
-    Asset turnover measures how efficiently a firm uses its assets to generate revenue.
+    Asset turnover measures how efficiently a firm uses its assets to generate revenue [1]_.
     Higher values indicate greater capital efficiency.
 
     Asset-light business models tend to have high turnover, while capital-intensive

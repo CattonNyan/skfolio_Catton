@@ -30,8 +30,7 @@ class GrossProfitability(BaseDescriptor, stateless=True):
     before operating expenses, interest and taxes. It is less affected by financing,
     tax and accrual accounting choices than net income-based ratios.
 
-    Novy-Marx (2013) shows that profitable firms earn significantly higher returns than
-    unprofitable ones [1]_.
+    Profitable firms typically earn significantly higher returns than unprofitable ones [1]_.
 
     Parameters
     ----------
@@ -53,7 +52,7 @@ class GrossProfitability(BaseDescriptor, stateless=True):
 
     See Also
     --------
-    GrossMargin : Gross profit normalized by sales (pricing power).
+    GrossMargin : Gross profit normalized by sales.
     ReturnOnAssets : Net income normalized by total assets.
 
     References

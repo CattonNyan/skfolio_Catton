@@ -26,7 +26,7 @@ class ShortInterest(BaseDescriptor, stateless=True):
         \frac{\text{short\_interest}(t)}
              {\text{adj\_shares\_outstanding}(t)}
 
-    Short interest measures the fraction of common shares outstanding that has been
+    Short interest measures the fraction of common shares outstanding that have been
     borrowed and sold short. High values indicate stronger bearish positioning and may
     proxy for informed negative sentiment [1]_ [2]_.
 
@@ -94,7 +94,8 @@ class ShortInterest(BaseDescriptor, stateless=True):
         Returns
         -------
         short_interest : ndarray of shape (n_observations, n_assets)
-            Short interest divided by adjusted shares outstanding.
+            Short interest divided by adjusted shares outstanding for each
+            observation and asset.
         """
         validate_asset_panel(
             self,

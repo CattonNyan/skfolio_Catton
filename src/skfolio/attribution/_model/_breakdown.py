@@ -313,7 +313,7 @@ class FactorBreakdown(BaseBreakdown):
 
         observations : ndarray, optional
             Observation labels for rolling attribution. If provided, returns a
-             MultiIndex DataFrame with (observation, factor/family) index.
+            MultiIndex DataFrame with (observation, factor/family) index.
 
         confidence_level : float, default=0.95
             When `formatted=True` and uncertainty data are present, labels the
@@ -387,7 +387,7 @@ class FamilyBreakdown(BaseBreakdown):
 
     exposure_std : ndarray or None
         Standard deviation of family exposures over time. `None` for predicted
-         attribution.
+        attribution.
 
     vol_contrib : ndarray of shape (n_families,) or (n_windows, n_families)
         Family volatility contribution, equal to the sum of its factor volatility
@@ -431,7 +431,7 @@ class FamilyBreakdown(BaseBreakdown):
 
         observations : ndarray, optional
             Observation labels for rolling attribution. If provided, returns a
-             MultiIndex DataFrame with (observation, factor/family) index.
+            MultiIndex DataFrame with (observation, factor/family) index.
 
         confidence_level : float, default=0.95
             When `formatted=True` and uncertainty data are present, labels the merged

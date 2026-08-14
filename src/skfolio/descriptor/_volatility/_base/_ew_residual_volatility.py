@@ -121,8 +121,7 @@ class _BaseEWResidualVolatility(BaseDescriptor):
         Returns
         -------
         residual_volatility : ndarray of shape (n_observations, n_assets)
-            CAPM residual volatility at each observation. Outputs are NaN until each
-            asset reaches `min_periods` valid returns.
+            Residual return volatility for each observation and asset.
         """
         first_call = not hasattr(self, _FITTED_ATTR)
 
@@ -166,12 +165,12 @@ class _BaseEWResidualVolatility(BaseDescriptor):
                 self._n_valid_assets[newly_inactive] = 0
             self._is_active[:] = active_assets
 
-            # Deviations from lagged means.
+            # Deviations from lagged means
             market_deviation = market_return_t - self._mu_market
             valid_asset_returns = returns_t[valid_returns]
             asset_deviations = valid_asset_returns - self._mu_assets[valid_returns]
 
-            # Update EWMA means.
+            # Update EWMA means
             self._mu_market = (
                 self._beta_decay * self._mu_market
                 + (1 - self._beta_decay) * market_return_t
@@ -181,7 +180,7 @@ class _BaseEWResidualVolatility(BaseDescriptor):
                 + (1 - self._beta_decay) * valid_asset_returns
             )
 
-            # Update EWMA market variance and asset-market covariances.
+            # Update EWMA market variance and asset-market covariances
             self._var_market = (
                 self._beta_decay * self._var_market
                 + (1 - self._beta_decay) * market_deviation * market_deviation
@@ -191,7 +190,7 @@ class _BaseEWResidualVolatility(BaseDescriptor):
                 + (1 - self._beta_decay) * asset_deviations * market_deviation
             )
 
-            # Compute residuals using the current beta estimate.
+            # Compute residuals using the current beta estimate
             beta = self._cov_assets / (self._var_market + self.eps)
             residual = returns_t - beta * market_return_t
 
@@ -234,11 +233,11 @@ class _BaseEWResidualVolatility(BaseDescriptor):
         """Initialize states."""
         n_assets = self.n_assets_
 
-        # Separate decay factors for beta and volatility.
+        # Separate decay factors for beta and volatility
         self._beta_decay = half_life_to_decay_factor(self.beta_half_life)
         self._vol_decay = half_life_to_decay_factor(self.half_life)
 
-        # Downside mode flag avoids repeated None checks in the hot loop.
+        # Downside mode flag avoids repeated None checks in the hot loop
         self._downside = self.min_acceptable_return is not None
 
         if self.min_periods is None:

@@ -26,8 +26,9 @@ class BookToPrice(BaseDescriptor, stateless=True):
         \text{book\_to\_price}(t) = \frac{\text{book\_equity}(t)}{\text{market\_cap}(t)}
 
     A high book-to-price ratio identifies stocks trading at a discount relative to their
-    common equity. Historically, cheap stocks with high book-to-price ratios have earned
-    higher average returns than expensive stocks with low book-to-price ratios [1]_.
+    common equity. Historically, cheap stocks (those with high book-to-price ratios) have
+    earned higher average returns than expensive stocks (those with low book-to-price
+    ratios) [1]_.
 
     Parameters
     ----------

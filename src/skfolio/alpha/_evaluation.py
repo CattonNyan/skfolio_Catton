@@ -367,21 +367,29 @@ class AlphaForecastEvaluation:
         self, *, include_pearson: bool = True, title: str | None = None
     ) -> go.Figure:
         """Plot cumulative IC over time."""
-        series = {
-            "Spearman IC": pd.Series(
-                np.nancumsum(self.spearman_ic), index=self.observations
+        fig = go.Figure()
+        fig.add_trace(
+            go.Scatter(
+                x=self.observations,
+                y=np.nancumsum(self.spearman_ic),
+                mode="lines",
+                name="Spearman IC",
             )
-        }
-        if include_pearson:
-            series["Pearson IC"] = pd.Series(
-                np.nancumsum(self.pearson_ic), index=self.observations
-            )
-        return _plot_lines(
-            series,
-            title=title or "Cumulative Alpha IC",
-            yaxis_title="Cumulative IC",
-            ref_value=0.0,
         )
+        if include_pearson:
+            fig.add_trace(
+                go.Scatter(
+                    x=self.observations,
+                    y=np.nancumsum(self.pearson_ic),
+                    mode="lines",
+                    name="Pearson IC",
+                )
+            )
+        fig.update_layout(
+            title=title or "Cumulative Alpha IC", yaxis_title="Cumulative IC"
+        )
+        fig.add_hline(y=0.0, line_width=1, line_dash="dash", line_color="gray")
+        return fig
 
     def plot_rolling_ic(self, window: int = 50, title: str | None = None) -> go.Figure:
         """Plot rolling mean IC over time."""

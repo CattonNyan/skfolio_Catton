@@ -238,7 +238,7 @@ model = CharacteristicsFactorModel(
 # metadata routing forwards the `characteristics` panel to the prior.
 #
 # Let's define the portfolio. We maximize the Sharpe ratio under explicit
-# factor exposure constraints. The synthetic generator gives momentum and
+# factor exposure constraints [1]_. The synthetic generator gives momentum and
 # dividend yield positive premia and investment a weak premium, so we
 # target:
 #
@@ -324,7 +324,7 @@ factor_model = mvo.prior_estimator_.factor_model_
 # ===================
 # Ex-ante attribution reports the portfolio's factor exposures and decomposes
 # its forecast risk and expected return into systematic and idiosyncratic
-# contributions. We obtain it from the predicted portfolio with
+# contributions [2]_. We obtain it from the predicted portfolio with
 # `predicted_attribution`:
 portfolio = mvo.predict(X)
 predicted_attrib = portfolio.predicted_attribution(factor_model=factor_model)
@@ -347,9 +347,9 @@ predicted_attrib.plot_exposure(top_n=15)
 predicted_attrib.plot_vol_contrib(top_n=15)
 
 # %%
-# Each factor's volatility contribution is its exposure times its standalone
-# volatility times its correlation with the portfolio (the
-# exposure-volatility-correlation decomposition). The idiosyncratic
+# Each factor's volatility contribution is given by the product of its
+# exposure, standalone volatility and correlation with the portfolio
+# (the exposure-volatility-correlation decomposition). The idiosyncratic
 # contribution comes from the part of the allocation that moves into
 # orthogonal directions once market and industry exposures are forced to
 # zero.
@@ -407,7 +407,7 @@ predicted_attrib.assets_df().head()
 # * the half-life used to estimate expected factor returns
 # * the shrinkage toward inverse-idiosyncratic-variance regression weights
 # * the regularization strength applied to covariance in directions orthogonal
-#   to the factor span (see :ref:`Orthogonal Space Regularization
+#   to the factor span [3]_ [4]_ (see :ref:`Orthogonal Space Regularization
 #   <factor_model_orthogonal_space_regularization>`)
 #
 # We sample each parameter from a continuous distribution. The half-life and uncertainty
@@ -490,7 +490,7 @@ predicted_attrib.assets_df().head()
 # estimators warmups (see :ref:`Warmup Periods <factor_model_warmup>`).
 #
 # We also add:
-
+#
 # * `transaction_costs=0.001 / month`: skfolio deducts transaction costs
 #   directly from expected returns, which are expressed per observation
 #   period (here daily). The 10 basis points are paid once per rebalancing
@@ -590,11 +590,11 @@ realized_attrib.plot_return_vs_vol_contrib(top_n=15)
 
 # %%
 # The same results are available as DataFrames. Compared with the ex-ante
-# summary, the realized breakdown adds `unexplained`, the residual between
+# summary, the realized breakdown adds `unattributed`, the difference between
 # observed portfolio returns and model-attributed returns. The portfolio
 # returns are net of transaction costs while the factor decomposition
-# explains gross returns, so the cost drag falls into this residual, as
-# would management fees, slippage and model misspecification:
+# explains gross returns, so the cost drag falls into this component, as
+# would management fees, slippage and cash:
 realized_attrib.summary_df()
 
 # %%

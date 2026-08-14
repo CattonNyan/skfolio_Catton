@@ -12,8 +12,8 @@ from skfolio.descriptor._volatility._base import _BaseEWVolatility
 class EWDownsideVolatility(_BaseEWVolatility):
     r"""Exponentially weighted downside return volatility descriptor.
 
-    Computes the downside semi-deviation of asset returns using EWMA estimation. Only
-    returns below the `min_acceptable_return`  threshold contribute to the variance
+    Computes the downside semi-deviation of asset returns using EWMA estimation [1]_.
+    Only returns below the `min_acceptable_return` threshold contribute to the variance
     estimate:
 
     .. math::

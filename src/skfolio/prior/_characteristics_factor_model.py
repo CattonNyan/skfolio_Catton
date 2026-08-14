@@ -128,7 +128,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
     idiosyncratic return.
 
     At each observation, this regression estimates realized factor returns and
-    idiosyncratic returns. Expected asset returns are subsequently constructed from
+    idiosyncratic returns [2]_. Expected asset returns are subsequently constructed from
     expected factor returns and, when configured, an alpha forecast.
 
     The estimator follows skfolio's as-of time-indexing convention: all time-varying
@@ -518,8 +518,8 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         `idio_variance_estimator` and applies correlation thresholding only where
         residual correlations are large enough to retain.
 
-        The default (`None`) is :class:`~skfolio.moments.EWCovariance`. Correlation
-        thresholding is used only when `idio_corr_threshold > 0`.
+        The default (`None`) is :class:`~skfolio.moments.EWCovariance` [3]_.
+        Correlation thresholding is used only when `idio_corr_threshold > 0`.
 
     idio_corr_threshold : float, default=0.0
         Absolute correlation threshold :math:`\tau` used for idiosyncratic correlation
@@ -747,7 +747,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
 
     # Request `characteristics` by default when this estimator is used inside a sklearn
     # metadata router so child meta-estimators do not need to call `set_fit_request`
-    # and `set_partial_fit_request` explicitly.
+    # and `set_partial_fit_request` explicitly
     __metadata_request__fit: ClassVar[dict[str, bool]] = {"characteristics": True}
     __metadata_request__partial_fit: ClassVar[dict[str, bool]] = {
         "characteristics": True
@@ -1054,12 +1054,13 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
             )
 
         # Apply zero-sum constraints within factor families, dropping one factor per
-        # family so that the benchmark-weighted average factor return is zero.
+        # family so that the benchmark-weighted average factor return is zero
         if self.constrained_families is not None:
             # Unless provided by the user, the factor to drop inside a family constraint
             # is determined by compute_family_constraint_basis based on a methodology
             # that improves numerical conditioning. When calling partial_fit, the chosen
-            # factor needs to remain the same between all incremental calls so we cache it
+            # factor needs to remain the same between all incremental calls so we cache
+            # it.
             basis, self._constrained_families = compute_family_constraint_basis(
                 constrained_families=(
                     self._constrained_families
@@ -1303,10 +1304,10 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
 
         spanned_mu = exposures_reduced[-1] @ factor_mu_reduced
 
-        # Shrink orthogonal alpha toward zero according to user confidence.
+        # Shrink orthogonal alpha toward zero according to user confidence
         orthogonal_alpha *= self.orthogonal_alpha_confidence
 
-        # Assemble factor-spanned expected returns and orthogonal alpha.
+        # Assemble factor-spanned expected returns and orthogonal alpha
         mu = spanned_mu + orthogonal_alpha
         if ccy_exposures is not None:
             mu += ccy_exposures[-1] @ factor_mu_reduced_with_ccy[n_reduced_factors:]
@@ -1645,7 +1646,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
 
         # Validate that no observation has all non-finite returns in the estimation
         # universe (e.g. common holidays across all estimation assets), which would make
-        # cross-sectional regression impossible.
+        # cross-sectional regression impossible
         estimation_finite = (
             np.isfinite(characteristics[_RETURNS]) & characteristics.estimation_mask
         )
@@ -1981,12 +1982,13 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         # the first call so subsequent partial_fit calls use the same basis)
         self._constrained_families = None
 
-        # Resolved basis from the first constrained call.
+        # Resolved basis from the first constrained call
         self._family_constraint_basis: FamilyConstraintBasis | None = None
 
         # Accumulator for time series across partial_fit calls. On the first call,
         # stores raw arrays (zero-copy for batch fit). On the second call, promotes to
-        # _ArrayBuffer buffers for amortized O(1) appends (avoids O(N^2) np.concatenate)
+        # _ArrayBuffer buffers for amortized O(1) appends (avoids O(N^2)
+        # np.concatenate).
         self._history: dict[str, AnyArray | _ArrayBuffer] | None = None
 
     def _attach_benchmark_weights(self, characteristics: AssetPanel) -> None:
@@ -2304,7 +2306,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
 
         # Two-step feasible GLS: estimate idio variances from the cap-weighted
         # first-pass residuals, then refit with weights blended toward inverse idio
-        # variance.
+        # variance
         idio_variance_weights = []
         for t in range(n_observations):
             # Read the variance state before updating it with the date-t residual.
@@ -2329,7 +2331,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
                 ),
             )
 
-        # Assets in variance warmup (e.g. half-life warm-up of EWVariance) are NaN.
+        # Assets in variance warmup (e.g. half-life warm-up of EWVariance) are NaN
         idio_variance_weights = np.stack(idio_variance_weights)
 
         # Restrict to the regression-eligible set before the median cap and the
@@ -2337,12 +2339,12 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         # same universe, so the realized blend matches the nominal shrinkage.
         idio_variance_weights[~regression_eligible_mask] = np.nan
 
-        # Protect against very small variance, which would create huge weights.
+        # Protect against very small variance, which would create huge weights
         idio_variance_weights = CSWinsorizer(low=0.025, high=0.975).fit_transform(
             idio_variance_weights, cs_weights=weights_mcap
         )
 
-        # Cap idio variance weights.
+        # Cap idio variance weights
         any_finite = np.isfinite(idio_variance_weights).any(axis=1)
         w_cap = np.full(n_observations, np.nan, dtype=float)
         w_cap[any_finite] = (
@@ -2354,7 +2356,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
             idio_variance_weights / np.nansum(idio_variance_weights, axis=1)[:, None]
         )
 
-        # Normalize cap weights to the same scale before blending.
+        # Normalize cap weights to the same scale before blending
         weights_mcap = weights_mcap / np.nansum(weights_mcap, axis=1)[:, None]
 
         # Missing inverse-variance weights do not contribute to the inverse-variance
@@ -2368,7 +2370,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         )
         regression_weights = np.where(regression_eligible_mask, regression_weights, 0.0)
 
-        # Second-pass regression with blended weights.
+        # Second-pass regression with blended weights
         self.cs_regressor_.fit(
             X=lagged_exposures,
             y=asset_returns,
@@ -2424,7 +2426,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
             does not implement `partial_fit`.
         """
         # Convert to Dataframe so that the factor prior estimator have access to factor
-        # names if needed.
+        # names if needed
         factor_returns = pd.DataFrame(
             factor_returns, index=observations, columns=factor_names, copy=False
         )
@@ -2681,7 +2683,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
             return np.zeros(self.n_assets_)
 
         # Inject idio returns, variances, regression weights and exposures into the
-        # panel so the alpha estimator can access them.
+        # panel so the alpha estimator can access them
         n_obs = characteristics.n_observations
         n_post_warmup_obs, _ = idio_returns.shape
         n_warmup_obs = n_obs - n_post_warmup_obs
@@ -2740,7 +2742,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         alpha = self.alpha_estimator_.alpha_
         if alpha is None:
             # Alpha estimators publish `alpha_ = None` while still in warmup
-            # (e.g. PredictorAlpha, EWSharpeOptimalAlpha during their first batches).
+            # (e.g. PredictorAlpha, EWSharpeOptimalAlpha during their first batches)
             return np.zeros(self.n_assets_)
         return alpha
 
@@ -2931,7 +2933,7 @@ def _cap_weights_from_mask(
 
     `power` controls the strength of cap weighting: `0` gives equal positive weights,
     `1` gives raw market-cap weights and values between `0` and `1` shrink cap
-    concentration. Assets outside `weight_mask`  receive zero weight.
+    concentration. Assets outside `weight_mask` receive zero weight.
 
     The result follows the scikit-learn `sample_weight` convention: weights are relative
     and need not sum to one.
@@ -3037,7 +3039,7 @@ def _compute_standardized_idio_returns(
     missing_active = active_mask & ~valid
 
     # Fill missing active standardized returns with the same-observation average
-    # standardized returns so sparse asset histories do not shorten the scenario set.
+    # standardized returns so sparse asset histories do not shorten the scenario set
     mean_standardized_idio_return = safe_divide(
         np.nansum(standardized_idio_returns, axis=1),
         valid.sum(axis=1),

@@ -340,7 +340,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             * Asset names: individual asset weights (e.g. `"SPX"`, `"AAPL"`)
             * Group names: sums of weights in groups defined by `groups`
             * Factor names: portfolio factor exposure (requires factor model prior)
-            * Factor families: sum of portfolio exposures to all factors in one family.
+            * Factor families: sum of portfolio exposures to all factors in one family
 
         Supported equation patterns include:
 
@@ -1628,7 +1628,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints of the Mean Absolute Deviation risk
+            CVXPY expression and constraints of the mean absolute deviation risk
             measure.
         """
         n_observations = return_distribution.returns.shape[0]
@@ -1678,7 +1678,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints of the First Lower Partial Moment risk
+            CVXPY expression and constraints of the first lower partial moment risk
             measure.
         """
         n_observations = return_distribution.returns.shape[0]
@@ -1849,7 +1849,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints of the Semi Variance risk measure.
+            CVXPY expression and constraints of the semi variance risk measure.
         """
         n_observations = return_distribution.returns.shape[0]
         ptf_min_acceptable_return = self._cvx_min_acceptable_return(
@@ -1895,7 +1895,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints of the Semi Standard Deviation risk measure.
+            CVXPY expression and constraints of the semi standard deviation risk measure.
         """
         n_observations = return_distribution.returns.shape[0]
         ptf_min_acceptable_return = self._cvx_min_acceptable_return(
@@ -1947,7 +1947,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints of the Worst Realization risk measure.
+            CVXPY expression and constraints of the worst realization risk measure.
         """
         ptf_returns = self._cvx_returns(return_distribution=return_distribution, w=w)
         ptf_transaction_cost = self._cvx_transaction_cost(
@@ -1989,7 +1989,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints of the CVaR risk measure.
+            CVXPY expression and constraints of the CVaR risk measure.
         """
         n_observations = return_distribution.returns.shape[0]
         ptf_returns = self._cvx_returns(return_distribution=return_distribution, w=w)
@@ -2041,7 +2041,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints of the EVaR risk measure.
+            CVXPY expression and constraints of the EVaR risk measure.
         """
         n_observations = return_distribution.returns.shape[0]
         ptf_returns = self._cvx_returns(return_distribution=return_distribution, w=w)
@@ -2100,7 +2100,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints of the Maximum Drawdown risk measure.
+            CVXPY expression and constraints of the maximum drawdown risk measure.
         """
         v, constraints = self._cvx_drawdown(
             return_distribution=return_distribution, w=w, factor=factor
@@ -2133,7 +2133,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints of the Average Drawdown risk measure.
+            CVXPY expression and constraints of the average drawdown risk measure.
         """
         n_observations = return_distribution.returns.shape[0]
         v, constraints = self._cvx_drawdown(
@@ -2165,7 +2165,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints of the CDaR risk measure.
+            CVXPY expression and constraints of the CDaR risk measure.
         """
         n_observations = return_distribution.returns.shape[0]
         v, constraints = self._cvx_drawdown(
@@ -2203,7 +2203,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints of the EDaR risk measure.
+            CVXPY expression and constraints of the EDaR risk measure.
         """
         n_observations = return_distribution.returns.shape[0]
         v, constraints = self._cvx_drawdown(
@@ -2246,7 +2246,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints of the Ulcer Index risk measure.
+            CVXPY expression and constraints of the Ulcer Index risk measure.
         """
         v, constraints = self._cvx_drawdown(
             return_distribution=return_distribution, w=w, factor=factor
@@ -2288,7 +2288,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints of the Gini Mean Difference risk measure.
+            CVXPY expression and constraints of the Gini mean difference risk measure.
         """
         ptf_returns = self._cvx_returns(return_distribution=return_distribution, w=w)
         ptf_transaction_cost = self._cvx_transaction_cost(

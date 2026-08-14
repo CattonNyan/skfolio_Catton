@@ -26,7 +26,7 @@ class SalesToPrice(BaseDescriptor, stateless=True):
 
     Sales are less directly affected by accounting choices than earnings, providing a
     stable value signal. Firms with high sales relative to market capitalization are
-    cheap on a sales basis. This ratio remains available for firms with negative
+    cheap on a sales basis [1]_. This ratio remains available for firms with negative
     earnings or book equity, complementing :class:`BookToPrice`.
 
     Parameters

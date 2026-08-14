@@ -85,10 +85,11 @@ class FactorModel:
 
     Cross-sectional regression diagnostics are prefixed with `cs_regression_`.
     They require point-in-time exposures, estimated factor returns and
-    idiosyncratic returns, as in characteristics-based models. They are not
-    available for time-series factor models that only store a static loading
-    matrix. These include `cs_regression_scores`, `cs_regression_t_stats`,
-    `cs_regression_t_stat_exceedance_rate`, and their plotting methods.
+    idiosyncratic returns, as in characteristics-based models. These include
+    `cs_regression_scores`, `cs_regression_t_stats`,
+    `cs_regression_t_stat_exceedance_rate`, and their plotting methods.They
+    are not available for time-series factor models that only store a static
+    loading matrix.
 
     Exposure diagnostics are prefixed with `exposure_`. They describe the
     point-in-time exposure panel or its regression design and are available only
@@ -265,7 +266,7 @@ class FactorModel:
 
         stability_step : int, default=21
             Number of observations between the two cross-sections used for the exposure
-            stability coefficient (e.g., 21 for approximately monthly stability with
+            stability coefficient (e.g. 21 for approximately monthly stability with
             daily data).
 
         stability_cs_weighting : CSWeighting, default=CSWeighting.BENCHMARK
@@ -854,11 +855,11 @@ class FactorModel:
         Parameters
         ----------
         factors : list of str, optional
-            Explicit subset of factor names.  Takes precedence over `families` when
+            Explicit subset of factor names. Takes precedence over `families` when
             specified.
 
         families : str, list of str, or None, default="style"
-            Factor families to include.  `None` includes all factors. Ignored when
+            Factor families to include. `None` includes all factors. Ignored when
             `factors` is given or when `factor_families` is `None`.
 
         title : str, optional
@@ -897,11 +898,11 @@ class FactorModel:
         Parameters
         ----------
         factors : list of str, optional
-            Explicit subset of factor names.  Takes precedence over `families` when
+            Explicit subset of factor names. Takes precedence over `families` when
             specified.
 
         families : str, list of str, or None, default="style"
-            Factor families to include.  `None` includes all factors. Ignored when
+            Factor families to include. `None` includes all factors. Ignored when
             `factors` is given or when `factor_families` is `None`.
 
         annualization_factor : float, default=252.0
@@ -952,11 +953,11 @@ class FactorModel:
         Parameters
         ----------
         factors : list of str, optional
-            Explicit subset of factor names.  Takes precedence over `families` when
+            Explicit subset of factor names. Takes precedence over `families` when
             specified.
 
         families : str, list of str, or None, default="style"
-            Factor families to include.  `None` includes all factors. Ignored when
+            Factor families to include. `None` includes all factors. Ignored when
             `factors` is given or when `factor_families` is `None`.
 
         title : str, optional
@@ -992,8 +993,8 @@ class FactorModel:
         Under a Gaussian assumption, the expected values are :math:`\text{std}(z) = 1`,
         excess kurtosis :math:`= 0`, skewness :math:`= 0`, and the 3-:math:`\sigma` tail
         rate :math:`\approx 0.27\%`. In practice, standardized idiosyncratic returns
-        exhibit fat tails, so the tail rate is typically well above 0.27 % (values
-        around 1--3 % are common for equity factor models).
+        exhibit fat tails, so the tail rate is typically well above 0.27% (values
+        around 1--3% are common for equity factor models).
 
         - `mean_cs_std` close to 1.0 indicates correctly scaled specific risk.
           Values persistently above 1 suggest underestimated risk; below 1 suggests
@@ -1192,7 +1193,7 @@ class FactorModel:
         mean is plotted to smooth short-lived cross-sectional tail spikes.
 
         A dashed reference line shows the Gaussian rate
-        :math:`2\,\Phi(-\text{threshold})`, which is about 0.27 % when `threshold = 3`.
+        :math:`2\,\Phi(-\text{threshold})`, which is about 0.27% when `threshold = 3`.
         Persistent values above this reference indicate heavier idiosyncratic residual
         tails than implied by the volatility estimates. In equity factor models,
         standardized idiosyncratic returns are often fat-tailed, so observed rates above
@@ -1239,7 +1240,7 @@ class FactorModel:
         time.
 
         Each point is the excess kurtosis of :math:`z_{it}` computed across assets at a
-        single observation.  The Gaussian reference is zero, but positive values are
+        single observation. The Gaussian reference is zero, but positive values are
         expected because standardised idiosyncratic returns typically have fat tails.
 
         Parameters
@@ -1494,7 +1495,7 @@ class FactorModel:
 
     @property
     def cs_regression_t_stats(self) -> pd.DataFrame:
-        r"""T-statistics of cross-sectional regression coefficients.
+        r"""Cross-sectional regression coefficient t-statistics.
 
         .. math::
 
@@ -1674,7 +1675,7 @@ class FactorModel:
         r"""Bar chart of the cross-sectional regression t-statistic exceedance rate.
 
         The t-statistic exceedance rate is the fraction of observations where
-        :math:`|t| >` `threshold`. A vertical reference line at 5 % marks the
+        :math:`|t| >` `threshold`. A vertical reference line at 5% marks the
         conventional null-rate benchmark used at `threshold = 2`; for other thresholds
         it is only an approximate guide and the exact Gaussian null rate is
         :math:`2\,\Phi(-\text{threshold})`.
@@ -1787,7 +1788,7 @@ class FactorModel:
         eps = 1e-12
         # The weighted variance is computed by cancellation of terms of the order
         # of the weighted square sum, so degenerate (constant) exposures must be
-        # detected with a tolerance relative to that scale.
+        # detected with a tolerance relative to that scale
         rel_tol = 1e-9
         finite = np.isfinite(exposures)
         mask = finite.astype(float)
@@ -1835,12 +1836,12 @@ class FactorModel:
         )
         pairwise_corr[insufficient | degenerate] = np.nan
         with warnings.catch_warnings():
-            # All-NaN slices are expected for degenerate pairs and handled below.
+            # All-NaN slices are expected for degenerate pairs and handled below
             warnings.simplefilter("ignore", category=RuntimeWarning)
             corr = np.nanmean(pairwise_corr, axis=0)
         # A pair that is degenerate at every observation with sufficient joint
         # coverage (e.g. any pair involving the constant global factor exposure)
-        # has an undefined correlation and is reported as zero by convention.
+        # has an undefined correlation and is reported as zero by convention
         zero_by_convention = np.isnan(corr) & (degenerate & ~insufficient).any(axis=0)
         corr[zero_by_convention] = 0.0
         np.fill_diagonal(corr, 1.0)
@@ -2279,7 +2280,7 @@ class FactorModel:
         r"""Weighted cross-sectional correlation of exposures between observation
         :math:`t` and :math:`t + \text{step}` over time.
 
-        Measures whether the cross-sectional exposures is stable across the chosen
+        Measures whether the cross-sectional exposures are stable across the chosen
         horizon.
 
         The expected level depends on the factor's investment horizon. Slow-moving
@@ -2293,11 +2294,11 @@ class FactorModel:
         Parameters
         ----------
         factors : list of str, optional
-            Explicit subset of factor names.  Takes precedence over `families` when
+            Explicit subset of factor names. Takes precedence over `families` when
             specified.
 
         families : str, list of str, or None, default="style"
-            Factor families to include.  `None` includes all factors. Ignored when
+            Factor families to include. `None` includes all factors. Ignored when
             `factors` is given or when `factor_families` is `None`.
 
         step : int, default=21
@@ -2356,11 +2357,11 @@ class FactorModel:
         Parameters
         ----------
         factors : list of str, optional
-            Explicit subset of factor names.  Takes precedence over `families` when
+            Explicit subset of factor names. Takes precedence over `families` when
             specified.
 
         families : str, list of str, or None, default="style"
-            Factor families to include.  `None` includes all factors. Ignored when
+            Factor families to include. `None` includes all factors. Ignored when
             `factors` is given or when `factor_families` is `None`.
 
         cs_weighting : CSWeighting, default=CSWeighting.BENCHMARK
@@ -2880,7 +2881,7 @@ class FactorModel:
             `regression_weights` when available.
 
         horizon : int, default=1
-            Forward window in number of observations.  The cumulative return from
+            Forward window in number of observations. The cumulative return from
             :math:`t + 1` to :math:`t + h` is used.
 
         factor_indices : slice or list of int, default=slice(None)
@@ -3408,7 +3409,7 @@ def _cs_kurtosis(z: FloatArray) -> FloatArray:
     """Cross-sectional excess kurtosis per observation.
 
     Uses the bias-corrected (Fisher) estimator matching scipy
-    defaults.  Observations with fewer than 4 valid assets return
+    defaults. Observations with fewer than 4 valid assets return
     NaN.
 
     Parameters
@@ -3441,7 +3442,7 @@ def _cs_skewness(z: FloatArray) -> FloatArray:
     """Cross-sectional skewness per observation.
 
     Uses the bias-corrected (Fisher) estimator matching scipy
-    defaults.  Observations with fewer than 3 valid assets return
+    defaults. Observations with fewer than 3 valid assets return
     NaN.
 
     Parameters

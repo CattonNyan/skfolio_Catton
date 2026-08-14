@@ -52,7 +52,7 @@ def realized_factor_attribution(
     r"""Compute realized (ex-post) factor volatility and return attribution.
 
     This function decomposes realized portfolio volatility and return into systematic
-    (factors), idiosyncratic and unexplained contributions.
+    (factors), idiosyncratic and unattributed contributions.
 
     **Time convention (as-of indexing):**
 
@@ -74,8 +74,15 @@ def realized_factor_attribution(
         + \eta_{P,t}
 
     where :math:`x_{k,t} = B_{:,k,t-\ell}^\top w_t`, :math:`\varepsilon_{P,t}` is the
-    portfolio idiosyncratic return, :math:`\eta_{P,t}` is the unexplained portfolio
+    portfolio idiosyncratic return, :math:`\eta_{P,t}` is the unattributed portfolio
     return, and :math:`\ell` is `exposure_lag`.
+
+    **Unattributed component:**
+
+    The unattributed return :math:\eta_{P,t} is the difference between the observed
+    portfolio return and its systematic-plus-idiosyncratic reconstruction. It
+    captures effects outside that reconstruction, such as costs, cash, intra-period
+    trading and the time-series regression intercept.
 
     **Volatility Attribution (Variance Decomposition):**
 
@@ -151,7 +158,7 @@ def realized_factor_attribution(
 
     idio_returns : array-like of shape (n_observations, n_assets)
         Idiosyncratic returns from the factor model regression. These are the residuals
-         :math:`\varepsilon_{i,t}` from the cross-sectional regression.
+        :math:`\varepsilon_{i,t}` from the cross-sectional regression.
 
     idio_variances : array-like of shape (n_observations, n_assets) or None, optional
         Per-asset idiosyncratic (specific) variances :math:`\sigma^2_{\varepsilon,i,t}`.
@@ -308,7 +315,7 @@ def realized_factor_attribution(
     # delistings, not-yet-listed securities or trading holidays. Both arrays are zeroed
     # at these positions so that systematic and idiosyncratic contributions are zero for
     # inactive entries, preserving the additive identity (systematic + idiosyncratic +
-    # unexplained = total) at every time step. This runs after lag alignment so that
+    # unattributed = total) at every time step. This runs after lag alignment so that
     # each exposure row is paired with its corresponding idio row.
     exposures, idio_returns, inactive_mask = _zero_inactive_entries(
         exposures, idio_returns, exposure_is_static
@@ -529,7 +536,7 @@ def rolling_realized_factor_attribution(
         )
 
     # Apply exposure lag globally before windowing so that window_size consistently
-    # refers to the number of effective return periods.
+    # refers to the number of effective return periods
     exposure_is_static = exposures.ndim == 2
     if not exposure_is_static and exposure_lag > 0:
         exposures = exposures[:-exposure_lag]
@@ -620,7 +627,7 @@ def rolling_realized_factor_attribution(
 
     systematic = _stack_dataclass([r.systematic for r in results])
     idio = _stack_dataclass([r.idio for r in results])
-    unexplained = _stack_dataclass([r.unexplained for r in results])
+    unattributed = _stack_dataclass([r.unattributed for r in results])
     total = _stack_dataclass([r.total for r in results])
     factors = _stack_dataclass([r.factors for r in results])
 
@@ -635,7 +642,7 @@ def rolling_realized_factor_attribution(
     else:
         assets = None
 
-    # Stack asset-by-factor contributions.
+    # Stack asset-by-factor contributions
     if compute_asset_factor_contribs and results[0].asset_by_factor_contrib is not None:
         asset_factor_contribs = _stack_dataclass(
             [r.asset_by_factor_contrib for r in results]
@@ -646,7 +653,7 @@ def rolling_realized_factor_attribution(
     return Attribution(
         systematic=systematic,
         idio=idio,
-        unexplained=unexplained,
+        unattributed=unattributed,
         total=total,
         factors=factors,
         families=families,
@@ -765,7 +772,7 @@ def _zero_inactive_entries(
 
     An entry is considered inactive when either its idiosyncratic return or its
     exposure is NaN. Both are zeroed at inactive positions to preserve the
-    additive identity across systematic, idiosyncratic, and unexplained
+    additive identity across systematic, idiosyncratic, and unattributed
     components.
     """
     nan_idio = np.isnan(idio_returns)
@@ -906,16 +913,19 @@ def _realized_factor_attribution_core(
     idio_vol_contrib = idio_cov / total_vol
     idio_pct_total_variance = idio_vol_contrib / total_vol
 
-    # Unexplained: fees, cash, slippage, model misspecification
-    unexplained_pnl = portfolio_returns - systematic_pnl - idio_pnl
-    unexplained_mu = float(np.mean(unexplained_pnl))
-    unexplained_vol = float(np.std(unexplained_pnl, ddof=1))
-    unexplained_cov = float(_cov_with_centered(unexplained_pnl, ptf_ret_centered))
-    unexplained_corr = safe_divide(
-        unexplained_cov, unexplained_vol * total_vol, np.nan, atol=1e-12
+    # Unattributed: difference between observed portfolio returns and the model
+    # reconstruction (systematic + idio). Captures fees, cash, slippage,
+    # intra-period trading, coverage gaps and the time-series regression
+    # intercept.
+    unattributed_pnl = portfolio_returns - systematic_pnl - idio_pnl
+    unattributed_mu = float(np.mean(unattributed_pnl))
+    unattributed_vol = float(np.std(unattributed_pnl, ddof=1))
+    unattributed_cov = float(_cov_with_centered(unattributed_pnl, ptf_ret_centered))
+    unattributed_corr = safe_divide(
+        unattributed_cov, unattributed_vol * total_vol, np.nan, atol=1e-12
     )
-    unexplained_vol_contrib = unexplained_cov / total_vol
-    unexplained_pct_total_variance = unexplained_vol_contrib / total_vol
+    unattributed_vol_contrib = unattributed_cov / total_vol
+    unattributed_pct_total_variance = unattributed_vol_contrib / total_vol
 
     ann_sqrt = math.sqrt(annualization_factor)
 
@@ -981,12 +991,12 @@ def _realized_factor_attribution_core(
             corr_with_ptf=idio_corr,
             mu_uncertainty=idio_uncertainty,
         ),
-        unexplained=Component(
-            vol=unexplained_vol * ann_sqrt,
-            vol_contrib=unexplained_vol_contrib * ann_sqrt,
-            pct_total_variance=unexplained_pct_total_variance,
-            mu_contrib=unexplained_mu * annualization_factor,
-            corr_with_ptf=unexplained_corr,
+        unattributed=Component(
+            vol=unattributed_vol * ann_sqrt,
+            vol_contrib=unattributed_vol_contrib * ann_sqrt,
+            pct_total_variance=unattributed_pct_total_variance,
+            mu_contrib=unattributed_mu * annualization_factor,
+            corr_with_ptf=unattributed_corr,
         ),
         total=Component(
             vol=total_vol * ann_sqrt,
@@ -1271,7 +1281,7 @@ def _compute_attribution_uncertainty(
     idio_var = idio_variances
 
     # When a family-constraint basis is present, work in the reduced (full-rank) space
-    # to avoid the singular Gram matrix caused by collinear constrained families.
+    # to avoid the singular Gram matrix caused by collinear constrained families
     if family_constraint_basis is not None:
         if exposure_is_static:
             full_exposures_for_basis = np.broadcast_to(
@@ -1361,7 +1371,7 @@ def _compute_attribution_uncertainty(
     scale = annualization_factor / n_observations
 
     # Total systematic SE (invariant under basis change: g' Var g is the same
-    # in full or reduced basis).
+    # in full or reduced basis)
     covariance_times_exposure = (
         factor_covariance_regression @ regression_portfolio_exposure[:, :, np.newaxis]
     )

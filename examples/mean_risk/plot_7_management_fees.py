@@ -18,7 +18,7 @@ optimization:
 .. math:: expected\_return = \mu^{T} \cdot w - total\_fee
 
 with :math:`\mu` the vector of expected asset returns and :math:`w` the vector of
-assets weights.
+asset weights.
 
 The `management_fees` parameter can be a float, a dictionary or an array-like of
 shape `(n_assets, )`. If a float is provided, it is applied to each asset.

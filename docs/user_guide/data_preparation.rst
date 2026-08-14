@@ -8,7 +8,8 @@ Data Preparation
 
 Most `fit` methods of `skfolio` estimators take the assets returns as input `X`.
 Therefore, the choice of methodology to convert prices to returns is left to the user.
-For datasets with missing returns or a changing asset universe, see :ref:`missing_data`.
+For datasets with missing returns or a changing asset universe, see
+:ref:`Missing Data and Changing Universes <missing_data>`.
 
 There are two different notions of return:
 
@@ -24,7 +25,7 @@ of a portfolio is the sum of the weighted linear returns of its components:
 .. math:: R^{Lin}_{t} = \sum_{i=1}^{N} w_{i} \times  R^{Lin}_{i,t}
 
 
-This property is needed to properly compute portfolio return and risk ([5]_).
+This property is needed to properly compute portfolio return and risk [1]_.
 However, linear returns cannot be aggregated across time.
 
 Logarithmic return
@@ -48,7 +49,7 @@ Pitfall in Portfolio Optimization
 =================================
 Given the similarities of linear and logarithmic returns in the short run, they are
 sometimes used interchangeably.
-It is not uncommon to witness the following steps ([1]_, [2]_, [3]_):
+It is not uncommon to witness the following steps [2]_, [3]_, [4]_:
 
 #. Take the daily prices :math:`S_{t}, S_{t+1}, ...,` for all the n securities
 #. Transform the daily prices to daily logarithmic returns
@@ -60,7 +61,7 @@ It is not uncommon to witness the following steps ([1]_, [2]_, [3]_):
 The above approach is incorrect. First, the square-root rule in (5) only applies under
 the assumption that the logarithmic returns are invariants (they behave identically and
 independently across time). It is approximately true for stocks; long-term dependence
-requires additional care in optimization ([6]_). It is not true for bonds nor most
+requires additional care in optimization [5]_. It is not true for bonds nor most
 derivatives like options.
 Secondly, even for stocks, the optimization (6) is ill-posed: :math:`w^T \mu`
 is not the expected return of the portfolio over the horizon and :math:`w^T \Sigma w`
@@ -84,7 +85,7 @@ Example for stocks
 #. Take the prices :math:`S_{t}, S_{t+1}, ...,` (for example daily) for all the n securities
 #. Transform the daily prices to daily logarithmic returns. Note that linear return is also a market invariant for stock, however logarithmic return is going to simplify step 3) and 4).
 #. Estimate the joint distribution of market invariants by fitting parametrically the daily logarithmic returns to a multivariate normal distribution: estimate the joint distribution parameters :math:`\mu^{Log}_{daily}` and :math:`\Sigma^{Log}_{daily}`
-#. Project the distribution of invariants to the time period of investment (for example one year i.e. 252 business days). Because logarithmic returns are additive across time, we have ([4]_, [7]_):
+#. Project the distribution of invariants to the time period of investment (for example one year i.e. 252 business days). Because logarithmic returns are additive across time, we have [6]_, [7]_:
 
         * .. math:: \mu^{Log}_{yearly} = 252 \times \mu^{Log}_{daily}
         * .. math:: \Sigma^{Log}_{yearly} = 252 \times \Sigma^{Log}_{daily}
@@ -169,16 +170,16 @@ in the annualized variants (e.g. `annualized_sharpe_ratio`), using its
 
 .. rubric:: References
 
-.. [1] Quant nugget 2: linear vs. compounded returns – common pitfalls in portfolio management, GARP Risk Professional, Meucci (2010)
+.. [1] Note on simple and logarithmic return, Panna Miskolczi (2017)
 
-.. [2] Quant nugget 4: annualization and general projection of skewness, kurtosis and all summary statistics, GARP Risk Professional, Meucci (2010)
+.. [2] Quant nugget 2: linear vs. compounded returns – common pitfalls in portfolio management, GARP Risk Professional, Meucci (2010)
 
-.. [3] Quant nugget 5: return calculations for leveraged securities and portfolios, GARP Risk Professional, Meucci (2010)
+.. [3] Quant nugget 4: annualization and general projection of skewness, kurtosis and all summary statistics, GARP Risk Professional, Meucci (2010)
 
-.. [4] Efficient Asset Management: A Practical Guide to Stock Portfolio Optimization and Asset Allocation, Oxford University Press, Richard Michaud and Robert Michaud.
+.. [4] Quant nugget 5: return calculations for leveraged securities and portfolios, GARP Risk Professional, Meucci (2010)
 
-.. [5] Note on simple and logarithmic return, Panna Miskolczi (2017)
+.. [5] Portfolio optimization and long-term dependence, Carlos León and Alejandro Reveiz
 
-.. [6] Portfolio optimization and long-term dependence, Carlos León and Alejandro Reveiz
+.. [6] Efficient Asset Management: A Practical Guide to Stock Portfolio Optimization and Asset Allocation, Oxford University Press, Richard Michaud and Robert Michaud.
 
 .. [7] Portfolio Optimization Cookbook, Mosek

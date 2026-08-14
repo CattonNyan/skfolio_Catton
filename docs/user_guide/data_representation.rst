@@ -1,5 +1,4 @@
 .. _asset_data_representation:
-.. _missing_data:
 
 *************************
 Asset Data Representation
@@ -98,6 +97,8 @@ For this reason, `skfolio` developed :class:`~skfolio.containers.AssetPanel`, a
 dedicated container for aligned cross-sectional asset data. It keeps the wide layout,
 stores field metadata, supports categorical and tensor fields, and keeps masks
 aligned with the data. See :class:`~skfolio.containers.AssetPanel` for details.
+
+.. _missing_data:
 
 Missing Data and Changing Universes
 ===================================
@@ -213,7 +214,7 @@ observation (e.g. holiday). NaN-aware estimators handle this according to their 
 
 If `active_mask=False`, the asset is inactive for that observation (e.g.
 pre-listing or post-delisting periods). Estimators use this information to mark the
-asset as unavailable when its fitted moments cannot be used.
+asset as unavailable.
 
 When data is stored in an :class:`~skfolio.containers.AssetPanel`, each field applies
 its `inactive_policy` outside `active_mask`. The default policy stores NaN for

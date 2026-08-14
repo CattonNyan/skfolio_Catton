@@ -411,7 +411,7 @@ class MeanRisk(ConvexOptimization):
             * Asset names: individual asset weights (e.g. `"SPX"`, `"AAPL"`)
             * Group names: sums of weights in groups defined by `groups`
             * Factor names: portfolio factor exposure (requires factor model prior)
-            * Factor families: sum of portfolio exposures to all factors in one family.
+            * Factor families: sum of portfolio exposures to all factors in one family
 
         Supported equation patterns include:
 
@@ -654,7 +654,7 @@ class MeanRisk(ConvexOptimization):
         is set to `None` and subsequent calls to `predict` will return a
         `FailedPortfolio`. When fallbacks are specified, this behavior applies only
         after all fallbacks have been exhausted.
-        With `partial_fit`, only solver failures are handled this way and errors raised
+        With `partial_fit`, only solver failures are handled this way and failures
         while updating stateful sub-estimators are always raised.
 
     Attributes

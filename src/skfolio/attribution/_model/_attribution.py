@@ -44,8 +44,8 @@ class Attribution:
 
     Predicted and realized attribution expose the same decomposition: systematic,
     idiosyncratic, total and per-factor attribution. Realized attribution may also
-    include `unexplained`, the residual component between observed portfolio returns
-    and model-attributed returns. Rolling attribution uses the same fields with numeric
+    include `unattributed`, the difference between observed portfolio returns and
+    model-attributed returns. Rolling attribution uses the same fields with numeric
     values indexed by `observations`.
 
     Attributes
@@ -58,9 +58,12 @@ class Attribution:
         Idiosyncratic component. Portfolio risk and return not attributed to the factor
         exposures.
 
-    unexplained : Component or None
-        Residual component between observed portfolio returns and model-attributed
-        returns. `None` for predicted attribution.
+    unattributed : Component or None
+        Difference between observed portfolio returns and model-attributed returns
+        (systematic plus idiosyncratic). Captures effects outside the factor model:
+        transaction costs, management fees, slippage, cash, intra-period trading
+        and, for time-series factor models, the regression intercept. `None` for
+        predicted attribution.
 
     total : Component
         Total portfolio risk and return after aggregating all attribution components.
@@ -87,7 +90,7 @@ class Attribution:
 
     systematic: Component
     idio: Component
-    unexplained: Component | None
+    unattributed: Component | None
     total: Component
 
     factors: FactorBreakdown
@@ -139,14 +142,14 @@ class Attribution:
             "idio_mu_contrib",
         )
 
-        # Collect all components to validate (including optional unexplained)
+        # Collect all components to validate (including optional unattributed)
         components = [
             ("systematic", self.systematic),
             ("idio", self.idio),
             ("total", self.total),
         ]
-        if self.unexplained is not None:
-            components.append(("unexplained", self.unexplained))
+        if self.unattributed is not None:
+            components.append(("unattributed", self.unattributed))
 
         # Collect all breakdowns to validate
         breakdowns = []
@@ -421,7 +424,7 @@ class Attribution:
         r"""Return component-level attribution as a DataFrame.
 
         The summary reports volatility contribution, percentage of total variance and
-        return contribution for the systematic, idiosyncratic, optional unexplained,
+        return contribution for the systematic, idiosyncratic, optional unattributed,
         and total components.
 
         Parameters
@@ -448,9 +451,9 @@ class Attribution:
         component_names = ["Systematic", "Idiosyncratic"]
         component_objects = [self.systematic, self.idio]
 
-        if self.unexplained is not None:
-            component_names.append("Unexplained")
-            component_objects.append(self.unexplained)
+        if self.unattributed is not None:
+            component_names.append("Unattributed")
+            component_objects.append(self.unattributed)
 
         component_names.append("Total")
         component_objects.append(self.total)

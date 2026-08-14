@@ -29,8 +29,8 @@ class EWMacroSensitivity(BaseDescriptor):
     r"""EWMA macro sensitivity after removing market exposure.
 
     The descriptor estimates the partial regression coefficient of asset returns on an
-    external reference series (e.g. FX, rates, commodity basket) after removing the
-    linear exposure to market returns in a bivariate EWMA regression:
+    external reference series (e.g. FX, rates, inflation, commodity basket) after
+    removing the linear exposure to market returns in a bivariate EWMA regression:
 
     .. math::
 
@@ -90,11 +90,6 @@ class EWMacroSensitivity(BaseDescriptor):
     macro_sensitivity_ : ndarray of shape (n_assets,)
         Last fitted partial beta to the reference series for each asset.
 
-    References
-    ----------
-    .. [1] "The share of systematic variation in bilateral exchange rates"
-        The Journal of Finance. Verdelhan, A. (2018).
-
     Notes
     -----
     NaNs are allowed as missing observations. Non-missing `returns` and
@@ -126,10 +121,6 @@ class EWMacroSensitivity(BaseDescriptor):
     >>> # FX sensitivity (daily updates with default memory)
     >>> descriptor = EWMacroSensitivity()
     >>> macro_sensitivity = descriptor.fit_transform(X, reference_returns=fx_basket)
-    >>>
-    >>> # Interest rate sensitivity
-    >>> descriptor = EWMacroSensitivity()
-    >>> macro_sensitivity = descriptor.fit_transform(X, reference_returns=rate_returns)
     """
 
     def __init__(
@@ -208,7 +199,7 @@ class EWMacroSensitivity(BaseDescriptor):
         Returns
         -------
         sensitivities : ndarray of shape (n_observations, n_assets)
-            Partial beta to the reference series after removing market exposure.
+            Partial beta to the reference series for each observation and asset.
         """
         if reference_returns is None:
             raise ValueError(
@@ -328,7 +319,7 @@ class EWMacroSensitivity(BaseDescriptor):
         # Count of aggregated periods processed
         self._t = 0
 
-        # Current betas, held during incomplete aggregation windows.
+        # Current betas, held during incomplete aggregation windows
         self._ref_betas = np.full(n_assets, np.nan, dtype=float)
         self._market_betas = np.full(n_assets, np.nan, dtype=float)
         self._n_valid_assets = np.zeros(n_assets, dtype=int)
@@ -355,7 +346,7 @@ class EWMacroSensitivity(BaseDescriptor):
         (which computes deviations from the already-updated mean).
 
         The partial beta to the reference series uses the Frisch-Waugh
-        closed form (no matrix inverse):
+        closed form (no matrix inversion):
 
         .. math::
 
@@ -372,15 +363,15 @@ class EWMacroSensitivity(BaseDescriptor):
         decay = self._decay
         self._t += 1
 
-        # Deviations from lagged means.
+        # Deviations from lagged means
         market_deviation = ret_market - self._mu_market
         ref_deviation = ret_ref - self._mu_ref
 
-        # Update EWMA means.
+        # Update EWMA means
         self._mu_market = decay * self._mu_market + (1 - decay) * ret_market
         self._mu_ref = decay * self._mu_ref + (1 - decay) * ret_ref
 
-        # Update scalar variances and covariance.
+        # Update scalar variances and covariance
         self._var_market = decay * self._var_market + (1 - decay) * (
             market_deviation * market_deviation
         )
@@ -391,7 +382,7 @@ class EWMacroSensitivity(BaseDescriptor):
             market_deviation * ref_deviation
         )
 
-        # Update per-asset covariances for valid returns.
+        # Update per-asset covariances for valid returns
         valid = np.isfinite(ret_assets)
         self._n_valid_assets[valid] += 1
         asset_deviations = ret_assets[valid] - self._mu_assets[valid]
@@ -409,7 +400,7 @@ class EWMacroSensitivity(BaseDescriptor):
             + (1 - decay) * asset_deviations * ref_deviation
         )
 
-        # Compute partial betas with Frisch-Waugh closed form.
+        # Compute partial betas with Frisch-Waugh closed form
         if self._t >= self._min_periods:
             market_variance = self._var_market + self.eps
             reference_residual_variance = (

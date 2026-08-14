@@ -36,9 +36,10 @@ class MarketLeverage(BaseDescriptor, stateless=True):
     `total_debt` values must be finite. Non-missing `market_cap` values must be finite
     and strictly positive.
 
-    When `total_debt` is non-negative and `market_cap` is positive, the ratio is bounded
-    in :math:`[0, 1)`. This makes it the most numerically well-behaved of the leverage
-    descriptors, requiring no special treatment for negative-equity firms.
+    When `total_debt` is non-negative and given that `market_cap` is non-negative by
+    construction, the ratio is bounded in :math:`[0, 1)`. This makes it the most
+    numerically well-behaved of the leverage descriptors, requiring no special
+    treatment for negative-equity firms.
 
     Parameters
     ----------
@@ -90,8 +91,7 @@ class MarketLeverage(BaseDescriptor, stateless=True):
         Returns
         -------
         market_leverage : ndarray of shape (n_observations, n_assets)
-            Market leverage ratio, with NaN where market capitalization or total
-            capital is not positive.
+            Market leverage ratio for each observation and asset.
         """
         validate_asset_panel(
             self,

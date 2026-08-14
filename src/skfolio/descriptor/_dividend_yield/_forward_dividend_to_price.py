@@ -61,11 +61,6 @@ class ForwardDividendToPrice(BaseDescriptor, stateless=True):
               {\text{adj\_close} \times \text{shares\_out}}
         = \frac{\text{forward\_dividends\_ntm}}{\text{market\_cap}}
 
-    References
-    ----------
-    .. [1] "Common risk factors in the returns on stocks and bonds"
-        Journal of Financial Economics. Fama, E. F., & French, K. R. (1993).
-
     See Also
     --------
     DividendToPrice : Trailing (historical) dividend yield.

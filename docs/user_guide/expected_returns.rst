@@ -27,12 +27,12 @@ Available estimators are:
 For online learning and streaming workflows, :class:`EWMu` supports
 incremental updates with `partial_fit`. It also supports NaN-aware updates with
 `active_mask`, which helps distinguish assets that belong to the universe but have
-missing returns, for example on holidays, from assets outside the universe, such as
-during pre-listing or post-delisting periods.
+missing returns (e.g. holidays), from assets outside the universe (e.g. pre-listing
+or post-delisting periods).
 See :ref:`online_learning` for the full online workflow, including online
 portfolio optimization evaluation with incremental moments.
-See :ref:`missing_data` for the full convention on NaNs, universe membership, estimator
-warmup and investability.
+See :ref:`Missing Data and Changing Universes <missing_data>` for the full convention
+on NaNs, universe membership, estimator warmup and investability.
 
 **Example:**
 

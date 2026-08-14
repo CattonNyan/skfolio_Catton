@@ -73,7 +73,7 @@ class ImpliedCovariance(BaseCovariance):
         The default (`None`) is to use :class:`~skfolio.moments.EmpiricalCovariance`.
 
     annualization_factor : float, default=252
-        Annualization factor (AF) used to covert the implied volatilities into the same
+        Annualization factor (AF) used to convert the implied volatilities into the same
         frequency as the returns using :math:`\frac{IV}{\sqrt{AF}}`.
         The default is 252 which corresponds to **daily** returns and implied volatility
         expressed in **p.a.**

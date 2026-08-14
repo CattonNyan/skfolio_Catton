@@ -401,8 +401,8 @@ def make_synthetic_characteristics(
         ]
     )
 
-    # Factor returns: styles and industries are Gaussian AR(1) and the market have fat
-    # tails.
+    # Factor returns: styles and industries are Gaussian AR(1) and the market has fat
+    # tails
     style_ann_vol, style_ann_mean, style_autocorr = (
         np.array(values) for values in zip(*_STYLE_FACTORS.values(), strict=True)
     )

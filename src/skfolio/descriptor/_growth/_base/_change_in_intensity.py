@@ -108,7 +108,8 @@ class ChangeInIntensity(BaseDescriptor):
         Returns
         -------
         change_in_intensity : ndarray of shape (n_observations, n_assets)
-            Change in `field` / `scale_field` over the lag window.
+            Change in `field` / `scale_field` over the lag window for each observation
+            and asset.
         """
         self._reset()
         return self.partial_fit_transform(X, y, **fit_params)
@@ -134,7 +135,8 @@ class ChangeInIntensity(BaseDescriptor):
         Returns
         -------
         change_in_intensity : ndarray of shape (n_observations, n_assets)
-            Change in `field` / `scale_field` over the lag window.
+            Change in `field` / `scale_field` over the lag window for each observation
+            and asset.
         """
         first_call = not hasattr(self, _FITTED_ATTR)
 
@@ -159,18 +161,18 @@ class ChangeInIntensity(BaseDescriptor):
 
         ratio = safe_divide(values, scale, fill_value=np.nan)
 
-        # Lagged values from the existing buffer.
+        # Lagged values from the existing buffer
         n_from_buffer = min(self.lag, n_observations)
         result[:n_from_buffer] = ratio[:n_from_buffer] - self._buffer[:n_from_buffer]
 
-        # Lagged values from the current batch.
+        # Lagged values from the current batch
         if n_observations > self.lag:
             result[self.lag :] = ratio[self.lag :] - ratio[: n_observations - self.lag]
 
-        # Update the buffer in-place.
+        # Update the buffer in-place
         _update_buffer(self._buffer, ratio, self.lag)
 
-        # Mask output for inactive assets.
+        # Mask output for inactive assets
         result = np.where(X.active_mask, result, np.nan)
 
         self.change_in_intensity_ = (

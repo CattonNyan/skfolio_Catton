@@ -28,7 +28,7 @@ class SalesToEnterpriseValue(BaseDescriptor, stateless=True):
     This descriptor is a valuation and efficiency measure: it measures how much revenue
     a firm generates per unit of enterprise value. Unlike :class:`AssetTurnover`, which
     normalizes by book assets, enterprise value reflects the market's assessment of the
-    entire capital structure.
+    entire capital structure [1]_.
 
     A high sales-to-enterprise-value ratio identifies firms that generate substantial
     revenue relative to their market valuation, combining elements of both value and

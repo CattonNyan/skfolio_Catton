@@ -48,8 +48,7 @@ class EmpiricalPrior(BasePrior):
     assets (NaN in the estimated `mu` and/or covariance diagonal) are left
     unchanged and are removed downstream by
     :meth:`~skfolio.prior.ReturnDistribution.investable_subset`. Missing
-    observations of investable assets are replaced by zero, the return of a
-    position held over a non-trading day.
+    observations of investable assets are replaced by zero.
 
     Zero-filling long gaps, such as the pre-listing history of a late-listed
     asset, understates its risk in scenario-based measures (CVaR, EVaR, CDaR,

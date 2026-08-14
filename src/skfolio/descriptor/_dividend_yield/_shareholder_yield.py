@@ -27,11 +27,11 @@ class ShareholderYield(BaseDescriptor, stateless=True):
         \frac{\text{dividends\_ttm}(t) + \text{net\_buybacks\_ttm}(t)}
              {\text{market\_cap}(t)}
 
-    Dividend yield alone misses a large and growing share of corporate payout. Since the
-    1990s, share repurchases have overtaken dividends as the dominant mechanism for
-    returning cash to shareholders. Shareholder yield captures the total payout: a
-    company paying 0% dividends but buying back 5% of its equity annually has a positive
-    payout yield that pure dividend yield scores as zero [1]_.
+    Dividend yield alone misses a large share of corporate payout. Since the 1990s,
+    share repurchases have overtaken dividends as the dominant mechanism for returning
+    cash to shareholders. Shareholder yield captures the total payout: a company
+    paying 0% dividends but buying back 5% of its equity annually has a positive payout
+    yield that pure dividend yield scores as zero [1]_.
 
     High shareholder yield identifies firms that return substantial capital.
     Empirically, shareholder yield subsumes much of the stand-alone dividend yield

@@ -52,7 +52,7 @@ class EWAmihudIlliquidity(BaseDescriptor):
 
     EWMA smoothing is preferred over a fixed rolling average because the raw ratio is
     very noisy (it can spike when volume is low or returns are large). EWMA dampens
-    transient spikes and produces more stable exposures.
+    transient spikes gradually, producing more stable factor exposures.
 
     Parameters
     ----------
@@ -173,7 +173,7 @@ class EWAmihudIlliquidity(BaseDescriptor):
         Returns
         -------
         illiquidity : ndarray of shape (n_observations, n_assets)
-            EWMA-smoothed Amihud illiquidity ratio.
+            EWMA-smoothed Amihud illiquidity for each observation and asset.
         """
         first_call = not hasattr(self, _FITTED_ATTR)
 
@@ -197,7 +197,7 @@ class EWAmihudIlliquidity(BaseDescriptor):
         adj_close = X["adj_close"]
         adj_volume = X["adj_volume"]
 
-        # Dollar volume (traded amount).
+        # Dollar volume (traded amount)
         traded_amount = adj_close * adj_volume
         raw_illiquidity = safe_divide(np.abs(returns), traded_amount, fill_value=np.nan)
 
@@ -215,7 +215,7 @@ class EWAmihudIlliquidity(BaseDescriptor):
 
             result[t] = np.where(self._n_valid >= self._min_periods, self._ewma, np.nan)
 
-        # Mask for inactive assets.
+        # Mask for inactive assets
         result = np.where(X.active_mask, result, np.nan)
 
         self.illiquidity_ = result[-1].copy() if n_observations > 1 else result[-1]

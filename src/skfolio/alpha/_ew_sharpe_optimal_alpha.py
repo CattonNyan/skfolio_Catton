@@ -75,10 +75,10 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
     - incorporating asset-specific risk, either through inverse idiosyncratic variance
       weights or through volatility-scaled targets
     - producing an alpha forecast in expected return units, which is required whenever
-      the optimizer is trading off alpha against real costs and constraints (e.g.,
+      the optimizer is trading off alpha against real costs and constraints (e.g.
       transaction costs, market impact, borrow costs, turnover constraints).
 
-    For a single signal with constant idiosyncratic variance, the estimator reduces
+    For an individual signal with constant idiosyncratic variance, the estimator reduces
     to a scaled IC-like weighting.
 
     The estimator uses the following regression target:
@@ -250,13 +250,14 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         strength without changing the EWLS coefficient estimates.
 
     normalize_weights : bool, default=True
-        If `True`, regression weights are normalized within each observation to have
-        average one across valid assets. This removes changes in aggregate weight caused
-        by the scale of idiosyncratic variances, while preserving the greater
+        If `True`, regression weights are normalized within each observation to have an
+        average of one across valid assets. This removes changes in aggregate weight
+        caused by the scale of idiosyncratic variances, while preserving the greater
         statistical weight of observations with more valid assets. In practice, this
         prevents calm, low-volatility regimes from mechanically dominating the EWLS
         statistics just because inverse-variance weights are larger in those regimes.
-        Set `normalize_weights=False` for the unnormalized GLS / BLUE estimator.
+        Set `normalize_weights=False` for the unnormalized GLS estimator (which is
+        BLUE under the usual assumptions).
 
     ridge_scale : float, default=1e-6
         Relative ridge penalty applied to the exponentially weighted normal matrix.
@@ -351,7 +352,7 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
 
     Notes
     -----
-    The Information Ratio (IR) of a strategy is approximately:
+    The Information Ratio (IR) of a strategy is approximately [1]_:
 
     .. math::
 

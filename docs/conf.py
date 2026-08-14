@@ -322,8 +322,8 @@ def get_example_headline_and_description(app, pagename) -> tuple[str, str]:
     headline = f"Tutorial on {title}"
 
     end_example = (
-        "using skfolio, a Python library for portfolio optimization and "
-        "risk management."
+        "using skfolio, a Python library for portfolio optimization, factor model "
+        "construction, and risk management."
     )
 
     example_desc = EXAMPLE_DESCRIPTIONS.get(pagename)
@@ -622,8 +622,9 @@ sitemap_excludes = ["search.html"]
 # they get published with the site, e.g. at https://skfolio.org/llms.txt ,
 # https://skfolio.org/llms-full.txt and https://skfolio.org/<page>.html.md
 llms_txt_description = (
-    "Python library for portfolio optimization and risk management built on top of "
-    "scikit-learn: build, fine-tune, cross-validate and stress-test portfolio models."
+    "Python library for portfolio optimization, factor model construction, and risk "
+    "management, built on top of scikit-learn: create, fine-tune, cross-validate, "
+    "and stress-test portfolio models."
 )
 
 # make the links in llms.txt absolute
@@ -1323,7 +1324,8 @@ def inject_example_meta_description(app, pagename, templatename, context, doctre
         title = get_doc_title(app, pagename)
         description = (
             f"Examples and tutorials for {title} using skfolio, a Python library "
-            "for portfolio optimization and risk management."
+            "for portfolio optimization, factor model construction, and risk "
+            "management."
         )
     else:
         _, description = get_example_headline_and_description(app, pagename)
@@ -1523,7 +1525,8 @@ def inject_schema(app, pagename, templatename, context, doctree):
                     "name": "skfolio User Guide",
                     "description": (
                         "Comprehensive guide to installing, configuring, and using "
-                        "the skfolio Python library."
+                        "skfolio for portfolio optimization, factor model construction, "
+                        "and risk management."
                     ),
                     "url": url,
                     "inLanguage": in_lang,
@@ -1592,8 +1595,9 @@ def inject_schema(app, pagename, templatename, context, doctree):
                     "@id": f"{url}#article",
                     "headline": "skfolio API Reference",
                     "description": (
-                        "Complete reference for the skfolio Python library's API: "
-                        "functions, classes, and modules."
+                        "Complete reference for skfolio's portfolio optimization, "
+                        "factor model construction, and risk management API: functions, "
+                        "classes, and modules."
                     ),
                     "url": url,
                     "version": app.config.release,
@@ -1666,7 +1670,8 @@ def inject_schema(app, pagename, templatename, context, doctree):
                     "headline": "Code Examples & Tutorials",
                     "description": (
                         "A gallery of code examples and tutorials demonstrating how to "
-                        "use skfolio for portfolio optimization."
+                        "use skfolio for portfolio optimization, factor model "
+                        "construction, and risk management."
                     ),
                     "url": url,
                     "hasPart": parts,

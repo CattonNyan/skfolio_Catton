@@ -108,8 +108,8 @@ class ChangeToScale(BaseDescriptor):
         Returns
         -------
         change_to_scale : ndarray of shape (n_observations, n_assets)
-            Change in `field` over the lag window, divided by current
-            `scale_field`.
+            Change in `field` over the lag window, divided by current `scale_field`
+            for each observation and asset.
         """
         self._reset()
         return self.partial_fit_transform(X, y, **fit_params)
@@ -135,7 +135,8 @@ class ChangeToScale(BaseDescriptor):
         Returns
         -------
         change_to_scale : ndarray of shape (n_observations, n_assets)
-            Change in `field` over the lag window, divided by current `scale_field`.
+            Change in `field` over the lag window, divided by current `scale_field`
+            for each observation and asset.
         """
         first_call = not hasattr(self, _FITTED_ATTR)
 
@@ -158,7 +159,7 @@ class ChangeToScale(BaseDescriptor):
 
         result = np.full((n_observations, n_assets), np.nan, dtype=float)
 
-        # Lagged values from the existing buffer.
+        # Lagged values from the existing buffer
         n_from_buffer = min(self.lag, n_observations)
         result[:n_from_buffer] = safe_divide(
             values[:n_from_buffer] - self._buffer[:n_from_buffer],
@@ -166,7 +167,7 @@ class ChangeToScale(BaseDescriptor):
             fill_value=np.nan,
         )
 
-        # Lagged values from the current batch.
+        # Lagged values from the current batch
         if n_observations > self.lag:
             result[self.lag :] = safe_divide(
                 values[self.lag :] - values[: n_observations - self.lag],
@@ -174,10 +175,10 @@ class ChangeToScale(BaseDescriptor):
                 fill_value=np.nan,
             )
 
-        # Update the buffer in-place.
+        # Update the buffer in-place
         _update_buffer(self._buffer, values, self.lag)
 
-        # Mask output for inactive assets.
+        # Mask output for inactive assets
         result = np.where(X.active_mask, result, np.nan)
 
         self.change_to_scale_ = result[-1].copy() if n_observations > 1 else result[-1]

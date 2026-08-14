@@ -329,6 +329,19 @@ class TestAlphaForecastEvaluation:
         assert evaluation.plot_cumulative_returns().layout.yaxis.tickformat == ".2%"
         assert evaluation.plot_quantile_returns().layout.yaxis.tickformat == ".2%"
 
+    def test_cumulative_ic_plot_preserves_acronym(self, alpha_deterministic_panel):
+        """Cumulative IC legend labels preserve the uppercase acronym."""
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            alpha_deterministic_panel,
+            holding_period=1,
+            signal_lag=1,
+        )
+
+        fig = evaluation.plot_cumulative_ic()
+
+        assert [trace.name for trace in fig.data] == ["Spearman IC", "Pearson IC"]
+
     def test_evaluation_step_subsamples_evaluation_dates(
         self, alpha_deterministic_panel
     ):

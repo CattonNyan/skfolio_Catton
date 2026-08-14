@@ -149,7 +149,8 @@ class DaysToCover(BaseDescriptor):
         Returns
         -------
         days_to_cover : ndarray of shape (n_observations, n_assets)
-            Short interest divided by EWMA-smoothed daily volume.
+            Short interest divided by EWMA-smoothed daily volume for each observation
+            and asset.
         """
         self._reset()
         return self.partial_fit_transform(X, y, **fit_params)
@@ -174,7 +175,8 @@ class DaysToCover(BaseDescriptor):
         Returns
         -------
         days_to_cover : ndarray of shape (n_observations, n_assets)
-            Short interest divided by EWMA-smoothed daily volume.
+            Short interest divided by EWMA-smoothed daily volume for each observation
+            and asset.
         """
         first_call = not hasattr(self, _FITTED_ATTR)
 
@@ -214,7 +216,7 @@ class DaysToCover(BaseDescriptor):
                 self._n_valid >= self._min_periods, days_to_cover, np.nan
             )
 
-        # Mask for inactive assets.
+        # Mask for inactive assets
         result = np.where(X.active_mask, result, np.nan)
 
         self.days_to_cover_ = result[-1].copy() if n_observations > 1 else result[-1]

@@ -70,11 +70,6 @@ class EWVolatility(_BaseEWVolatility):
     The variance is computed assuming centered returns (no demeaning), which is the
     standard convention for EWMA variance estimation in cross-sectional factor models.
 
-    References
-    ----------
-    .. [1] "The cross-section of volatility and expected returns"
-        The Journal of Finance. Ang, A., Hodrick, R. J., Xing, Y., & Zhang, X. (2006).
-
     See Also
     --------
     EWDownsideVolatility : Downside variant using semi-deviation of returns.

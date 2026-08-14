@@ -10,8 +10,7 @@ Migration Guide
 backward compatible within a major series. Deprecated functionality raises a
 `FutureWarning` and is removed in the next major release.
 
-This page documents the changes required to upgrade between major versions, most recent
-first.
+This page documents the changes required to upgrade between major versions.
 
 .. _migration_1_0:
 
@@ -21,7 +20,7 @@ Migrating to 1.0
 Version 1.0 introduces the stable public API. The parameters and aliases deprecated
 during the 0.x series are removed in this release.
 
-Exponentially weighted moments
+Exponentially Weighted Moments
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 :class:`~skfolio.moments.EWMu` and :class:`~skfolio.moments.EWCovariance` no longer
@@ -53,7 +52,7 @@ and `alpha=0.02` to :math:`34.31`. The decay factor is
 
 Passing `alpha` raises a `TypeError`.
 
-Walk-forward cross-validation
+Walk-Forward Cross-Validation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 :class:`~skfolio.model_selection.WalkForward` no longer accepts `expend_train`. Use
@@ -71,7 +70,7 @@ After:
 
     WalkForward(test_size=60, train_size=252, expand_train=True)
 
-Factor models
+Factor Models
 ~~~~~~~~~~~~~
 
 The `FactorModel` prior estimator is replaced by
@@ -111,7 +110,7 @@ After:
 alternative, fitted from point-in-time asset characteristics rather than factor return
 time series. See :ref:`Factor Models <factor_models>`.
 
-Uncertainty sets
+Uncertainty Sets
 ~~~~~~~~~~~~~~~~
 
 :class:`~skfolio.uncertainty_set.UncertaintySet` now describes a general norm-ball
@@ -138,7 +137,7 @@ The field names changed as follows:
       - `norm`
       - Norm :math:`p` selecting the shape, defaulting to :math:`2` for an ellipsoid.
 
-This affects only code that constructs an `UncertaintySet` directly or reads the fitted
+This only affects code that constructs an `UncertaintySet` directly or reads the fitted
 `uncertainty_set_` attribute. Passing an uncertainty set estimator to
 :class:`~skfolio.optimization.MeanRisk` is unchanged.
 
@@ -149,7 +148,7 @@ Two factor-model estimators are added:
 
 .. _migration_scheduled_removals:
 
-Scheduled for removal in 2.0
+Scheduled for Removal in 2.0
 ----------------------------
 
 The following remain available throughout 1.x and raise a `FutureWarning`:

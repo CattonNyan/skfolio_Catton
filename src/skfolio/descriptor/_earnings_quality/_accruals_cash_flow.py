@@ -93,7 +93,8 @@ class AccrualsCashFlow(BaseDescriptor, stateless=True):
         Returns
         -------
         accruals_cash_flow : ndarray of shape (n_observations, n_assets)
-            Accruals (net income minus operating cash flow) divided by total assets.
+            Accruals (net income minus operating cash flow) divided by total assets
+            for each observation and asset.
         """
         validate_asset_panel(
             self,

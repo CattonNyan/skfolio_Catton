@@ -416,7 +416,8 @@ class FamilyConstraintBasis:
         r"""Reduce a full-basis factor covariance to the retained full-rank block.
 
         The reduced factor returns are the retained components of the full factor
-        returns, so the reduced covariance is the retained-retained block:
+        returns, so the reduced covariance is the submatrix corresponding to the
+        retained factors:
 
         .. math::
 
@@ -564,7 +565,7 @@ class FamilyConstraintBasis:
             \Sigma^{\mathrm{full}} = R_t \Sigma^{\mathrm{red}} R_t^\top.
 
         The dense matrix :math:`R_t` is not materialized. The implementation fills the
-        retained-retained block directly and reconstructs dropped rows and columns using
+        retained-factor block directly and reconstructs dropped rows and columns using
         compact dropped-factor weights. For 3D input, all observations are expanded with
         vectorized batched matrix multiplications.
 

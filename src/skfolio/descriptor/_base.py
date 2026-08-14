@@ -79,7 +79,7 @@ class BaseDescriptorComposition(BaseComposition, ABC):
         return sku.Bunch(**dict(self.descriptors))
 
     def set_params(self, **params):
-        """Set the parameters of an factor from the ensemble.
+        """Set the parameters of a factor from the ensemble.
 
         Valid parameter keys can be listed with `get_params()`. Note that you
         can directly set the parameters of the estimators contained in
@@ -251,7 +251,7 @@ class _BaseRollingLogReturn(BaseDescriptor):
                 "log returns."
             )
 
-        # Active assets with missing returns contribute zero to the log-return sum.
+        # Active assets with missing returns contribute zero to the log-return sum
         contrib = np.zeros_like(returns, dtype=float)
         contrib[non_missing] = np.log1p(returns[non_missing])
 
@@ -277,7 +277,7 @@ class _BaseRollingLogReturn(BaseDescriptor):
 
             self._sync_rolling_ring(contrib, active_mask, n_observations)
         else:
-            # Online path: ring buffer with running sum and active count.
+            # Online path: ring buffer with running sum and active count
             for t in range(n_observations):
                 pos = self._rolling_n_seen % buffer_length
 
@@ -316,7 +316,7 @@ class _BaseRollingLogReturn(BaseDescriptor):
 
                 self._rolling_n_seen += 1
 
-        # Mask for inactive assets.
+        # Mask for inactive assets
         result = np.where(X.active_mask, result, np.nan)
 
         last = result[-1].copy() if n_observations > 1 else result[-1]

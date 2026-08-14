@@ -28,7 +28,7 @@ class EWMarketBeta(BaseDescriptor):
     r"""Exponentially weighted market beta descriptor.
 
     Measures each asset's sensitivity to the market portfolio using exponentially
-    weighted covariance and variance estimates:
+    weighted covariance and variance estimates [1]_:
 
     .. math::
 
@@ -190,9 +190,7 @@ class EWMarketBeta(BaseDescriptor):
         Returns
         -------
         betas : ndarray of shape (n_observations, n_assets)
-            Market beta for each observation and asset. Outputs are NaN until
-            the global market state and the asset-specific valid-return count
-            both reach `min_periods`.
+            Market beta for each observation and asset.
         """
         first_call = not hasattr(self, _FITTED_ATTR)
 
@@ -272,7 +270,7 @@ class EWMarketBeta(BaseDescriptor):
         # re-enters the universe, estimation resumes from its last state.
         betas = np.where(X.active_mask, betas, np.nan)
 
-        # Store only the last row for fitted checks and state access.
+        # Store only the last row for fitted checks and state access
         self.market_beta_ = betas[-1].copy() if n_observations > 1 else betas[-1]
 
         return betas
@@ -302,7 +300,7 @@ class EWMarketBeta(BaseDescriptor):
 
     def _initialize(self) -> None:
         """Initialize EWMA state and aggregation buffers."""
-        # Minimum valid aggregated observations before output.
+        # Minimum valid aggregated observations before output
         if self.min_periods is None:
             self._min_periods = max(1, int(np.ceil(self.half_life)))
         else:
@@ -352,8 +350,8 @@ class EWMarketBeta(BaseDescriptor):
         where decay = exp(-ln(2) / half_life), so half the weight is on the  most recent
         `half_life` observations.
         """
-        # Track residuals BEFORE updating beta (uses previous period's beta)
-        # This gives E[epsilon^2] for standard error estimation
+        # Track residuals BEFORE updating beta (uses previous period's beta).
+        # This gives E[epsilon^2] for standard error estimation.
         if self._shrinkage_enabled and self._t >= self._min_periods:
             valid_for_residual = np.isfinite(ret_assets) & np.isfinite(self._betas)
             residuals = ret_assets - self._betas * ret_market
@@ -364,19 +362,19 @@ class EWMarketBeta(BaseDescriptor):
 
         self._t += 1
 
-        # Deviations from lagged means.
+        # Deviations from lagged means
         market_deviation = ret_market - self._mu_market
         valid = np.isfinite(ret_assets)
         self._n_valid_assets[valid] += 1
         asset_deviations = ret_assets[valid] - self._mu_assets[valid]
 
-        # Update EWMA means.
+        # Update EWMA means
         self._mu_market = self._decay * self._mu_market + (1 - self._decay) * ret_market
         self._mu_assets[valid] = (
             self._decay * self._mu_assets[valid] + (1 - self._decay) * ret_assets[valid]
         )
 
-        # Update EWMA variance and covariance.
+        # Update EWMA variance and covariance
         self._var_market = self._decay * self._var_market + (1 - self._decay) * (
             market_deviation * market_deviation
         )
@@ -394,7 +392,7 @@ class EWMarketBeta(BaseDescriptor):
 
     def _update_from_buffer(self) -> None:
         """Aggregate buffered returns and update EWMA statistics."""
-        # Compute aggregated asset returns, skipping missing values per asset.
+        # Compute aggregated asset returns, skipping missing values per asset
         with warnings.catch_warnings():
             warnings.filterwarnings(
                 "ignore", message="Mean of empty slice", category=RuntimeWarning
@@ -436,7 +434,7 @@ class EWMarketBeta(BaseDescriptor):
         shrunk_betas = raw_betas.copy()
 
         # Estimation error variance: SE(beta)^2 = Var(residual) / (effective_n * Var(market))
-        # For EWMA, effective_n ~ 2 * half_life (effective sample size)
+        # For EWMA: effective_n ~ 2 * half_life (effective sample size)
         effective_n = 2 * self.half_life
         beta_error_variance = self._var_residual / (
             effective_n * (self._var_market + self.eps)
@@ -488,7 +486,7 @@ class EWMarketBeta(BaseDescriptor):
                 )
 
             # Higher weight keeps more of the raw beta; lower weight shrinks more
-            # toward the group mean.
+            # toward the group mean
             raw_beta_weight = group_prior_variance / (
                 group_prior_variance + beta_error_variance[group_mask] + self.eps
             )

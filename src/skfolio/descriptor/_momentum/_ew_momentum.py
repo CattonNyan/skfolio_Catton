@@ -219,7 +219,7 @@ class EWMomentum(BaseDescriptor):
                 "log returns."
             )
 
-        # Pre-compute finite log returns for the batch.
+        # Pre-compute finite log returns for the batch
         log_returns = np.log1p(returns)
 
         result = np.empty((n_observations, n_assets), dtype=float)
@@ -236,7 +236,7 @@ class EWMomentum(BaseDescriptor):
 
             self._n_seen += 1
 
-            # Only update EWMA once skip buffer has been filled.
+            # Only update EWMA once skip buffer has been filled
             if self._n_seen > self.skip:
                 valid = np.isfinite(delayed_log_ret)
                 if np.any(valid):
@@ -254,7 +254,7 @@ class EWMomentum(BaseDescriptor):
             ready = self._n_valid >= self.min_periods_
             result[t] = np.where(ready, momentum, np.nan)
 
-        # Mask for inactive assets.
+        # Mask for inactive assets
         result = np.where(X.active_mask, result, np.nan)
 
         self.momentum_ = result[-1].copy() if n_observations > 1 else result[-1]
@@ -277,7 +277,7 @@ class EWMomentum(BaseDescriptor):
 
         self.decay_ = half_life_to_decay_factor(self.half_life)
 
-        # Minimum valid delayed returns before output.
+        # Minimum valid delayed returns before output
         if self.min_periods is None:
             self.min_periods_ = max(1, int(np.ceil(self.half_life)))
         else:

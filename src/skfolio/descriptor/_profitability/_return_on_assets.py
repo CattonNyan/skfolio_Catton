@@ -25,7 +25,7 @@ class ReturnOnAssets(BaseDescriptor, stateless=True):
         \text{ROA}(t) = \frac{\text{net\_income\_ttm}(t)}{\text{total\_assets}(t)}
 
     Return on assets measures how efficiently a firm converts its asset base into
-    earnings. Higher values indicate greater profitability per unit of capital deployed.
+    earnings. Higher values indicate greater profitability per unit of capital deployed [1]_.
 
     Parameters
     ----------
@@ -47,7 +47,7 @@ class ReturnOnAssets(BaseDescriptor, stateless=True):
     See Also
     --------
     ReturnOnEquity : Profitability per unit of equity.
-    AssetTurnover : Efficiency component of the DuPont decomposition.
+    AssetTurnover : Sales generated per unit of total assets.
 
     References
     ----------

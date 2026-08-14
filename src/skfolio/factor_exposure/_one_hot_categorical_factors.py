@@ -113,7 +113,7 @@ class OneHotCategoricalFactors(BaseFactorExposure, stateless=True):
         # Identify missing values
         valid_mask = flat_codes != MISSING_CATEGORY_CODE
 
-        # FieldCategorical validates that valid codes are in [0, n_factors).
+        # FieldCategorical validates that valid codes are in [0, n_factors)
         exposures = np.full((flat_codes.size, n_factors), np.nan, dtype=np.float64)
         valid_indices = np.nonzero(valid_mask)[0]
         valid_codes = flat_codes[valid_mask]

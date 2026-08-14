@@ -26,11 +26,11 @@ class ForwardEarningsToPrice(BaseDescriptor, stateless=True):
         \text{forward\_earnings\_to\_price}(t) =
         \frac{\text{eps\_ntm}(t)}{\text{adj\_close}(t)}
 
-    Forward earnings-to-price reflects the market's expectation of future profitability
-    relative to the current price. Because it incorporates analyst forecasts rather than
-    trailing accounting data, it captures forward-looking value and is less affected by
-    stale or one-off items in historical earnings. A high ratio identifies firms
-    expected to generate strong earnings relative to their price.
+    Forward earnings-to-price reflects consensus expectations of future profitability
+    relative to the current price [1]_. Because it incorporates analyst forecasts rather
+    than trailing accounting data, it captures forward-looking value and is less
+    affected by stale or one-off items in historical earnings. A high ratio identifies
+    firms expected to generate strong earnings relative to their price.
 
     Unlike the other value descriptors which use aggregate fundamentals divided by
     `market_cap`, this descriptor uses per-share quantities (`eps_ntm / adj_close`).

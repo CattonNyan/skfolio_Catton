@@ -26,7 +26,7 @@ class TestRealizedFactorAttribution:
         assert isinstance(result, Attribution)
 
         # Component objects - always present
-        for comp in [result.systematic, result.idio, result.unexplained, result.total]:
+        for comp in [result.systematic, result.idio, result.unattributed, result.total]:
             assert isinstance(comp, Component)
 
         # Component fields - systematic
@@ -90,11 +90,11 @@ class TestRealizedFactorAttribution:
         assert summary_df.index.name == "Component"
         assert list(factors_df.columns) == expected_factors_cols
 
-        # Realized attribution includes Unexplained row
+        # Realized attribution includes Unattributed row
         assert list(summary_df.index) == [
             "Systematic",
             "Idiosyncratic",
-            "Unexplained",
+            "Unattributed",
             "Total",
         ]
 
@@ -298,10 +298,10 @@ class TestRealizedFactorAttribution:
                 **static_realized_model, factor_families=np.array(["Only"])
             )
 
-    # === Unexplained Component Tests ===
+    # === Unattributed Component Tests ===
 
-    def test_unexplained_variance_with_misaligned_inputs(self, static_realized_model):
-        """Test unexplained variance is populated for misaligned inputs."""
+    def test_unattributed_variance_with_misaligned_inputs(self, static_realized_model):
+        """Test unattributed variance is populated for misaligned inputs."""
         np.random.seed(42)
         model = {
             **static_realized_model,
@@ -309,15 +309,15 @@ class TestRealizedFactorAttribution:
         }
         result = realized_factor_attribution(**model)
 
-        assert result.unexplained is not None
-        assert result.unexplained.pct_total_variance > 0.01
+        assert result.unattributed is not None
+        assert result.unattributed.pct_total_variance > 0.01
 
-    def test_unexplained_near_zero_for_aligned_inputs(self, static_realized_model):
-        """Test unexplained variance is near zero for properly aligned inputs."""
+    def test_unattributed_near_zero_for_aligned_inputs(self, static_realized_model):
+        """Test unattributed variance is near zero for properly aligned inputs."""
         result = realized_factor_attribution(**static_realized_model)
 
-        assert result.unexplained is not None
-        assert abs(result.unexplained.pct_total_variance) < 0.01
+        assert result.unattributed is not None
+        assert abs(result.unattributed.pct_total_variance) < 0.01
 
     # === Families Tests ===
 
@@ -420,7 +420,7 @@ class TestNaNHandling:
         total_vol_contrib = (
             np.sum(result.factors.vol_contrib)
             + result.idio.vol_contrib
-            + result.unexplained.vol_contrib
+            + result.unattributed.vol_contrib
         )
         np.testing.assert_almost_equal(total_vol_contrib, result.total.vol, decimal=10)
 
@@ -436,7 +436,7 @@ class TestNaNHandling:
         total_vol_contrib = (
             np.sum(result.factors.vol_contrib)
             + result.idio.vol_contrib
-            + result.unexplained.vol_contrib
+            + result.unattributed.vol_contrib
         )
         np.testing.assert_almost_equal(total_vol_contrib, result.total.vol, decimal=10)
 
@@ -459,7 +459,7 @@ class TestNaNHandling:
         total_vol_contrib = (
             np.sum(result.factors.vol_contrib)
             + result.idio.vol_contrib
-            + result.unexplained.vol_contrib
+            + result.unattributed.vol_contrib
         )
         np.testing.assert_almost_equal(total_vol_contrib, result.total.vol, decimal=10)
 
@@ -511,16 +511,16 @@ class TestNaNHandling:
             total_vol_contrib = (
                 np.sum(result.factors.vol_contrib[i])
                 + result.idio.vol_contrib[i]
-                + result.unexplained.vol_contrib[i]
+                + result.unattributed.vol_contrib[i]
             )
             np.testing.assert_almost_equal(
                 total_vol_contrib, result.total.vol[i], decimal=10
             )
 
-    # --- Unexplained is zero when portfolio uses nan_to_num (matching Portfolio) ---
+    # --- Unattributed is zero when portfolio uses nan_to_num (matching Portfolio) ---
 
-    def test_unexplained_zero_with_nan_idio_3d_exposures(self):
-        """Unexplained is zero when NaN idio cells use 0 in portfolio returns.
+    def test_unattributed_zero_with_nan_idio_3d_exposures(self):
+        """Unattributed is zero when NaN idio cells use 0 in portfolio returns.
 
         Reproduces the real scenario: 3D exposures, 2D weights, some (date,
         asset) cells have NaN in idio_returns (missing actual return) while
@@ -567,11 +567,11 @@ class TestNaNHandling:
             annualization_factor=1,
         )
 
-        np.testing.assert_almost_equal(result.unexplained.mu_contrib, 0.0, decimal=12)
-        np.testing.assert_almost_equal(result.unexplained.vol_contrib, 0.0, decimal=12)
+        np.testing.assert_almost_equal(result.unattributed.mu_contrib, 0.0, decimal=12)
+        np.testing.assert_almost_equal(result.unattributed.vol_contrib, 0.0, decimal=12)
 
-    def test_unexplained_zero_with_nan_idio_static_weights(self):
-        """Unexplained is zero with 3D exposures, static weights, and NaN idio."""
+    def test_unattributed_zero_with_nan_idio_static_weights(self):
+        """Unattributed is zero with 3D exposures, static weights, and NaN idio."""
         np.random.seed(77)
         n_obs, n_assets, n_factors = 50, 4, 2
 
@@ -606,8 +606,8 @@ class TestNaNHandling:
             annualization_factor=1,
         )
 
-        np.testing.assert_almost_equal(result.unexplained.mu_contrib, 0.0, decimal=12)
-        np.testing.assert_almost_equal(result.unexplained.vol_contrib, 0.0, decimal=12)
+        np.testing.assert_almost_equal(result.unattributed.mu_contrib, 0.0, decimal=12)
+        np.testing.assert_almost_equal(result.unattributed.vol_contrib, 0.0, decimal=12)
 
 
 class TestRealizedFactorAttributionRegression:
@@ -707,7 +707,7 @@ class TestRollingRealizedFactorAttribution:
             **rolling_static_model, window_size=60, step=20
         )
 
-        for comp in [result.systematic, result.idio, result.unexplained, result.total]:
+        for comp in [result.systematic, result.idio, result.unattributed, result.total]:
             for attr in [
                 "vol",
                 "vol_contrib",

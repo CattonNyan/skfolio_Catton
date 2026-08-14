@@ -125,11 +125,11 @@ class TestAttributionUncertaintyPresence:
         assert result.idio.mu_uncertainty is None
         assert result.factors.mu_contrib_uncertainty is None
 
-    def test_unexplained_and_total_have_no_uncertainty(self, static_uncertainty_model):
+    def test_unattributed_and_total_have_no_uncertainty(self, static_uncertainty_model):
         result = realized_factor_attribution(
             **static_uncertainty_model, annualization_factor=1
         )
-        assert result.unexplained.mu_uncertainty is None
+        assert result.unattributed.mu_uncertainty is None
         assert result.total.mu_uncertainty is None
 
     def test_families_uncertainty_present(self, static_uncertainty_model):
@@ -459,13 +459,13 @@ class TestAttributionUncertaintyDataFrame:
         cols = list(df.columns)
         i_pct_var = cols.index("% of Total Variance")
         assert cols.index(merged) == i_pct_var + 1
-        # Total and Unexplained: no SE, contribution only (no ± margin).
+        # Total and Unattributed: no SE, contribution only (no ± margin).
         total_cell = df.loc["Total", merged]
         assert " ± " not in total_cell
         assert "%" in total_cell
-        if "Unexplained" in set(df.index):
-            unexplained_cell = df.loc["Unexplained", merged]
-            assert " ± " not in unexplained_cell
+        if "Unattributed" in set(df.index):
+            unattributed_cell = df.loc["Unattributed", merged]
+            assert " ± " not in unattributed_cell
         systematic_cell = df.loc["Systematic", merged]
         assert " ± " in systematic_cell
 

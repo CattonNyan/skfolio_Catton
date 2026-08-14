@@ -30,7 +30,7 @@ class GrossMargin(BaseDescriptor, stateless=True):
     of revenue retained after direct production costs. A high and stable gross margin
     may reflect strong competitive positioning, brand value or cost advantages.
 
-    While :class:`GrossProfitability` normalizes by total assets, gross margin
+    While :class:`GrossProfitability` normalizes by total assets [1]_, gross margin
     normalizes by sales. The two descriptors capture related but distinct aspects of
     firm quality.
 

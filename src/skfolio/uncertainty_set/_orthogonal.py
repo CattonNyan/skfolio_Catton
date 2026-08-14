@@ -37,7 +37,7 @@ class OrthogonalMuUncertaintySet(BaseMuUncertaintySet):
     optimizers to overallocate in these directions. Rather than shrinking the orthogonal
     expected returns in the prior, this estimator keeps the point estimate
     :math:`\hat{\mu}` unchanged and adds a portfolio-dependent worst-case penalty that
-    grows with exposure to the orthogonal subspace.
+    grows with exposure to the orthogonal subspace [1]_ [2]_ [3]_.
 
     Under this uncertainty set, the worst-case expected return for a portfolio with
     weights :math:`w` is
@@ -60,7 +60,7 @@ class OrthogonalMuUncertaintySet(BaseMuUncertaintySet):
     :math:`\Lambda` is a positive semidefinite scaling matrix that controls the
     uncertainty assigned to each orthogonal direction.
 
-    Equivalently, the ellipsoidal shape matrix is
+    Equivalently, the ellipsoidal shape matrix is [4]_:
 
     .. math::
 
@@ -112,11 +112,11 @@ class OrthogonalMuUncertaintySet(BaseMuUncertaintySet):
     .. [2] "Portfolio Optimization: Theory and Application", Chapter 14,
         Daniel P. Palomar (2025)
 
-    .. [3] "Robust Convex Optimization", Mathematics of Operations Research,
-        Ben-Tal and Nemirovski (1998).
-
-    .. [4] "Robust Portfolio Selection Problems", Mathematics of Operations Research,
+    .. [3] "Robust Portfolio Selection Problems", Mathematics of Operations Research,
         Goldfarb and Iyengar (2003).
+
+    .. [4] "Robust Convex Optimization", Mathematics of Operations Research,
+        Ben-Tal and Nemirovski (1998).
     """
 
     def __init__(
@@ -320,7 +320,7 @@ class OrthogonalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
     r"""Covariance uncertainty set estimator for directions outside the factor span.
 
     This estimator builds a compact covariance uncertainty set for robust portfolio
-    optimization. The robust penalty assigns additional covariance uncertainty to
+    optimization [1]_ [2]_ [3]_. The robust penalty assigns additional covariance uncertainty to
     portfolio directions that are in the subspace orthogonal to the factor-model
     loading matrix, under the selected cross-sectional weighting metric.
 
@@ -356,7 +356,7 @@ class OrthogonalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         \kappa C^\top (I - Q Q^\top) C.
 
     This structured form avoids the lifted SDP formulation used for fully generic
-    covariance uncertainty sets and avoids materializing the dense matrix
+    covariance uncertainty sets and avoids materializing the dense matrix [4]_
     :math:`C^\top (I - Q Q^\top) C`.
 
     If the factor model uses basket-neutral constraints, the loading matrix is first
@@ -393,11 +393,11 @@ class OrthogonalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
     .. [2] "Portfolio Optimization: Theory and Application", Chapter 14,
         Daniel P. Palomar (2025)
 
-    .. [3] "Robust Convex Optimization", Mathematics of Operations Research,
-        Ben-Tal and Nemirovski (1998).
-
-    .. [4] "Robust Portfolio Selection Problems", Mathematics of Operations Research,
+    .. [3] "Robust Portfolio Selection Problems", Mathematics of Operations Research,
         Goldfarb and Iyengar (2003).
+
+    .. [4] "Robust Convex Optimization", Mathematics of Operations Research,
+        Ben-Tal and Nemirovski (1998).
     """
 
     def __init__(

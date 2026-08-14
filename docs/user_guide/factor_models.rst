@@ -638,7 +638,7 @@ set, liquid enough to avoid spurious return relationships and stable enough for 
 exposures to behave consistently through time. For a US equity model, a typical
 estimation universe is 1,000 to 3,000 names. It should also be large enough relative to the 
 factor set. The number of estimation assets :math:`N` should be well above the number of 
-factors :math:`K` for a stable cross-sectional regression, and best practice 
+factors :math:`K` for a stable cross-sectional regression, and best practice is to have
 at least 20 estimation assets per industry (e.g. 50 industries should require at least
 1,000 assets in a well-balanced universe, and more if some industries are sparsely
 represented).
@@ -1328,9 +1328,7 @@ other factor returns, :math:`B_{ij}` the exposure of asset :math:`i` to factor
   that category, :math:`w_j = \sum_i w_i^{\text{bench}} B_{ij}` (the industry
   cap share when `benchmark_mcap_power=1`). The family term
   :math:`\sum_j w_j \hat{f}_j` is the benchmark-weighted average of the
-  family's factor returns, set to zero by the zero-sum constraint. Industry
-  factors shift return between industries without changing the benchmark
-  total, and country factors between countries.
+  family's factor returns, set to zero by the zero-sum constraint.
 * Style exposures are centered so that the benchmark-weighted average
   exposure :math:`\sum_i w_i^{\text{bench}} B_{ij}` is zero (the default
   :class:`~skfolio.preprocessing.CSStandardScaler` behavior). The benchmark
@@ -1365,6 +1363,8 @@ in excess of the benchmark, net of the other factors. A style factor return is t
 return to a standardized characteristic tilt, representing the return earned by holding one
 standard deviation of exposure to that characteristic while keeping all other
 factor exposures at zero.
+
+.. _factor_model_missing_data:
 
 Missing Data and Changing Universes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1980,10 +1980,9 @@ cross-sectional transformation), idiosyncratic variances scale the target and
 factor exposures neutralize the features. Targeting idiosyncratic returns rather
 than raw returns removes the factor-driven component from the target. The
 cross-sectional variation of raw returns includes each asset's factor exposures
-times the factor returns, so a signal correlated with the exposures would pick
-up factor premia already captured by the factor model. The
-idiosyncratic target also carries less noise, since common factor volatility is
-removed.
+multiplied by the factor returns, so a signal correlated with the exposures would
+pick up factor premia already captured by the factor model. The idiosyncratic
+target also carries less noise, since common factor volatility is removed.
 
 The alpha forecast should be expressed in expected-return units when it is combined
 with expected factor returns or used in an optimization alongside return-denominated 
@@ -2502,7 +2501,7 @@ position, so the maximum gross exposure is:
 
 .. math::
 
-    100\% \text{ long} + 100\% \text{ short} = 200\%.
+    100\% \text{ long} + 100\% \text{ short} = 200\%
 
 Individual positions are limited to :math:`\pm 5\%`. Transaction costs follow the
 skfolio convention: a linear cost per unit traded, deducted from the portfolio
@@ -2570,10 +2569,6 @@ descriptor and estimator warmups (see :ref:`Warmup Periods
 <factor_model_warmup>`). The out-of-sample portfolio achieves an annualized
 Sharpe ratio of 0.91.
 
-This example trades factor premia and does not use an alpha forecast. The
-factor-neutral case is covered in the :ref:`Factor-Neutral Alpha Portfolio
-<factor_model_factor_neutral_alpha_portfolio>` section below.
-
 The optimizer consumes the factor model with the following conventions:
 
 * For variance-based risk measures, the optimizer consumes the covariance square
@@ -2598,6 +2593,10 @@ following the :ref:`Orthogonal Space Regularization <factor_model_orthogonal_spa
         covariance_uncertainty_set_estimator=OrthogonalCovarianceUncertaintySet(radius=1.0)
     )
 
+
+This example trades factor premia and does not use an alpha forecast. The
+factor-neutral case is covered in the :ref:`Factor-Neutral Alpha Portfolio
+<factor_model_factor_neutral_alpha_portfolio>` section below.
 
 Walk-forward evaluation and hyperparameter tuning of the full
 optimization-plus-prior pipeline are covered in the :ref:`Walk-Forward Evaluation <factor_model_walk_forward_evaluation>` and :ref:`Hyperparameter Tuning <factor_model_hyper_parameter_tuning>` sections.
@@ -2720,8 +2719,7 @@ A factor model pipeline can be evaluated at three complementary levels:
 
 * :ref:`Regression diagnostics <factor_model_regression_diagnostics>` measure how
   well the factor structure explains the cross-section of returns.
-* :ref:`Covariance forecast evaluation <factor_model_covariance_forecast_evaluation>`
-   tests the out-of-sample calibration of the risk forecasts.
+* :ref:`Covariance forecast evaluation <factor_model_covariance_forecast_evaluation>` tests the out-of-sample calibration of the risk forecasts.
 * :ref:`Walk-forward evaluation <factor_model_walk_forward_evaluation>` measures the realized portfolio outcomes of
   the full pipeline, including the optimizer.
 
@@ -2779,8 +2777,7 @@ the estimator on each fold, `online_predict` updates a single stateful estimator
 and carries its state forward, making long walk-forward backtests practical for
 models of this size. The result is a multi-period portfolio with the usual
 skfolio analytics (summary, plots, risk measures).
-:func:`~skfolio.model_selection.online_score` follows the same pattern and
-returns a score.
+:func:`~skfolio.model_selection.online_score` follows the same pattern.
 
 .. _factor_model_hyper_parameter_tuning:
 
@@ -2882,8 +2879,9 @@ with the same structure:
 
 * `systematic`, `idio` and `total`: component-level breakdowns with volatility,
   volatility contribution, share of total variance, return and correlation with
-  the portfolio. Realized attribution adds `unexplained`, the residual between
-  observed portfolio returns and model-attributed returns.
+  the portfolio. Realized attribution adds `unattributed`, the difference between
+  observed portfolio returns and model-attributed returns (transaction costs,
+  fees, cash and intra-period trading).
 * `factors` and `families`: per-factor breakdowns with exposures, standalone
   statistics and contributions, with the same information aggregated by factor
   family.
@@ -3085,7 +3083,7 @@ free to exceed 1.0 when the forecast premium justifies it.
 The error bars show the 95% confidence intervals on the mean return
 contributions. The momentum, non-linear size and profitability factors are clearly
 positive, while the -1.4% idiosyncratic contribution has an interval crossing
-zero, so it is not distinguishable from estimation noise.
+zero, so it is indistinguishable from estimation noise.
 
 .. code-block:: python
 

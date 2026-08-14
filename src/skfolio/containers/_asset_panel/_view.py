@@ -115,7 +115,7 @@ class AssetPanelView(_BaseAssetPanel):
 
         Notes
         -----
-        Selector composition keeps slice-only chains zero-copy. When a  selector is an
+        Selector composition keeps slice-only chains zero-copy. When a selector is an
         integer or boolean array, NumPy fancy indexing is applied on access and may copy.
         """
         if isinstance(key, tuple):

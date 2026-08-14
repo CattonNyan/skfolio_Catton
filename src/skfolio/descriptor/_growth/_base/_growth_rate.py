@@ -184,12 +184,12 @@ class GrowthRate(BaseDescriptor):
             )
 
         if first_call:
-            # Pre-allocate the lag buffer, warm-up output stays NaN.
+            # Pre-allocate the lag buffer, warm-up output stays NaN
             self._buffer = np.full((self.lag, n_assets), np.nan, dtype=float)
 
         result = np.full((n_observations, n_assets), np.nan, dtype=float)
 
-        # Lagged values from the existing buffer.
+        # Lagged values from the existing buffer
         n_from_buffer = min(self.lag, n_observations)
         result[:n_from_buffer] = (
             safe_divide(
@@ -198,7 +198,7 @@ class GrowthRate(BaseDescriptor):
             - 1
         )
 
-        # Lagged values from the current batch.
+        # Lagged values from the current batch
         if n_observations > self.lag:
             result[self.lag :] = (
                 safe_divide(
@@ -209,10 +209,10 @@ class GrowthRate(BaseDescriptor):
                 - 1
             )
 
-        # Update the buffer in-place.
+        # Update the buffer in-place
         _update_buffer(self._buffer, values, self.lag)
 
-        # Mask output for inactive assets.
+        # Mask output for inactive assets
         result = np.where(X.active_mask, result, np.nan)
 
         self.growth_rate_ = result[-1].copy() if n_observations > 1 else result[-1]

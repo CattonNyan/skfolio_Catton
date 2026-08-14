@@ -450,7 +450,7 @@ def predicted_factor_attribution(
     factor_vol_contrib = factor * factor_cov_with_ptf / total_vol
     factor_pct_total_variance = factor_vol_contrib / total_vol
 
-    # Expected return contribution by factor.
+    # Expected return contribution by factor
     factor_mu_contrib = factor * factor_mu
 
     # Spanned expected return
@@ -525,7 +525,7 @@ def predicted_factor_attribution(
             mu_contrib=total_mu,
             corr_with_ptf=1.0,
         ),
-        unexplained=None,
+        unattributed=None,
         factors=factors,
         families=families,
         assets=assets,

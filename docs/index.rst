@@ -1,10 +1,10 @@
-:og:description:  Python library for portfolio optimization, factor modeling and risk management built on scikit-learn to create, fine-tune, cross-validate and stress-test portfolio models.
+:og:description:  Python library for portfolio optimization, factor model construction, and risk management, built on scikit-learn to create, fine-tune, cross-validate, and stress-test portfolio models.
 :og:url: https://skfolio.org/
 
 .. meta::
-    :description: Python library for portfolio optimization, factor modeling and risk
-                  management built on scikit-learn to create, fine-tune, cross-validate
-                  and stress-test portfolio models.
+    :description: Python library for portfolio optimization, factor model construction,
+                  and risk management, built on scikit-learn to create, fine-tune,
+                  cross-validate, and stress-test portfolio models.
 
 
 .. toctree::

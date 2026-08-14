@@ -90,7 +90,8 @@ class AnalystDispersionToPrice(BaseDescriptor, stateless=True):
         Returns
         -------
         analyst_dispersion_to_price : ndarray of shape (n_observations, n_assets)
-            Standard deviation of forward EPS estimates divided by split-adjusted close.
+            Standard deviation of forward EPS estimates divided by split-adjusted close
+            for each observation and asset.
         """
         validate_asset_panel(
             self,

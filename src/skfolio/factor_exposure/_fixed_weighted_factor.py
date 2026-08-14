@@ -60,13 +60,7 @@ class FixedWeightedFactor(BaseFactorExposure, BaseDescriptorComposition):
     The `min_coverage` parameter controls the minimum fraction of total descriptor
     weight that must be valid for the composite to be computed. If the valid weight
     fraction falls below this threshold, the composite is set to NaN instead. This
-    guards against low-quality exposures based on too few descriptors:
-
-    - A composite from 1 out of 7 descriptors is qualitatively different
-      from the full factor and may load on a different latent signal.
-    - Assets sharing the same "partial" descriptor coverage (e.g., an
-      entire sector) can introduce systematic bias in factor return
-      estimates.
+    guards against low-quality exposures based on too few descriptors.
 
     The default `min_coverage=0.0` uses any available descriptor (no threshold), which
     maximizes coverage.  A value of `0.5` requires at least half the descriptor weight
@@ -275,8 +269,8 @@ class FixedWeightedFactor(BaseFactorExposure, BaseDescriptorComposition):
 
         scores = self._combine_scores(scores)
 
-        # Re-standardize the composite so that assets with different  numbers of
-        # contributing descriptors are on the same scale.
+        # Re-standardize the composite so that assets with different numbers of
+        # contributing descriptors are on the same scale
         if n_descriptors > 1 and self.scoring_transformer_ != _PASSTHROUGH:
             scores = self.scoring_transformer_.fit_transform(
                 scores, cs_weights=cs_weight, cs_groups=cs_group
@@ -286,7 +280,7 @@ class FixedWeightedFactor(BaseFactorExposure, BaseDescriptorComposition):
 
     def _combine_scores(self, scores: list[FloatArray]) -> FloatArray:
         """Return the finite-aware weighted descriptor composite."""
-        # Accumulate directly to avoid materializing 3D temporaries for large universes.
+        # Accumulate directly to avoid materializing 3D temporaries for large universes
         weighted_scores = np.zeros_like(scores[0], dtype=float)
         w_sum = np.zeros_like(weighted_scores)
         contribution = np.empty_like(weighted_scores)

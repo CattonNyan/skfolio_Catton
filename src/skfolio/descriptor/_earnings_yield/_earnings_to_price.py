@@ -27,7 +27,7 @@ class EarningsToPrice(BaseDescriptor, stateless=True):
 
     This is the inverse of the price-to-earnings (P/E) ratio and measures how much
     profit a firm generates per unit of market value. A high ratio identifies firms with
-    strong current profitability relative to their price. Unlike :class:`BookToPrice`,
+    strong current profitability relative to their price [1]_. Unlike :class:`BookToPrice`,
     which is based on the balance sheet, this descriptor is based on the income
     statement, capturing a distinct dimension of value.
 

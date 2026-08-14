@@ -242,10 +242,10 @@ model = CharacteristicsFactorModel(
 # ==============
 # We now build the alpha signal, a cross-sectional forecast of relative
 # idiosyncratic performance across assets at each date. The factor model
-# decomposes asset returns into systematic and idiosyncratic components, and
+# decomposes asset returns into systematic and idiosyncratic components [1]_, and
 # the signal targets the idiosyncratic returns. With raw returns as target,
 # the cross-sectional variation would also include each asset's factor
-# exposures times the factor returns, so a signal correlated with the
+# exposures multiplied by the factor returns, so a signal correlated with the
 # exposures would pick up factor premia already captured by the factor model.
 # Targeting idiosyncratic returns removes this component and
 # keeps the forecast asset-specific (see :ref:`Alpha Estimators
@@ -268,9 +268,9 @@ panel_train_enriched = factor_model.enrich_asset_panel(panel_train)
 # %%
 # Alpha Signal
 # ------------
-# We build the signal from two characteristics, short interest and analyst
+# We build the signal from two characteristics: short interest and analyst
 # forecast dispersion. Empirical studies have associated high short interest
-# [1]_ and high analyst forecast dispersion [2]_ with lower subsequent
+# [2]_ and high analyst forecast dispersion [3]_ with lower subsequent
 # returns. We therefore combine the two descriptors with equal negative
 # weights, so assets with higher values receive lower alpha forecasts.
 #
@@ -349,8 +349,8 @@ evaluation.ic_summary()
 
 # %%
 # The Spearman IC measures how well the forecast orders assets by their
-# future idiosyncratic return. The Pearson IC measures the linear relationship
-# between forecast magnitudes and future idiosyncratic returns. The ICIR, t-statistic and hit
+# future idiosyncratic return and the Pearson IC measures the linear relationship
+# between forecast magnitudes and future idiosyncratic returns [4]_. The ICIR, t-statistic and hit
 # rate summarize consistency through time. The mean Spearman IC of 0.045 shows a
 # positive rank association between the forecast and subsequent idiosyncratic
 # returns. Its 84.3% hit rate means that this association is positive in 84.3%
@@ -373,8 +373,8 @@ evaluation.portfolio_summary()
 # of 6.83% and 7.36%, with information ratios of 13.64 and 14.27. The high
 # information ratios reflect diversification of idiosyncratic noise across the
 # broad cross-section. Both portfolios have an 84.3% hit rate. Mean one-way
-# turnover of 93.6% and 105.8% per rebalance also shows that implementation costs
-# will be important.
+# turnover of 93.6% and 105.8% per rebalance also shows that transaction costs
+# and potential market impacts may be material.
 #
 # Next, we check the choice of `forecast_scale` with `calibration_summary`.
 # The `calibration_slope` is the slope from a weighted zero-intercept
@@ -397,7 +397,7 @@ evaluation.plot_cumulative_ic()
 # Both curves rise steadily with no prolonged flat or negative stretch,
 # consistent with the high hit rates of the IC summary.
 #
-# Next, we check how quickly the signal decay. `plot_ic_decay` re-evaluates
+# Next, we check how quickly the signal decays. `plot_ic_decay` re-evaluates
 # each forecast over consecutive, disjoint ten-day windows:
 evaluation.plot_ic_decay()
 
@@ -740,17 +740,17 @@ show(fig)
 # factor exposures make a small aggregate contribution. The realized return decomposition is
 # consistent with the orthogonal alpha forecast.
 #
-# The summary DataFrame adds `unexplained`, the residual between
+# The summary DataFrame adds `unattributed`, the difference between
 # observed portfolio returns and model-attributed returns. The portfolio
 # returns are net of transaction costs while the factor decomposition
-# explains gross returns, so the cost drag falls into this residual, as
-# would management fees, slippage and model misspecification:
+# explains gross returns, so the cost drag falls into this component, as
+# would management fees, slippage and cash:
 
 realized_attrib.summary_df()
 
 # %%
 # Idiosyncratic returns contribute 8.06% annualized and 94.93% of realized
-# variance. Systematic factors contribute 0.24%, while the unexplained component
+# variance. Systematic factors contribute 0.24%, while the unattributed component
 # subtracts 0.66%. Total return over the attribution sample is 7.64% annualized.
 
 # %%
@@ -771,20 +771,21 @@ realized_attrib.summary_df()
 # %%
 # References
 # ==========
-# .. [1] H. Desai, K. Ramesh, S. R. Thiagarajan, and B. V. Balachandran,
+# .. [1] G. A. Paleologo, *The Elements of Quantitative Investing*, Wiley
+#    Finance (2025).
+#
+# .. [2] H. Desai, K. Ramesh, S. R. Thiagarajan, and B. V. Balachandran,
 #    "An Investigation of the Informational Role of Short Interest in the Nasdaq
 #    Market", *The Journal of Finance*, vol. 57, no. 5, pp. 2263-2287 (2002).
 #    `doi:10.1111/0022-1082.00495
 #    <https://doi.org/10.1111/0022-1082.00495>`_.
 #
-# .. [2] K. B. Diether, C. J. Malloy, and A. Scherbina, "Differences of Opinion
+# .. [3] K. B. Diether, C. J. Malloy, and A. Scherbina, "Differences of Opinion
 #    and the Cross Section of Stock Returns", *The Journal of Finance*, vol. 57,
 #    no. 5, pp. 2113-2141 (2002). `doi:10.1111/0022-1082.00490
 #    <https://doi.org/10.1111/0022-1082.00490>`_.
 #
-# .. [3] R. C. Grinold and R. N. Kahn, *Active Portfolio Management: A
+# .. [4] R. C. Grinold and R. N. Kahn, *Active Portfolio Management: A
 #    Quantitative Approach for Producing Superior Returns and Controlling Risk*,
 #    McGraw-Hill (1999).
 #
-# .. [4] G. A. Paleologo, *The Elements of Quantitative Investing*, Wiley
-#    Finance (2025).

@@ -180,7 +180,8 @@ model used to estimate such distribution.
 
 When the prior follows the native NaN-aware convention, compatible optimizers solve the
 optimization problem on the investable subset and expand `weights_` back to the full
-input universe. See :ref:`missing_data` for details.
+input universe. See :ref:`Missing Data and Changing Universes <missing_data>` for
+details.
 
 The available prior estimators are:
 
@@ -1015,5 +1016,4 @@ Example: proceed without raising and retrieve failure diagnostics
 
 For a complete tutorial illustrating failure handling and fallbacks, see
 :ref:`sphx_glr_auto_examples_mean_risk_plot_17_failure_and_fallbacks.py`.
-
 

@@ -27,7 +27,7 @@ class TestPredictedFactorAttribution:
         assert isinstance(result.systematic, Component)
         assert isinstance(result.idio, Component)
         assert isinstance(result.total, Component)
-        assert result.unexplained is None  # None for predicted attribution
+        assert result.unattributed is None  # None for predicted attribution
 
         # Component fields - systematic
         assert isinstance(result.systematic.vol, float)

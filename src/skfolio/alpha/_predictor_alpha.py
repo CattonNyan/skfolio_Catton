@@ -51,7 +51,7 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
     neutralizes those scores against factor exposures and fits a scikit-learn compatible
     regressor where each observation-asset pair is one training sample. It supports
     nonlinear signal combinations while keeping the final forecast in expected
-    idiosyncratic return units when calibration is enabled.
+    idiosyncratic return units when calibration is enabled [1]_.
 
     The predictor supports two forecast units. With
     `forecast_unit=ForecastUnit.IDIO_RETURN`, it is fitted to the forward mean
@@ -364,7 +364,7 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
             "exposures" for score neutralization.
 
         y : None
-            Ignored. Present for API compatibility.
+            Ignored. Present for compatibility with scikit-learn's API.
 
         **fit_params : dict
             Additional fit parameters passed to descriptors and predictor.
@@ -398,7 +398,7 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
             "exposures" for score neutralization.
 
         y : None
-            Ignored. Present for API compatibility.
+            Ignored. Present for compatibility with scikit-learn's API.
 
         **fit_params : dict
             Additional fit parameters passed to descriptors and predictor.

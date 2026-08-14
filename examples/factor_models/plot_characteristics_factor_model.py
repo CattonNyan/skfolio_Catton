@@ -11,7 +11,7 @@ A characteristics factor model builds factor exposures from point-in-time asset
 characteristics (e.g. industry, market capitalization, book equity, analyst
 estimates). It computes the exposures from the data and estimates the factor
 returns at each date by cross-sectional regression of asset returns on factor
-exposures (see :ref:`Cross-Sectional Regression
+exposures [1]_ (see :ref:`Cross-Sectional Regression
 <factor_model_cross_sectional_regression>`):
 
 .. math::
@@ -23,7 +23,7 @@ and :math:`\epsilon_t` the idiosyncratic returns.
 
 The model then assembles the asset covariance forecast from the factor
 covariance :math:`F`, estimated on the factor return series, and the
-idiosyncratic covariance :math:`D`, estimated from the idiosyncratic returns:
+idiosyncratic covariance :math:`D`, estimated from the idiosyncratic returns [2]_:
 
 .. math::
 
@@ -81,7 +81,7 @@ print(panel.info())
 #
 # * 90.3% of asset-observation pairs are active.
 # * 475 of the 500 assets contribute to model estimation.
-# * Analyst-estimate fields are about 20% missing, and `industry` has 10 categories.
+# * Analyst-estimate fields are missing about 20% of the time and `industry` has 10 categories.
 
 # %%
 # Factor Exposures
@@ -468,7 +468,8 @@ factor_model.plot_cs_regression_scores(score="adjusted_r2", window=20)
 # where factor effects are deliberately easy to identify. On real daily US
 # equity data, the mean :math:`R^2` typically falls between 25% and 40% (see
 # :ref:`Regression Diagnostics <factor_model_regression_diagnostics>` in the
-# user guide). The synthetic universe is smaller and cleaner than a real one.
+# user guide). The synthetic universe is intentionally smaller and cleaner than
+# real-world datasets.
 #
 # Next, `plot_cs_regression_t_stat_exceedance_rate` shows how often each factor's
 # t-statistic exceeds 2 in absolute value. A factor whose true coefficient is
@@ -539,7 +540,7 @@ factor_model.plot_cumulative_exposure_ic(families=["market", "style"])
 # factors, so no factor stands out as a strong, consistent predictor of
 # next-period returns.
 #
-# The IC quantifies return-predictive power. In a risk model, factors are
+# The IC quantifies return-predictive power [3]_. In a risk model, factors are
 # designed to forecast covariance, not expected returns.
 # A factor can therefore be an excellent risk factor with an IC near zero, and
 # a low IC is not a reason to discard it. The IC is mainly useful for
@@ -688,9 +689,9 @@ evaluation.plot_calibration(diagnostics=["bias"])
 #    pp. 263-274 (1974). `doi:10.2307/2330104
 #    <https://doi.org/10.2307/2330104>`_.
 #
-# .. [2] R. C. Grinold and R. N. Kahn, *Active Portfolio Management: A
+# .. [2] G. A. Paleologo, *The Elements of Quantitative Investing*, Wiley
+#    Finance (2025).
+#
+# .. [3] R. C. Grinold and R. N. Kahn, *Active Portfolio Management: A
 #    Quantitative Approach for Producing Superior Returns and Controlling Risk*,
 #    McGraw-Hill (1999).
-#
-# .. [3] G. A. Paleologo, *The Elements of Quantitative Investing*, Wiley
-#    Finance (2025).

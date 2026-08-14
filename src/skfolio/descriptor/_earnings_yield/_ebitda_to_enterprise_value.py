@@ -34,7 +34,8 @@ class EbitdaToEnterpriseValue(BaseDescriptor, stateless=True):
 
     EBITDA measures operating profitability before financing, taxes and non-cash
     charges. A high ratio identifies firms generating strong operating income relative
-    to their total firm value, regardless of how they are financed.
+    to their total firm value, regardless of how they are financed. The corresponding
+    enterprise multiple has been studied as a predictor of average stock returns [1]_.
 
     This is the inverse of the conventional EV/EBITDA multiple. It provides a valuation
     measure that is comparable across firms with different leverage, unlike price-based

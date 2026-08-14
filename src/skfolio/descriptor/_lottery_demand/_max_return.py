@@ -126,7 +126,7 @@ class MaxReturn(BaseDescriptor):
         Returns
         -------
         max_return : ndarray of shape (n_observations, n_assets)
-            Rolling maximum return over the trailing window.
+            Rolling maximum return for each observation and asset.
         """
         first_call = not hasattr(self, _FITTED_ATTR)
 

@@ -20,7 +20,8 @@ incremental moment estimators through a prior estimator.
 Online learning is also where native NaN-aware estimators are especially useful:
 they can update from available observations while preserving estimator state. Pipeline
 based pre-selection and imputation are not currently available in `skfolio` online
-learning workflows. See :ref:`missing_data` for details.
+learning workflows. See :ref:`Missing Data and Changing Universes <missing_data>`
+for details.
 
 
 How Online Evaluation Works
@@ -189,4 +190,3 @@ See the example
 :ref:`sphx_glr_auto_examples_online_learning_plot_3_online_portfolio_optimization_evaluation.py`
 for an end-to-end online evaluation of
 :class:`~skfolio.optimization.MeanRisk`.
-

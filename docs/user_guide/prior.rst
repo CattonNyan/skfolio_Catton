@@ -43,8 +43,9 @@ The :class:`ReturnDistribution` is a dataclass containing:
 
 When native NaN-aware moment estimators are used, a prior can keep the full asset
 universe in `return_distribution_` while non-investable assets are represented by NaNs
-in :math:`\mu`, :math:`\Sigma`, or both. See :ref:`missing_data` for the full
-missing-data and investability convention.
+in :math:`\mu`, :math:`\Sigma`, or both. See
+:ref:`Missing Data and Changing Universes <missing_data>` for the full missing-data
+and investability convention.
 
 .. note::
 
@@ -528,4 +529,3 @@ and with :class:`TimeSeriesFactorModel`:
 
     factor_model = TimeSeriesFactorModel(factor_prior_estimator=factor_entropy_pooling)
     factor_model.fit(X, factors=factors)
-

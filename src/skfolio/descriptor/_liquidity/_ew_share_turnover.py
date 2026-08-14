@@ -51,7 +51,7 @@ class EWShareTurnover(BaseDescriptor):
 
     EWMA smoothing is preferred over a fixed rolling average because turnover can spike
     around earnings, index rebalances or news events. EWMA dampens these spikes
-    gradually  producing more stable factor exposures.
+    gradually, producing more stable factor exposures.
 
     Parameters
     ----------
@@ -171,7 +171,7 @@ class EWShareTurnover(BaseDescriptor):
         Returns
         -------
         turnover : ndarray of shape (n_observations, n_assets)
-            EWMA-smoothed share turnover.
+            EWMA-smoothed share turnover for each observation and asset.
         """
         first_call = not hasattr(self, _FITTED_ATTR)
 
@@ -210,7 +210,7 @@ class EWShareTurnover(BaseDescriptor):
 
             result[t] = np.where(self._n_valid >= self._min_periods, self._ewma, np.nan)
 
-        # Mask for inactive assets.
+        # Mask for inactive assets
         result = np.where(X.active_mask, result, np.nan)
 
         self.turnover_ = result[-1].copy() if n_observations > 1 else result[-1]

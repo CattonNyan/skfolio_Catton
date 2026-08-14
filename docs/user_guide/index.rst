@@ -1,9 +1,9 @@
-:og:description:  Comprehensive user guide for skfolio: step-by-step tutorials to install, configure, and use the Python library for portfolio optimization and risk management.
+:og:description:  Comprehensive user guide for skfolio: step-by-step tutorials to install, configure, and use the Python library for portfolio optimization, factor model construction, and risk management.
 
 .. meta::
     :description: Comprehensive user guide for skfolio: step-by-step tutorials to
                   install, configure, and use the Python library for portfolio
-                  optimization and risk management.
+                  optimization, factor model construction, and risk management.
 
 
 .. _user_guide:
@@ -12,16 +12,18 @@
 User Guide
 ==========
 
-`skfolio` is a Python library for portfolio optimization, factor modeling and risk
-management built on top of scikit-learn to perform model selection, validation,
-parameter tuning and stress-test while reducing the risk of data leakage and overfitting.
+`skfolio` is a Python library for portfolio optimization, factor model construction,
+and risk management, built on top of scikit-learn to perform model selection, validation,
+parameter tuning, and stress testing, with tools designed to reduce the risk of data
+leakage and overfitting.
 
 The public API is stable from version 1.0.0
 onward and follows `semantic versioning <https://semver.org>`_: no backward-incompatible
 change within the 1.x series, and anything scheduled for removal raises a
 `FutureWarning` before being removed in the next major release.
 Upgrading between major versions is covered in the :ref:`Migration Guide <migration>`.
-`Skfolio Labs <https://skfoliolabs.com>`_ provides enterprise support and dedicated SLAs.
+
+`Skfolio Labs <https://skfoliolabs.com>`_ provides enterprise support and dedicated SLAs for institutions.
 
 .. toctree::
     :maxdepth: 2

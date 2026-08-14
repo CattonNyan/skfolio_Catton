@@ -28,7 +28,7 @@ class CashFlowToAssets(BaseDescriptor, stateless=True):
     Cash flow to assets measures cash-based profitability: how much cash a firm
     generates from operations per unit of assets. Unlike net income-based measures
     (:class:`ReturnOnAssets`), operating cash flow is less directly affected by accrual
-    accounting choices.
+    accounting choices [1]_..
 
     Parameters
     ----------

@@ -130,7 +130,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
             * Asset names: individual asset weights (e.g. `"SPX"`, `"AAPL"`)
             * Group names: sums of weights in groups defined by `groups`
             * Factor names: portfolio factor exposure (requires factor model prior)
-            * Factor families: sum of portfolio exposures to all factors in one family.
+            * Factor families: sum of portfolio exposures to all factors in one family
 
         Supported equation patterns include:
 
