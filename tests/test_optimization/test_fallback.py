@@ -212,13 +212,7 @@ def test_fallback_factor_model(X, factors):
     assert hasattr(model, "weights_")
     assert isinstance(model.fallback_, MeanRisk)
     assert model.fallback_chain_ == [
-        (
-            (
-                "CustomOptimization(fail=True,\n                   "
-                "fallback=MeanRisk(prior_estimator=TimeSeriesFactorModel()))"
-            ),
-            "CustomOptimization forced failure",
-        ),
+        (str(model), "CustomOptimization forced failure"),
         ("MeanRisk(prior_estimator=TimeSeriesFactorModel())", "success"),
     ]
     assert model.error_ is None

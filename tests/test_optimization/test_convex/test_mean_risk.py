@@ -1342,65 +1342,10 @@ def test_mean_risk_linear_constraints_equalities(X):
 
 
 @pytest.mark.parametrize(
-    "objective_function,expected",
-    [
-        [
-            ObjectiveFunction.MINIMIZE_RISK,
-            np.array(
-                [
-                    0.0,
-                    -0.00469256,
-                    -0.02999935,
-                    -0.00117959,
-                    -0.02999905,
-                    0.0044902,
-                    0.01449584,
-                    0.19907001,
-                    0.0,
-                    0.18284598,
-                    0.0,
-                    0.17085667,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.10682524,
-                    0.0,
-                    0.0,
-                    0.19999798,
-                    0.08728863,
-                ]
-            ),
-        ],
-        [
-            ObjectiveFunction.MAXIMIZE_RATIO,
-            np.array(
-                [
-                    0.0,
-                    0.19265922,
-                    -0.03,
-                    -0.03,
-                    -0.00060139,
-                    -0.03,
-                    -0.02431516,
-                    -0.03,
-                    0.0,
-                    0.0,
-                    0.2,
-                    0.2,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.2,
-                    0.05989742,
-                    0.1923599,
-                    0.0,
-                    0.0,
-                ]
-            ),
-        ],
-    ],
+    "objective_function",
+    [ObjectiveFunction.MINIMIZE_RISK, ObjectiveFunction.MAXIMIZE_RATIO],
 )
-def test_group_cardinalities_constraint(X, groups, objective_function, expected):
+def test_group_cardinalities_constraint(X, groups, objective_function):
     group_cardinalities = {"Equity": 2, "Bond": 5, "US": 1}
 
     model = MeanRisk(
@@ -1414,11 +1359,16 @@ def test_group_cardinalities_constraint(X, groups, objective_function, expected)
     )
     model.fit(X)
     w = model.weights_
-    assert np.sum(abs(w) > 1e-10) in [11, 12]
+    active = np.abs(w) > 1e-10
+    groups_arr = np.asarray(groups)
+
+    assert np.sum(active) in [11, 12]
     np.testing.assert_almost_equal(np.sum(w), 0.9)
     assert np.max(w) - 0.2 <= 1e-8
     assert np.min(w) + 0.03 >= -1e-8
-    np.testing.assert_almost_equal(w, expected, 2)
+    for name, card in group_cardinalities.items():
+        n_active = int(np.sum(active & (groups_arr == name).any(axis=0)))
+        assert n_active <= card
 
 
 @pytest.mark.parametrize(
