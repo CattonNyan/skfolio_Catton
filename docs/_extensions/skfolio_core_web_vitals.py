@@ -38,11 +38,10 @@ _HTML_CLASS_RE = re.compile(
 )
 _LAUNCH_BADGE_IMG_RE = re.compile(
     r"""<img(?P<attrs>[^>]*\balt=["']Launch """
-    r"""(?P<service>binder|JupyterLite)["'][^>]*)/?>""",
+    r"""(?P<service>JupyterLite)["'][^>]*)/?>""",
     flags=re.IGNORECASE,
 )
 _LAUNCH_BADGE_DIMENSIONS = {
-    "binder": (109, 20),
     "jupyterlite": (91, 20),
 }
 _GALLERY_THUMBNAIL_IMG_RE = re.compile(
@@ -51,6 +50,11 @@ _GALLERY_THUMBNAIL_IMG_RE = re.compile(
     flags=re.IGNORECASE,
 )
 _GALLERY_THUMBNAIL_DIMENSIONS = (400, 280)
+_UNUSED_JUPYTERLITE_CSS = {
+    "https://fonts.googleapis.com/css?family=Vibur",
+    "jupyterlite_sphinx.css",
+}
+_UNUSED_JUPYTERLITE_JS = {"jupyterlite_sphinx.js"}
 
 
 @dataclass(frozen=True)
@@ -425,6 +429,32 @@ def optimize_tutorial_core_web_vitals(
     )
 
 
+def remove_unused_jupyterlite_assets(
+    app: Sphinx,
+    _pagename: str,
+    _templatename: str,
+    context: dict[str, Any],
+    _doctree: Any,
+) -> None:
+    """Remove assets used only by embedded jupyterlite-sphinx directives."""
+    if app.builder.name not in {"html", "dirhtml"}:
+        return
+
+    # skfolio uses jupyterlite-sphinx to build the separate Lite application.
+    # Its documentation pages contain plain gallery links, not embedded Lite
+    # directives, so the extension's global UI assets are unused on every page.
+    context["css_files"] = [
+        asset
+        for asset in context.get("css_files", [])
+        if str(getattr(asset, "filename", asset)) not in _UNUSED_JUPYTERLITE_CSS
+    ]
+    context["script_files"] = [
+        asset
+        for asset in context.get("script_files", [])
+        if str(getattr(asset, "filename", asset)) not in _UNUSED_JUPYTERLITE_JS
+    ]
+
+
 def _remove_empty_asset_directories(root: Path) -> None:
     """Remove empty directories below the generated Plotly asset root."""
     directories = sorted(
@@ -485,6 +515,7 @@ def cleanup_orphaned_plotly_assets(app: Sphinx, exception: Exception | None) -> 
 def setup(app: Sphinx) -> dict[str, object]:
     """Register the Core Web Vitals documentation extension."""
     app.connect("html-page-context", optimize_tutorial_core_web_vitals)
+    app.connect("html-page-context", remove_unused_jupyterlite_assets, priority=900)
     app.connect("build-finished", cleanup_orphaned_plotly_assets)
     return {
         "version": "1.0",

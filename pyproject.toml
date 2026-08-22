@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "skfolio"
-version = "0.20.1"
+version = "0.20.2"
 maintainers = [
     { name = "Hugo Delatte", email = "hugo.delatte@skfoliolabs.com" },
     { name = "Matteo Manzi", email = "matteomanzi09@gmail.com" },
@@ -93,7 +93,8 @@ docs = [
     "sphinx-favicon",
     "sphinxext.opengraph",
     "sphinx-sitemap",
-    "jupyterlite-sphinx",
+    # The integration relies on the directory-copy semantics introduced in 0.23.
+    "jupyterlite-sphinx~=0.23.0",
     "jupyterlite-pyodide-kernel",
     "nbformat",
     "sphinx-last-updated-by-git",

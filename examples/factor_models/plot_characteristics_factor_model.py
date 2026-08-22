@@ -527,9 +527,9 @@ factor_model.plot_idio_vol_ic()
 # %%
 # Information Coefficient
 # =======================
-# To close the in-sample diagnostics, let's measure the return-predictive
-# power of the exposures with `exposure_ic_summary`, the cross-sectional rank
-# correlation between factor exposures at :math:`t` and forward asset returns:
+# Finally, we measure the return-predictive power of the exposures with
+# `exposure_ic_summary`, the cross-sectional rank correlation between factor
+# exposures at :math:`t` and forward asset returns:
 factor_model.exposure_ic_summary(families=["market", "style"])
 
 # %%

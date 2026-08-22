@@ -218,7 +218,7 @@ asset as unavailable.
 
 When data is stored in an :class:`~skfolio.containers.AssetPanel`, each field applies
 its `inactive_policy` outside `active_mask`. The default policy stores NaN for
-floating numeric fields and `MISSING=-1` for categorical fields; some generated
+floating numeric fields and `MISSING=-1` for categorical fields. Some generated
 fields can use zero or leave inactive values unchanged when that is the field's
 convention.
 
@@ -226,7 +226,7 @@ Estimation Universe
 -------------------
 
 Some estimators also accept an `estimation_mask` parameter. It is used for
-estimator-specific calculations. It is not an investability mask.
+estimator-specific calculations.
 
 For example, a covariance estimator may compute a regime statistic on a restricted set
 of liquid assets while still updating pairwise covariance estimates for all assets that
@@ -248,9 +248,8 @@ Covariance estimators keep this convention consistent across the covariance matr
 an asset cannot belong to a finite covariance block, the corresponding row and column
 of :math:`\Sigma` are set to NaN.
 
-This means that NaNs in fitted moments have a specific meaning. They signal that the
-asset is not usable by downstream optimization, even if the asset remains present in
-the full asset universe.
+A NaN in the fitted moments marks the asset as not usable by downstream optimization,
+even though the asset remains present in the full asset universe.
 
 Prior Estimators
 ----------------
@@ -275,9 +274,9 @@ An asset is investable only when both its expected return and variance are finit
 Optimization
 ------------
 
-Compatible portfolio optimizers do not solve optimization problems with non-investable
-assets. Before building the optimization problem, they extract the investable subset
-from the prior's full-universe :class:`~skfolio.prior.ReturnDistribution`.
+Before building the optimization problem, compatible portfolio optimizers extract the
+investable subset from the prior's full-universe
+:class:`~skfolio.prior.ReturnDistribution`.
 
 The optimization problem is solved only on assets with finite :math:`\mu_i` and finite
 :math:`\Sigma_{i,i}`. After solving, the weights are expanded back to the full input

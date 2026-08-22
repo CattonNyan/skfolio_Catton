@@ -639,16 +639,17 @@ exposures to behave consistently through time. For a US equity model, a typical
 estimation universe is 1,000 to 3,000 names. It should also be large enough relative to the 
 factor set. The number of estimation assets :math:`N` should be well above the number of 
 factors :math:`K` for a stable cross-sectional regression, and best practice is to have
-at least 20 estimation assets per industry (e.g. 50 industries should require at least
+at least 20 estimation assets per industry (e.g. 50 industries require at least
 1,000 assets in a well-balanced universe, and more if some industries are sparsely
 represented).
 
 The effective size of the estimation universe also depends on the regression weights.
 The default square-root market-capitalization weights are commonly used as a proxy for
-inverse idiosyncratic variance. Under square-root market-capitalization weighting, the
-contribution of small stocks decreases rapidly: in a broad US universe, the largest
-2,000 stocks carry about 98% of the total regression weight. Extending the universe 
-beyond this point can still be useful where the additional names improve estimation 
+inverse idiosyncratic variance. Under this default weighting, the contribution of
+small stocks decreases rapidly: relative to the full universe of investable US
+equities, the largest 2,000 stocks represent about 99% of total market capitalization
+and would carry roughly 90% of the total regression weight. Extending the universe 
+beyond this point can still be useful when the additional names improve estimation 
 of small-cap-sensitive factors or increase coverage of sparsely represented industries. 
 Otherwise, extending the estimation universe further mostly adds memory and compute cost 
 and may add noise from illiquid securities (e.g. stale prices, zero-return days, 
@@ -761,7 +762,7 @@ field should contain the market value of common equity at each date.
 
 In a single-currency model, raw and excess returns give nearly identical regression
 results, as subtracting a common risk-free rate shifts the cross-section by a constant
-that the global factor absorbs. Excess returns are nonetheless still preferred because 
+that the global factor absorbs. Excess returns remain preferable because 
 some descriptors estimate time-series regressions (e.g.
 :class:`~skfolio.descriptor.EWMarketBeta`,
 :class:`~skfolio.descriptor.EWResidualVolatility`) whose time-series intercept should
@@ -1063,8 +1064,8 @@ because the exposure has zero benchmark-weighted mean within every industry
 scaling: the projection removes the per-industry mean, while within-industry
 scoring also divides each industry by its own standard deviation, keeping the
 factor from being dominated by the industry with the largest spread in the raw
-descriptor. For one-hot target factors, `transform_by_group` is preferred  as it both 
-normalizes per-industry scale and it is cheaper (group demeaning instead of a full 
+descriptor. For one-hot target factors, `transform_by_group` is preferred as it both 
+normalizes per-industry scale and is cheaper (group demeaning instead of a full 
 projection). When both are applied, the projection has no effect because the 
 exposure already satisfies the same orthogonality condition.
 
@@ -1111,18 +1112,9 @@ belongs to exactly one industry, so membership in one industry rules out
 membership in all others. Zero correlation would mean industry memberships are
 independent, while this exclusion is a negative relationship.
 
-.. note::
-
-    For two one-hot exposures :math:`x` and :math:`y` with benchmark weights
-    :math:`p_x` and :math:`p_y`, the product :math:`xy` is always zero, so the
-    covariance :math:`\mathbb{E}[xy] - \mathbb{E}[x]\mathbb{E}[y] = -p_x p_y` is
-    negative, giving a correlation of
-    :math:`-\sqrt{p_x p_y / ((1-p_x)(1-p_y))}`, about -0.02 for the 44
-    industries of the example when weights are similar.
-
 :meth:`~skfolio.prior.FactorModel.plot_exposure_stability` shows the
 cross-sectional correlation of each factor's exposures between observations
-with `step` determining how far apart the observations are sampled  (21 by default). 
+with `step` determining how far apart the observations are sampled (21 by default). 
 Slow-moving factors (e.g. value, size) should stay highly correlated at a monthly 
 step. Fast-turnover factors (e.g. reversal, short-term momentum) reshuffle quickly 
 by construction and naturally show lower stability at that horizon. It is therefore 
@@ -1139,7 +1131,7 @@ In the :ref:`example <factor_model_code_example>`, monthly stability stays above
 episodes (e.g. March 2020). Stable exposures keep the risk decomposition
 consistent between rebalancings and limit the turnover induced by exposure noise.
 
-Additional plots on :class:`~skfolio.prior.FactorModel`:
+:class:`~skfolio.prior.FactorModel` provides additional exposure diagnostics:
 
 * :meth:`~skfolio.prior.FactorModel.plot_exposure_vif`
 * :meth:`~skfolio.prior.FactorModel.plot_exposure_condition_number`
@@ -1488,16 +1480,13 @@ correlations observed in :ref:`Exposure Diagnostics <factor_model_diagnostics>`.
     neutralization. Equivalently, the factor-mimicking portfolio has unit
     exposure to that factor and zero exposure to the other factors.
 
-    Factor-return signs follow the exposure convention. The size factor in this
-    model is built from `LogMarketCap` with positive exposure meaning larger companies
-    and negative exposure meaning smaller companies. This large-minus-small
-    convention is standard in characteristics risk models and is the opposite of
-    the Fama-French SMB factor, defined as small minus big. A positive size
-    factor return in this model means that large-cap exposure was rewarded. The
-    sign convention does not affect covariance decomposition, attribution or
+    Factor-return signs follow the exposure convention. The size factor is built
+    from `LogMarketCap`, so a positive size factor return means large-cap
+    exposure was rewarded, the opposite of the Fama-French small-minus-big
+    convention. The sign convention only matters when comparing to external
+    factor series and it does not affect covariance decomposition, attribution or
     optimization because exposures and factor returns are used consistently
-    within the model. It only matters when comparing to external factor series
-    with different naming conventions.
+    within the model.
 
 
 :attr:`~skfolio.prior.FactorModel.cs_regression_scores` returns per-observation
@@ -1536,13 +1525,13 @@ Values outside these ranges typically warrant investigation. Three caveats apply
   factors because idiosyncratic terms diversify away and factor terms do not. 
 * Some vendors report :math:`R^2` on monthly returns, which is mechanically higher than
   on daily returns, and figures are only comparable at the same frequency. 
-* Finally, :math:`R^2` should not be used to compare different models as the addition of any 
+* :math:`R^2` should not be used to compare different models as the addition of any 
   factor will lead to a larger value.
 
 :attr:`~skfolio.prior.FactorModel.cs_regression_t_stats` returns the
 per-observation t-statistic of each factor return, computed in the reduced basis
-when constraints are active. The usual rule of thumb applies: :math:`|t| > 2`
-suggests significance at approximately the 5% level.
+when constraints are active. Values of :math:`|t| > 2` indicate significance at
+approximately the 5% level.
 :meth:`~skfolio.prior.FactorModel.plot_cs_regression_t_stats` displays them
 through time.
 
@@ -1616,7 +1605,7 @@ factors are omitted below for readability:
 
 In the :ref:`example <factor_model_code_example>`, most correlations are
 moderate, indicating that the factors capture distinct risk dimensions. The 0.80 market-beta
-correlation is the known exception and is accepted. The beta factor return is the
+correlation is the known exception. The beta factor return is the
 reward for holding high-beta names over low-beta names, a spread that widens in
 rising markets and reverses in falling markets, making it co-move with the market return
 by construction. The two factors remain separated in the regression because their
@@ -1729,12 +1718,13 @@ IC through time:
 
 .. include:: ../_static/factor_model/fragments/factor_model_idio_vol_ic.inc.rst
 
-The rolling mean holds near 0.4 across the sample, which identifies a strong and stable
-ranking of cross-sectional volatility differences. Combined with the calibration series
-close to 1.0, we can conclude that the idiosyncratic risk forecasts are both well ordered
-and well scaled.
+The rolling mean holds near 0.4 across the sample: the model consistently
+forecasts higher volatility for assets that subsequently realize larger
+idiosyncratic moves. Together with the calibration series close to 1.0, the
+idiosyncratic risk forecasts are both well ordered and well scaled.
 
-Additional plots on :class:`~skfolio.prior.FactorModel`:
+:class:`~skfolio.prior.FactorModel` provides additional idiosyncratic risk
+diagnostics:
 
 * :meth:`~skfolio.prior.FactorModel.plot_idio_tail_rate`
 * :meth:`~skfolio.prior.FactorModel.plot_idio_kurtosis`
@@ -1785,7 +1775,7 @@ and the optimization fast.
 Covariance Forecast Evaluation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In-sample fit says little about forecast quality, so the covariance forecast is
+In-sample fit does not measure forecast accuracy. The covariance forecast is
 evaluated out of sample with
 :func:`~skfolio.model_selection.covariance_forecast_evaluation` or, using online
 learning for speed, :func:`~skfolio.model_selection.online_covariance_forecast_evaluation`.
@@ -1833,8 +1823,13 @@ test-portfolio volatilities are well scaled. The Mahalanobis ratio stays near 1.
 indicating that the remaining underestimation is concentrated in the covariance's
 low-variance directions. The Mahalanobis distance gives more weight to errors in
 those directions, while the diagonal ratio and portfolio bias statistic are less
-sensitive to them. All three ratios spike at the 2020 shock, then fall below
-1.0 through 2021 as the forecasts lag the post-crisis decline in volatility.
+sensitive to them. All three ratios spike at the 2020 shock. The diagonal ratio and
+bias statistic then fall below 1.0 through 2021 as the forecasts lag the post-crisis
+decline in volatility, while the Mahalanobis ratio falls back toward its target
+without crossing it. This low-variance underestimation originates mostly in the
+idiosyncratic block (residual correlations and missing factors) and is addressed
+with `idio_corr_threshold` and the optimizer-level regularization covered in
+:ref:`Orthogonal Space Regularization <factor_model_orthogonal_space_regularization>`.
 
 The summary table aggregates the four diagnostics over the full evaluation
 period:
@@ -1845,8 +1840,8 @@ period:
 
 .. include:: ../_static/factor_model/tables/covariance_evaluation_summary.inc.rst
 
-Additional plots on
-:class:`~skfolio.model_selection.CovarianceForecastEvaluation`:
+:class:`~skfolio.model_selection.CovarianceForecastEvaluation` provides
+additional plots:
 
 * :meth:`~skfolio.model_selection.CovarianceForecastEvaluation.plot_qlike_loss`
 * :meth:`~skfolio.model_selection.CovarianceForecastEvaluation.plot_exceedance`
@@ -1893,8 +1888,8 @@ the month half-life slightly lower on mean QLIKE.
 .. include:: ../_static/factor_model/tables/covariance_comparison_summary.inc.rst
 
 
-Additional plots on
-:class:`~skfolio.model_selection.CovarianceForecastComparison`:
+:class:`~skfolio.model_selection.CovarianceForecastComparison` provides
+additional plots:
 
 * :meth:`~skfolio.model_selection.CovarianceForecastComparison.plot_calibration`
   with full diagnostics (Mahalanobis, diagonal, bias)
@@ -2040,8 +2035,8 @@ factor model. The Sharpe unit is preferable when a signal is expected to rank
 risk-adjusted opportunities rather than raw returns. `forecast_scale` is the
 common final multiplier controlling alpha strength.
 
-The following example combines two reversal descriptors, :class:`return on assets <skfolio.descriptor.ReturnOnAssets>`
-and :class:`Amihud illiquidity <skfolio.descriptor.EWAmihudIlliquidity>` with fixed signed weights and utilises a Gaussian rank scorer
+The following example combines two reversal descriptors, :class:`return on assets <skfolio.descriptor.ReturnOnAssets>`,
+and :class:`Amihud illiquidity <skfolio.descriptor.EWAmihudIlliquidity>` with fixed signed weights and uses a Gaussian rank scorer
 for the cross-sectional scoring:
 
 .. code-block:: python
@@ -2307,7 +2302,7 @@ forecast values that an optimizer receives. `coverage_summary` checks data
 availability and `decay_summary` aligns the alpha horizon with the intended
 rebalancing and holding period. When the rank-based diagnostics are stronger
 than the magnitude-based ones, the optimizer should not receive raw alpha
-magnitudes as if they were reliable expected-return intensities.
+magnitudes as if they were calibrated expected returns.
 
 .. code-block:: python
 
@@ -2336,7 +2331,7 @@ descriptors. If these tilts are unwanted, they can be removed with
 `neutralize_against`. The simple portfolios compound consistently, with a sharp
 drawdown and recovery around the COVID shock.
 
-Additional plots on :class:`~skfolio.alpha.AlphaForecastEvaluation`:
+:class:`~skfolio.alpha.AlphaForecastEvaluation` provides additional plots:
 
 * :meth:`~skfolio.alpha.AlphaForecastEvaluation.plot_rolling_ic`
 * :meth:`~skfolio.alpha.AlphaForecastEvaluation.plot_quantile_returns`
@@ -2369,7 +2364,7 @@ transaction costs are expressed in return units, the alpha forecast must also be
 return units. A rank-based alpha satisfies this requirement once it is multiplied by
 `forecast_scale`.
 
-The calibration problem is therefore not rank versus cost, but scale versus cost. If
+With a rank-based alpha, calibration reduces to choosing the scale. If
 `forecast_scale` is too small, transaction costs and risk penalties may dominate the
 signal and the optimizer will keep positions close to their starting weights. If it is 
 too large, the optimizer may overtrade the ranked signal. The `calibration_summary`, 
@@ -2401,8 +2396,9 @@ non-linear size factor. The exposure levels are chosen for illustration so their
 effects remain clear in the later attribution analysis.
 
 The -2.0 target for `non_linear_size` shows how factor constraints can express
-more complex patterns than a simple large-versus-small tilt. After removing its
-linear size component, the factor produces the following approximate tilts:
+more complex patterns than a simple large-versus-small tilt. The factor is built
+as the cube of the size exposure and neutralized against size, which produces
+the following approximate tilts:
 
 .. list-table::
    :header-rows: 1
@@ -2418,10 +2414,6 @@ linear size component, the factor produces the following approximate tilts:
      - Long
    * - Very large
      - Short
-
-In skfolio, covariance uncertainty sets are applied to variance. With `MAXIMIZE_RATIO`
-and no additional objective penalty, minimizing variance or standard deviation
-produces the same maximum Sharpe ratio portfolio.
 
 .. code-block:: python
 
@@ -2497,11 +2489,7 @@ can also be fitted for attribution only.
 
 The portfolio is dollar neutral with `budget=0.0` and limited to 100% long
 exposure with `max_long=1.0`. Dollar neutrality implies an equally sized short
-position, so the maximum gross exposure is:
-
-.. math::
-
-    100\% \text{ long} + 100\% \text{ short} = 200\%
+position, so the maximum gross exposure is 200% (100% long plus 100% short).
 
 Individual positions are limited to :math:`\pm 5\%`. Transaction costs follow the
 skfolio convention: a linear cost per unit traded, deducted from the portfolio
@@ -2605,11 +2593,10 @@ optimization-plus-prior pipeline are covered in the :ref:`Walk-Forward Evaluatio
 
     When the research focus is the optimization itself and the factor model is
     fixed, refitting the prior at each iteration can dominate the runtime on
-    large universes. The factor model outputs can be precomputed with
-    `partial_fit` over the chosen observations, stored in a database or local
-    cache, and served back by a custom prior estimator that reads them for the
-    requested observation range. Native factor model caching is planned for a
-    future release.
+    large universes. The factor model outputs can be precomputed over the chosen 
+    observations, stored in a database or local cache, and served back by a custom 
+    prior estimator that reads them for the requested observation range. Native 
+    factor model caching is planned for a future release.
 
 .. _factor_model_factor_neutral_alpha_portfolio:
 
@@ -2619,10 +2606,14 @@ Factor-Neutral Alpha Portfolio
 The previous example earns its return from factor premia through explicit
 exposure targets. This portfolio keeps factor exposures close to zero and uses the
 orthogonal alpha as its modeled expected return, an approach common in statistical
-arbitrage. The factor model obtains the orthogonal alpha by projecting the alpha
-forecast onto the factor exposure space. When the orthogonal alpha is zero, every
-feasible factor-neutral portfolio has zero modeled expected return and the optimal
-allocation is empty.
+arbitrage. The orthogonal alpha is the residual of the alpha forecast after
+projection onto the factor exposure space.
+
+.. note::
+
+    A factor-neutral portfolio has zero exposure to every factor, so its modeled
+    expected return reduces to the orthogonal alpha. Without an alpha estimator,
+    the orthogonal alpha is zero and the optimal allocation is the zero portfolio.
 
 The validated alpha estimator from the :ref:`Alpha Estimators
 <factor_model_alpha>` section is attached to the factor model, and a
@@ -2662,8 +2653,8 @@ utility, balancing the alpha forecast against risk and transaction costs:
         transaction_costs=0.001 / week,
         fallback="previous_weights",
         linear_constraints=[
-            *[f"{name}  <= 0.05" for name in style_factors],
-            *[f"{name}  >= -0.05" for name in style_factors],
+            *[f"{name} <= 0.05" for name in style_factors],
+            *[f"{name} >= -0.05" for name in style_factors],
             *[f"{name} == 0" for name in industry_names],
         ],
     )
@@ -3220,9 +3211,9 @@ observations) on a laptop (Ultra 9 275HX, 24 cores, 32 GB RAM), for two models:
 An incremental `partial_fit` on the next observation runs in under a second for both
 models.
 
-Achieving this performance relies on two implementation choices. Firstly, the
-hot paths are vectorized NumPy operations backed by parallel BLAS kernels.  
-Secondly, factor exposures are computed with thread-based parallelism (`n_jobs`), 
+Achieving this performance relies on two implementation choices. First, the
+hot paths are vectorized NumPy operations backed by parallel BLAS kernels.
+Second, factor exposures are computed with thread-based parallelism (`n_jobs`),
 which avoids copying the panel to worker processes (the computations are 
 NumPy-dominated and release the GIL, so threads provide effective parallelism 
 while sharing the panel in memory).

@@ -41,8 +41,8 @@
         <tr>
           <th>Total</th>
           <td>9.82%</td>
-          <td>38.66%</td>
           <td>100.00%</td>
+          <td>38.66%</td>
         </tr>
         <tr>
           <th rowspan="4" valign="top">2015-11-09</th>
@@ -66,8 +66,8 @@
         <tr>
           <th>Total</th>
           <td>8.79%</td>
-          <td>30.21%</td>
           <td>100.00%</td>
+          <td>30.21%</td>
         </tr>
       </tbody>
     </table>

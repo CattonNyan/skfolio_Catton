@@ -28,17 +28,17 @@
         </tr>
         <tr>
           <th>industry</th>
-          <td>0.0000</td>
-          <td>-0.00%</td>
-          <td>-0.00%</td>
-          <td>-0.00%</td>
+          <td>-0.0000</td>
+          <td>0.00%</td>
+          <td>0.00%</td>
+          <td>0.00%</td>
         </tr>
         <tr>
           <th>market</th>
-          <td>0.0000</td>
-          <td>0.00%</td>
-          <td>0.00%</td>
-          <td>0.00%</td>
+          <td>-0.0000</td>
+          <td>-0.00%</td>
+          <td>-0.00%</td>
+          <td>-0.00%</td>
         </tr>
       </tbody>
     </table>

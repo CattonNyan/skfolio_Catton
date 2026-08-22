@@ -123,7 +123,7 @@ uv run sphinx-build -b html . _build
 The complete gallery can take about 30 minutes and is also executed by the
 documentation deployment workflow.
 
-Sphinx-Gallery generates `docs/auto_examples` and `docs/jupyterlite_contents`.
+Sphinx-Gallery generates `docs/auto_examples` and `docs/_contents`.
 Edit the source tutorials under `examples` rather than editing these generated files.
 
 ## Submit your changes

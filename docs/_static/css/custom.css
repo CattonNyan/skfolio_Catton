@@ -161,3 +161,13 @@ div.math mjx-container {
 div.math mjx-mtable mjx-mtd {
     padding-block: 0.35em !important;
 }
+
+/* Preserve the intrinsic aspect ratio when Sphinx-Gallery enlarges the badge. */
+.lite-badge img {
+    height: auto;
+}
+
+/* Reserve the square navbar logo before the SVG loads. */
+.navbar-brand img.logo__image {
+    aspect-ratio: 1 / 1;
+}

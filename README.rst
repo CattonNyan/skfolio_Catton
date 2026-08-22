@@ -98,8 +98,7 @@ Installation
     pip install -U skfolio
 
 See the `installation guide <https://skfolio.org/user_guide/install.html>`_ for the full
-dependency list, for conda-forge, and for the mixed-integer solvers (`SCIP`, `GUROBI`,
-`MOSEK`) required by cardinality and threshold constraints.
+dependency list, for conda-forge and for the mixed-integer solvers.
 
 LLM-friendly documentation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -26,7 +26,6 @@ from pathlib import Path
 from string import Template
 from urllib.parse import urlparse
 
-import nbformat
 import plotly.io as pio
 from plotly.io._sg_scraper import plotly_sg_scraper
 from sphinx.errors import SphinxError
@@ -53,7 +52,7 @@ EXAMPLE_DESCRIPTIONS = {
     ),
     # Model Selection
     "auto_examples/model_selection/plot_1_multiple_randomized_cv": (
-        "Using Monte Carlo-style Multiple Randomized CV for robust model evaluation"
+        "Evaluating portfolio models with Monte Carlo-style Multiple Randomized CV"
     ),
     # Mean-Risk Optimization
     "auto_examples/mean_risk/plot_1_maximum_sharpe_ratio": (
@@ -81,7 +80,7 @@ EXAMPLE_DESCRIPTIONS = {
         "Applying L1/L2 penalties to improve sparsity and out-of-sample performance"
     ),
     "auto_examples/mean_risk/plot_9_uncertainty_set": (
-        "Building robust portfolios using uncertainty sets"
+        "Building robust portfolios with uncertainty sets"
     ),
     "auto_examples/mean_risk/plot_10_tracking_error": (
         "Constraining tracking error relative to a benchmark"
@@ -129,7 +128,7 @@ EXAMPLE_DESCRIPTIONS = {
     ),
     # Synthetic Data & Stress Testing
     "auto_examples/synthetic_data/plot_1_bivariate_copulas": (
-        "Simulating asset dependencies using bivariate copulas"
+        "Modeling pairwise asset dependence with bivariate copulas"
     ),
     "auto_examples/synthetic_data/plot_2_vine_copula": (
         "Stress-testing portfolios under vine-copula dependency shocks"
@@ -146,7 +145,7 @@ EXAMPLE_DESCRIPTIONS = {
     ),
     # Ensemble Optimizations
     "auto_examples/ensemble/plot_1_stacking": (
-        "Combining multiple portfolio strategies using stacking optimization"
+        "Combining multiple portfolio strategies through stacking optimization"
     ),
     # Hierarchical Clustering & NCO
     "auto_examples/clustering/plot_1_hrp_cvar": (
@@ -192,6 +191,94 @@ EXAMPLE_DESCRIPTIONS = {
     ),
 }
 
+USER_GUIDE_DESCRIPTIONS = {
+    "user_guide/cluster": (
+        "The clustering module provides hierarchical clustering from asset distance "
+        "matrices for skfolio's hierarchical portfolio optimizers."
+    ),
+    "user_guide/covariance": (
+        "Covariance estimators compute covariance matrices used by skfolio optimizers."
+    ),
+    "user_guide/cross_sectional_transformers": (
+        "Cross-sectional transformers normalize each observation across assets using "
+        "z-score, percentile-rank, or Gaussian-rank scaling."
+    ),
+    "user_guide/data_preparation": (
+        "Linear and logarithmic returns aggregate differently across assets and time, "
+        "affecting portfolio return and risk calculations."
+    ),
+    "user_guide/data_representation": (
+        "skfolio uses wide, date-by-asset data, provides the dedicated AssetPanel "
+        "container, and defines conventions for missing observations, changing asset "
+        "universes, and investability."
+    ),
+    "user_guide/datasets": (
+        "skfolio provides loader functions for included financial datasets and larger "
+        "datasets downloaded on demand."
+    ),
+    "user_guide/distance": (
+        "Distance estimators compute asset codependence and distance matrices."
+    ),
+    "user_guide/expected_returns": (
+        "Expected-return estimators provide estimates of each asset's expected return "
+        "for portfolio optimization."
+    ),
+    "user_guide/factor_models": (
+        "This guide explains different factor models and focuses on skfolio's "
+        "characteristics-based cross-sectional factor model."
+    ),
+    "user_guide/hyper_parameters_tuning": (
+        "skfolio estimators can be tuned with scikit-learn-compatible hyperparameter "
+        "search."
+    ),
+    "user_guide/install": (
+        "skfolio can be installed from PyPI with pip or from conda-forge with conda."
+    ),
+    "user_guide/metadata_routing": (
+        "Metadata routing passes additional fit data through nested estimators to the "
+        "components that consume it."
+    ),
+    "user_guide/migration": (
+        "The migration guide documents the changes required to upgrade between major "
+        "skfolio versions."
+    ),
+    "user_guide/model_selection": (
+        "The model-selection module provides portfolio-specific cross-validation and "
+        "prediction utilities compatible with scikit-learn."
+    ),
+    "user_guide/online_learning": (
+        "Online-learning utilities update estimators incrementally through time instead "
+        "of refitting them independently on each split."
+    ),
+    "user_guide/optimization": (
+        "The optimization module provides scikit-learn-compatible estimators for "
+        "constructing portfolio weights from asset returns."
+    ),
+    "user_guide/population": (
+        "Population is a container for comparing, manipulating, and analyzing "
+        "collections of portfolios."
+    ),
+    "user_guide/portfolio": (
+        "Portfolio classes provide measures and methods for analyzing portfolio "
+        "returns."
+    ),
+    "user_guide/pre_selection": (
+        "Pre-selection transformers filter the initial asset universe before fitting "
+        "a portfolio model."
+    ),
+    "user_guide/prior": (
+        "Prior estimators provide the return distribution used by portfolio "
+        "optimization models."
+    ),
+    "user_guide/uncertainty_set": (
+        "Uncertainty-set estimators model estimation uncertainty in expected returns "
+        "or covariance for worst-case portfolio optimization."
+    ),
+    "user_guide/variance": (
+        "Variance estimators compute the variance vector of the assets."
+    ),
+}
+
 EXAMPLE_DATE_PUBLISHED = {
     # Factor Models
     "auto_examples/factor_models/plot_characteristics_factor_model": "2026-07-29",
@@ -226,6 +313,7 @@ EXAMPLE_DATE_MODIFIED = {
     "auto_examples/mean_risk/plot_14_black_litterman_factor_model": "2023-12-18",
     "auto_examples/mean_risk/plot_15_mip_cardinality_constraints": "2024-11-19",
     "auto_examples/mean_risk/plot_16_mip_threshold_constraints": "2024-11-19",
+    "auto_examples/mean_risk/plot_17_failure_and_fallbacks": "2026-04-21",
     # Risk Budgeting
     "auto_examples/risk_budgeting/plot_1_risk_parity_variance": "2023-12-18",
     "auto_examples/risk_budgeting/plot_2_risk_budgeting_CVaR": "2023-12-18",
@@ -245,6 +333,7 @@ EXAMPLE_DATE_MODIFIED = {
     "auto_examples/clustering/plot_3_hrp_vs_herc": "2023-12-18",
     "auto_examples/clustering/plot_4_nco": "2023-12-18",
     "auto_examples/clustering/plot_5_nco_grid_search": "2023-12-18",
+    "auto_examples/clustering/plot_6_schur": "2026-07-30",
     # Maximum Diversification
     "auto_examples/maximum_diversification/plot_1_maximum_diversification": "2023-12-18",
     # Distributionally Robust CVaR
@@ -347,19 +436,27 @@ warnings.filterwarnings(
         "Values in x were outside bounds during a minimize step, clipping to bounds"
     ),
 )
+warnings.filterwarnings(
+    "ignore",
+    category=RuntimeWarning,
+    message="invalid value encountered in reduce",
+)
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
+
+# Loky workers start a new interpreter and do not inherit filterwarnings.
+_reduce_warning = "ignore:invalid value encountered in reduce:RuntimeWarning"
+_python_warnings = os.environ.get("PYTHONWARNINGS", "")
+if _reduce_warning not in _python_warnings:
+    os.environ["PYTHONWARNINGS"] = (
+        f"{_python_warnings},{_reduce_warning}" if _python_warnings else _reduce_warning
+    )
 
 # -- Project information ---------------------------------------------------------------
 
 project = "skfolio"
 copyright = "2026, skfolio developers (BSD License)"  # noqa: A001
 author = "Hugo Delatte"
-
-# -- SEO meta tags ---------------------------------------------------------------------
-html_meta = {
-    "robots": "index, follow",
-}
 
 html_title = "skfolio"
 
@@ -371,6 +468,7 @@ if _LOCAL_EXTENSION_PATH not in sys.path:
 
 extensions = [
     "skfolio_core_web_vitals",
+    "skfolio_jupyterlite",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.viewcode",
@@ -822,12 +920,11 @@ sphinx_gallery_conf = {
     "inspect_global_variables": False,
     "remove_config_comments": True,
     "plot_gallery": "True",
-    "binder": {
-        "org": "skfolio",
-        "repo": "skfolio",
-        "branch": "gh-pages",
-        "binderhub_url": "https://mybinder.org",
-        "dependencies": "./binder/requirements.txt",
+    "jupyterlite": {
+        "jupyterlite_contents": "_contents",
+        "notebook_modification_function": (
+            "skfolio_jupyterlite.modify_jupyterlite_notebook"
+        ),
         "use_jupyter_lab": True,
     },
     "write_computation_times": False,
@@ -851,44 +948,10 @@ if _is_markdown_subbuild:
 # -- jupyterlite  ----------------------------------------------------------------------
 # Read more at https://jupyterlite-sphinx.readthedocs.io/en/latest/configuration.html#configuration
 
-# We use the current directory
+# Build the Lite site in the documentation output directory and publish the gallery
+# notebooks directly from one canonical content root.
 jupyterlite_dir = str(Path(__file__).parent.absolute())
-
-# Pure-python packages which are not available in Pyodide distribution but `skfolio`
-# depends on
-PACKAGES_TO_PRE_INSTALL = ["plotly", "nbformat"]
-
-# Runtime dependencies of `skfolio` which need to be pre-imported by the Pyodide kernel
-# before running notebooks
-PACKAGES_TO_PRE_IMPORT = ["pandas", "sklearn", "plotly", "cvxpy", "nbformat", "skfolio"]
-
-# Each JupyterLite notebook's first cell will be set to this piece of code ensuring that
-# the environment is set up correctly
-PATCH_CELL_CODE = f"""
-# JupyterLite Initialization
-
-# We want the execution to be quiet
-import warnings
-warnings.filterwarnings('ignore')
-
-# Install missing deps into Pyodide Kernel
-import piplite
-await piplite.install({json.dumps(PACKAGES_TO_PRE_INSTALL)})
-await piplite.install(['skfolio'], deps=False)
-
-# Allows external dataset download
-import pyodide_http
-pyodide_http.patch_all()
-
-# Run top-level imports
-import {", ".join(PACKAGES_TO_PRE_IMPORT)}
-""".strip()
-
-# Actual notebook node with hidden source (collapsed by default in the UI)
-PATCH_CELL = nbformat.v4.new_code_cell(
-    PATCH_CELL_CODE,
-    metadata={"tags": ["jupyterlite"], "jupyter": {"source_hidden": True}},
-)
+jupyterlite_content_dir = "_contents"
 
 
 # -- Sphinx Hooks ----------------------------------------------------------------------
@@ -1021,47 +1084,6 @@ def patch_markdown_builder(app):
 
 
 @_html_builders_only
-def patch_jupyterlite_notebooks(app, exception):
-    """Prepend the `PATCH_CELL` node to notebooks in the active JupyterLite output.
-
-    We assume that the entire Sphinx build has been completed prior to running this
-    function.
-    """
-    # 1) Skip on build errors
-    if exception:
-        warnings.warn(
-            f"JupyterLite notebook patch: skipping because build failed ({exception!r})",
-            stacklevel=2,
-        )
-        return
-
-    built_jupyterlite_dir = Path(app.outdir, "lite")
-    if not built_jupyterlite_dir.exists():
-        raise FileNotFoundError(
-            f"JupyterLite build directory not found at {built_jupyterlite_dir}."
-        )
-
-    notebook_paths = Path(built_jupyterlite_dir, "files").rglob("*.ipynb")
-    patched_notebooks = 0
-    for notebook_path in notebook_paths:
-        with open(notebook_path, encoding="utf-8") as f:
-            nb = nbformat.read(f, as_version=nbformat.NO_CONVERT)
-            first_cell = nb.cells[0] if nb.cells else None
-            if (
-                first_cell is None
-                or first_cell.get("source", "").strip() != PATCH_CELL_CODE
-            ):
-                nb.cells.insert(0, PATCH_CELL)
-            # Remove any 'id' fields
-            for cell in nb.cells:
-                cell.pop("id", None)
-            with open(notebook_path, "w", encoding="utf-8") as file:
-                nbformat.write(nb, file, version=nbformat.NO_CONVERT)
-        patched_notebooks += 1
-    print(f"Patched {patched_notebooks} JupyterLite notebook(s)")
-
-
-@_html_builders_only
 def populate_complete_sitemap(app, exception):
     """Populate sphinx-sitemap with every discovered document.
 
@@ -1180,6 +1202,10 @@ _DESCRIPTION_META_RE = re.compile(
     r"""[^>]*>\s*""",
     flags=re.IGNORECASE,
 )
+_OG_TITLE_META_RE = re.compile(
+    r"""<meta\b(?=[^>]*\bproperty\s*=\s*["']og:title["'])[^>]*>\s*""",
+    flags=re.IGNORECASE,
+)
 _OG_IMAGE_META_RE = re.compile(
     r"""<meta\b(?=[^>]*\bproperty\s*=\s*["']og:image(?::alt)?["'])[^>]*>\s*""",
     flags=re.IGNORECASE,
@@ -1198,6 +1224,15 @@ def _set_description_meta(context, description: str) -> None:
         f'<meta name="description" content="{escaped_description}" />\n'
         f'<meta property="og:description" content="{escaped_description}" />\n'
         f'<meta name="twitter:description" content="{escaped_description}" />\n'
+    )
+
+
+def _set_og_title(context, title: str) -> None:
+    """Replace Open Graph title metadata in a page context."""
+    escaped_title = escape(title, quote=True)
+    metatags = _OG_TITLE_META_RE.sub("", context.get("metatags", "")).rstrip()
+    context["metatags"] = (
+        f'{metatags}\n<meta property="og:title" content="{escaped_title}" />\n'
     )
 
 
@@ -1331,6 +1366,22 @@ def inject_example_meta_description(app, pagename, templatename, context, doctre
         _, description = get_example_headline_and_description(app, pagename)
 
     _set_description_meta(context, description)
+
+
+def inject_noindex_meta(app, pagename, templatename, context, doctree):
+    """Exclude internal search and rendered source pages from search results."""
+    if pagename != "search" and not pagename.startswith("_modules/"):
+        return
+
+    metatags = context.get("metatags", "").rstrip()
+    context["metatags"] = f'{metatags}\n<meta name="robots" content="noindex" />\n'
+
+
+def inject_user_guide_meta_description(app, pagename, templatename, context, doctree):
+    """Use reviewed descriptions for user-guide articles."""
+    description = USER_GUIDE_DESCRIPTIONS.get(pagename)
+    if description is not None:
+        _set_description_meta(context, description)
 
 
 # Stable entity IDs shared across skfolio.org and skfoliolabs.com
@@ -1639,49 +1690,24 @@ def inject_schema(app, pagename, templatename, context, doctree):
             ],
         }
 
-    # Examples index (gallery) as TechArticle with hasPart + breadcrumb
+    # Examples index as a collection page with Google-supported breadcrumbs.
     elif pagename == "auto_examples/index":
-        all_examples = sorted(
-            [
-                doc
-                for doc in app.env.found_docs
-                if doc.startswith("auto_examples/")
-                and not doc.endswith("index")
-                and "/index" not in doc
-            ]
-        )
-        parts = []
-        for doc in all_examples:
-            headline, _ = get_example_headline_and_description(app, doc)
-            parts.append(
-                {
-                    "@type": "TechArticle",
-                    "headline": headline,
-                    "url": f"{base}/{doc}.html",
-                }
-            )
-
         page_schema = {
             "@context": "https://schema.org",
             "@graph": [
                 {
-                    "@type": "TechArticle",
-                    "@id": f"{url}#article",
-                    "headline": "Code Examples & Tutorials",
+                    "@type": "CollectionPage",
+                    "@id": f"{url}#examples",
+                    "name": "Code Examples & Tutorials",
                     "description": (
-                        "A gallery of code examples and tutorials demonstrating how to "
-                        "use skfolio for portfolio optimization, factor model "
-                        "construction, and risk management."
+                        "Code examples and tutorials for portfolio optimization, risk "
+                        "management, and factor models with skfolio."
                     ),
                     "url": url,
-                    "hasPart": parts,
                     "inLanguage": in_lang,
                     "isPartOf": {"@id": WEBSITE_ID},
                     "about": {"@id": CODE_ID},
                     "publisher": {"@id": ORG_ID},
-                    "author": _ARTICLE_AUTHOR,
-                    "copyrightHolder": {"@id": ORG_ID},
-                    "mainEntityOfPage": url,
                     **page_dates,
                 },
                 _breadcrumb(
@@ -1760,10 +1786,27 @@ def inject_schema(app, pagename, templatename, context, doctree):
 
 
 def override_html_title(app, pagename, templatename, context, doctree):
-    """Use a concise, search-oriented homepage title."""
-    # only on the main index
+    """Set search-oriented titles where the Sphinx title is insufficient."""
     if pagename == "index":
-        context["title"] = "Portfolio Optimization in Python"
+        # Keep the visible RST title as the library name, following Python
+        # documentation conventions, while making browser/social titles descriptive.
+        seo_title = "Portfolio Optimization in Python"
+        context["title"] = seo_title
+        _set_og_title(context, seo_title)
+        return
+
+    is_category_index = (
+        pagename.startswith("auto_examples/")
+        and pagename.endswith("/index")
+        and pagename != "auto_examples/index"
+        and pagename not in REDIRECTS
+    )
+    if not is_category_index:
+        return
+
+    seo_title = f"{get_doc_title(app, pagename)} examples"
+    context["title"] = seo_title
+    _set_og_title(context, seo_title)
 
 
 @_html_builders_only
@@ -2189,12 +2232,13 @@ def setup(app):
     app.connect("html-page-context", override_canonical, priority=499)
     app.connect("html-page-context", inject_schema)
     app.connect("html-page-context", override_html_title)
+    app.connect("html-page-context", inject_noindex_meta, priority=900)
     app.connect("html-page-context", inject_representative_image_meta, priority=900)
     app.connect("html-page-context", inject_api_meta_description, priority=900)
     app.connect("html-page-context", inject_example_meta_description, priority=900)
+    app.connect("html-page-context", inject_user_guide_meta_description, priority=900)
 
     # Build finished
-    app.connect("build-finished", patch_jupyterlite_notebooks)
     # Populate before sphinx-sitemap's default-priority writer, then post-process its
     # complete output.
     app.connect("build-finished", populate_complete_sitemap, priority=499)

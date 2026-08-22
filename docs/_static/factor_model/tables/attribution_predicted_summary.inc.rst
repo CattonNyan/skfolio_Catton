@@ -32,8 +32,8 @@
         <tr>
           <th>Total</th>
           <td>17.47%</td>
-          <td>16.69%</td>
           <td>100.00%</td>
+          <td>16.69%</td>
         </tr>
       </tbody>
     </table>
