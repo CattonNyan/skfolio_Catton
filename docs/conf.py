@@ -492,6 +492,14 @@ extensions = [
 # so the sequential sub-build can reuse the primary build's doctree environment.
 _is_markdown_subbuild = "markdown" in sys.argv
 
+# Fast mode checks that the documentation sources build. It skips gallery execution,
+# the JupyterLite site build and the sphinx-llm Markdown sub-build, which the
+# deployment workflow runs in full. Used by the CI docs job.
+_fast_docs_build = os.environ.get("SKFOLIO_DOCS_FAST") == "1"
+if _fast_docs_build:
+    for _extension in ("skfolio_jupyterlite", "sphinx_llm.txt", "jupyterlite_sphinx"):
+        extensions.remove(_extension)
+
 templates_path = ["_templates"]
 
 # Produce `plot::` directives for examples that contain `import matplotlib` or
@@ -944,6 +952,12 @@ sphinx_gallery_conf = {
 # consumes the generated gallery sources without executing the examples a second time.
 if _is_markdown_subbuild:
     plot_gallery = "False"
+
+# Fast mode generates the gallery pages without executing the examples and without
+# the JupyterLite integration, whose extensions are not loaded.
+if _fast_docs_build:
+    plot_gallery = "False"
+    sphinx_gallery_conf["jupyterlite"] = None
 
 # -- jupyterlite  ----------------------------------------------------------------------
 # Read more at https://jupyterlite-sphinx.readthedocs.io/en/latest/configuration.html#configuration

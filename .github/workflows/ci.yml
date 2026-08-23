@@ -171,7 +171,7 @@ jobs:
     name: Docs build (Linux)
     runs-on: ubuntu-latest
     needs: lint
-    timeout-minutes: 30
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v7
@@ -192,8 +192,9 @@ jobs:
       - name: Install project (docs extras)
         run: uv pip install -e ".[docs]"
 
-      # The gallery is executed by the deployment workflow. Here we only check that
-      # the documentation sources build, which keeps the job under a few minutes.
-      - name: Build docs without executing the gallery
+      # Fast mode checks that the documentation sources build. It skips gallery
+      # execution, the JupyterLite site build and the sphinx-llm Markdown sub-build,
+      # which the deployment workflow runs in full.
+      - name: Build docs in fast mode
         working-directory: ./docs
-        run: uv run sphinx-build -b html -D plot_gallery=0 . _build
+        run: SKFOLIO_DOCS_FAST=1 uv run sphinx-build -b html . _build
