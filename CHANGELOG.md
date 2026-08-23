@@ -1,20 +1,8 @@
 # CHANGELOG
 
+<!-- version list -->
 
 ## v1.0.0 (2026-08-23)
-
-### Continuous Integration
-
-- Build docs in fast mode to keep the PR check under 5 minutes
-  ([`cbbfbb9`](https://github.com/skfolio/skfolio/commit/cbbfbb985a819ef499e9a7e25c7c41430cee7e34))
-
-### Documentation
-
-- Improve doc website SEO
-  ([`18623e7`](https://github.com/skfolio/skfolio/commit/18623e7a5b597ed713b2ac3a6a9eee5502fb1a9b))
-
-
-## v0.20.2 (2026-08-13)
 
 ### Bug Fixes
 
@@ -23,10 +11,6 @@
 
 - **containers**: Support Python 3.11 in AssetPanelView default selector
   ([`df82c3c`](https://github.com/skfolio/skfolio/commit/df82c3c1de1ee856df4009f92231677f60d02694))
-
-- **ShrunkMu**: Use Hermitian eigenvalue solver to keep outputs real
-  ([#256](https://github.com/skfolio/skfolio/pull/256),
-  [`bc4db81`](https://github.com/skfolio/skfolio/commit/bc4db81b321fa9c4b7a0b2206780ea711ca90c60))
 
 ### Build System
 
@@ -38,38 +22,18 @@
 
 ### Chores
 
-- Ruff formatting
-  ([`aebb0c0`](https://github.com/skfolio/skfolio/commit/aebb0c0bc3a87df075d203c0a8895ad3f1fb92df))
-
 - **release**: Drop semantic-release keys that match upstream defaults
   ([`fe5e6f2`](https://github.com/skfolio/skfolio/commit/fe5e6f2107c04667d0d032a2a71dd241bdf1ec1e))
 
 ### Continuous Integration
 
-- Bump actions/checkout from 6 to 7 (#245) [skip ci]
-  ([`109ed13`](https://github.com/skfolio/skfolio/commit/109ed13fee0125ff9b001b8be33643b17e791578))
-
-- Bump actions/dependency-review-action from 4 to 5 (#238) [skip ci]
-  ([`e5fe750`](https://github.com/skfolio/skfolio/commit/e5fe75088aecae1c2833903be03423c622762ed5))
-
-- Bump codecov/codecov-action from 6 to 7 (#243) [skip ci]
-  ([`c06db84`](https://github.com/skfolio/skfolio/commit/c06db8406385cf4bce83577d0f0710ee5a27e67e))
+- Build docs in fast mode to keep the PR check under 5 minutes
+  ([`cbbfbb9`](https://github.com/skfolio/skfolio/commit/cbbfbb985a819ef499e9a7e25c7c41430cee7e34))
 
 ### Documentation
 
-- Add dedicated LLM docs via llms.txt and per-page markdown
-  ([#239](https://github.com/skfolio/skfolio/pull/239),
-  [`45fa9af`](https://github.com/skfolio/skfolio/commit/45fa9af5573c0c9c0d71ad969b80050c6c1deecd))
-
 - Add documentation on missing data (NaNs)
   ([`d8a53da`](https://github.com/skfolio/skfolio/commit/d8a53dad9c28e3ade933c337c61f4e449229bd7d))
-
-- Add examples in MeanRisk docstring ([#236](https://github.com/skfolio/skfolio/pull/236),
-  [`c174583`](https://github.com/skfolio/skfolio/commit/c17458370cd21ac503c7e95d6b945108cf5f2b24))
-
-- Add examples to convex optimization docstrings
-  ([#237](https://github.com/skfolio/skfolio/pull/237),
-  [`5c902a5`](https://github.com/skfolio/skfolio/commit/5c902a5c1d7c753d09fba7371c81517d9c9767ce))
 
 - Add factor model tutorials
   ([`6045669`](https://github.com/skfolio/skfolio/commit/60456694b06e01e2b242b2175dd1f9d5f0fcb293))
@@ -92,14 +56,14 @@
 - Improve documentation website
   ([`7c2b05d`](https://github.com/skfolio/skfolio/commit/7c2b05d2805f06c5b80f548397d8e97daadfb70a))
 
+- Improve doc website SEO
+  ([`18623e7`](https://github.com/skfolio/skfolio/commit/18623e7a5b597ed713b2ac3a6a9eee5502fb1a9b))
+
 - Improve factor model documentation
   ([`fa978e0`](https://github.com/skfolio/skfolio/commit/fa978e0703e7d795fd881de1b66c2058e31e1b12))
 
 - **examples**: Reduce gallery runtime
   ([`e5be8e9`](https://github.com/skfolio/skfolio/commit/e5be8e911ae259504f6afbb20c84082e0a679247))
-
-- **optimization**: Improve add_constraints docstring (#249) [skip ci]
-  ([`8fc9fcb`](https://github.com/skfolio/skfolio/commit/8fc9fcb4a54b50568d0a1ac63aa662e126babdc6))
 
 - **uncertainty-set**: Document generalized norm-ball uncertainty sets
   ([`d699665`](https://github.com/skfolio/skfolio/commit/d6996653250d0856f066fb0f9d8fd3af8d30a6dd))
@@ -151,7 +115,7 @@
 - Remove deprecated alpha parameter from EWMu and EWCovariance
   ([`7f67118`](https://github.com/skfolio/skfolio/commit/7f671181accb91be0ff226c6f0ca5a756f4beb46))
 
-- Remove deprecated expend_train parameter from WalkForwardand keep expand_train
+- Remove deprecated expend_train parameter from WalkForward and keep expand_train
   ([`5b2101f`](https://github.com/skfolio/skfolio/commit/5b2101f52ca39b60be35c2cccb60357ca406f3a2))
 
 - Remove deprecated FactorModel alias in favor of TimeSeriesFactorModel
@@ -164,8 +128,65 @@
 
 ### Breaking Changes
 
-- FactorModel has been renamed in favor of TimeSeriesFactorModel and no longer accepts
-  residual_variance.
+- The deprecated `alpha` parameter has been removed from `EWMu` and `EWCovariance`. Use
+  `half_life` instead.
+
+- `WalkForward` no longer accepts the deprecated `expend_train` parameter. Use
+  `expand_train` instead.
+
+- `FactorModel` has been renamed in favor of `TimeSeriesFactorModel` and no longer
+  accepts `residual_variance`. The name `FactorModel` now refers to the fitted factor
+  model container on `ReturnDistribution.factor_model`.
+
+- The `cholesky` attribute has been removed from `ReturnDistribution` and replaced by
+  the `covariance_sqrt` property.
+
+- `UncertaintySet` is a general norm ball. The fields `k` and `sigma` are replaced by
+  `radius`, `geometry` and `norm`.
+
+- `TimeSeriesFactorModel` no longer accepts factor returns as the positional `y`
+  argument. Pass them with `factors=...` instead.
+
+
+## v0.20.2 (2026-08-13)
+
+### Bug Fixes
+
+- **ShrunkMu**: Use Hermitian eigenvalue solver to keep outputs real
+  ([#256](https://github.com/skfolio/skfolio/pull/256),
+  [`bc4db81`](https://github.com/skfolio/skfolio/commit/bc4db81b321fa9c4b7a0b2206780ea711ca90c60))
+
+### Chores
+
+- Ruff formatting
+  ([`aebb0c0`](https://github.com/skfolio/skfolio/commit/aebb0c0bc3a87df075d203c0a8895ad3f1fb92df))
+
+### Continuous Integration
+
+- Bump actions/checkout from 6 to 7 (#245) [skip ci]
+  ([`109ed13`](https://github.com/skfolio/skfolio/commit/109ed13fee0125ff9b001b8be33643b17e791578))
+
+- Bump actions/dependency-review-action from 4 to 5 (#238) [skip ci]
+  ([`e5fe750`](https://github.com/skfolio/skfolio/commit/e5fe75088aecae1c2833903be03423c622762ed5))
+
+- Bump codecov/codecov-action from 6 to 7 (#243) [skip ci]
+  ([`c06db84`](https://github.com/skfolio/skfolio/commit/c06db8406385cf4bce83577d0f0710ee5a27e67e))
+
+### Documentation
+
+- Add dedicated LLM docs via llms.txt and per-page markdown
+  ([#239](https://github.com/skfolio/skfolio/pull/239),
+  [`45fa9af`](https://github.com/skfolio/skfolio/commit/45fa9af5573c0c9c0d71ad969b80050c6c1deecd))
+
+- Add examples in MeanRisk docstring ([#236](https://github.com/skfolio/skfolio/pull/236),
+  [`c174583`](https://github.com/skfolio/skfolio/commit/c17458370cd21ac503c7e95d6b945108cf5f2b24))
+
+- Add examples to convex optimization docstrings
+  ([#237](https://github.com/skfolio/skfolio/pull/237),
+  [`5c902a5`](https://github.com/skfolio/skfolio/commit/5c902a5c1d7c753d09fba7371c81517d9c9767ce))
+
+- **optimization**: Improve add_constraints docstring (#249) [skip ci]
+  ([`8fc9fcb`](https://github.com/skfolio/skfolio/commit/8fc9fcb4a54b50568d0a1ac63aa662e126babdc6))
 
 
 ## v0.20.1 (2026-04-21)
