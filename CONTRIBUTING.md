@@ -126,6 +126,14 @@ documentation deployment workflow.
 Sphinx-Gallery generates `docs/auto_examples` and `docs/_contents`.
 Edit the source tutorials under `examples` rather than editing these generated files.
 
+### Docstring examples
+
+Examples in public docstrings are run as doctests. They provide a basic check
+that the documented workflow works, but do not replace tests in `tests/`.
+
+Keep examples simple and readable. Avoid code written only to satisfy doctest.
+Put exact numerical checks, edge cases, and regression tests in `tests/`.
+
 ## Submit your changes
 
 Commit your changes using a message that follows
