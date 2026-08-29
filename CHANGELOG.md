@@ -2,6 +2,25 @@
 
 <!-- version list -->
 
+## v1.0.1 (2026-08-29)
+
+### Bug Fixes
+
+- **preprocessing**: Isolate asset missingness threshold
+  ([#263](https://github.com/skfolio/skfolio/pull/263),
+  [`abf72f7`](https://github.com/skfolio/skfolio/commit/abf72f799f36d246fddc65c9f34c26c94adf68ad))
+
+### Documentation
+
+- File v1.0.0 notes under the correct changelog section
+  ([`1c892a5`](https://github.com/skfolio/skfolio/commit/1c892a53a27913335f9ef506ccf6453869365abf))
+
+### Testing
+
+- **distribution**: Enable doctest coverage
+  ([`69bb9cb`](https://github.com/skfolio/skfolio/commit/69bb9cbdd1f34628ddb9bdad077e6b1336f3b8e3))
+
+
 ## v1.0.0 (2026-08-23)
 
 ### Bug Fixes
