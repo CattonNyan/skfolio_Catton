@@ -2,6 +2,20 @@
 
 <!-- version list -->
 
+## v1.0.2 (2026-08-30)
+
+### Bug Fixes
+
+- **utils**: Validate each fitness array dimension
+  ([#265](https://github.com/skfolio/skfolio/pull/265),
+  [`abe685a`](https://github.com/skfolio/skfolio/commit/abe685a450ab50ab2c78dc77c6c9b62ea6be81b9))
+
+### Continuous Integration
+
+- Improve Codecov reliability and increase test coverage
+  ([`cb17c82`](https://github.com/skfolio/skfolio/commit/cb17c827366347c35d19e4b4b5b16d26e7fe5553))
+
+
 ## v1.0.1 (2026-08-29)
 
 ### Bug Fixes
