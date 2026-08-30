@@ -590,6 +590,25 @@ def test_cvar_sample_weight(returns):
     )
 
 
+@pytest.mark.parametrize("measure", [skm.value_at_risk, skm.cvar])
+def test_tail_risk_2d_preserves_all_nan_columns(measure):
+    returns = np.array([[np.nan, -0.2], [np.nan, 0.1]])
+
+    result = measure(returns)
+
+    assert np.isnan(result[0])
+    np.testing.assert_allclose(result[1], 0.2)
+
+
+def test_weighted_cvar_when_first_observation_exceeds_tail_probability():
+    returns = np.array([-0.1, 0.2])
+    sample_weight = np.array([0.9, 0.1])
+
+    result = skm.cvar(returns, beta=0.95, sample_weight=sample_weight)
+
+    np.testing.assert_allclose(result, 0.1)
+
+
 @pytest.mark.parametrize(
     "returns,sample_weight,theta,beta,expected",
     [
@@ -804,6 +823,27 @@ def test_owa_gmd_weights(n_observations):
 )
 def test_gini_mean_difference(returns, expected):
     np.testing.assert_almost_equal(skm.gini_mean_difference(returns), expected)
+
+
+def test_gini_mean_difference_2d_handles_nan_columns_independently():
+    returns = np.array(
+        [
+            [1.0, np.nan, 2.0],
+            [3.0, np.nan, 4.0],
+            [np.nan, np.nan, 6.0],
+        ]
+    )
+
+    result = skm.gini_mean_difference(returns)
+
+    np.testing.assert_allclose(
+        result[[0, 2]],
+        [
+            skm.gini_mean_difference(returns[:, 0]),
+            skm.gini_mean_difference(returns[:, 2]),
+        ],
+    )
+    assert np.isnan(result[1])
 
 
 @pytest.mark.parametrize(

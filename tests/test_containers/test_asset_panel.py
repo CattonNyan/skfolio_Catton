@@ -171,6 +171,22 @@ class TestFields:
         with pytest.raises(ValueError, match="2D"):
             Field2D(np.ones((2, 3, 4)))
 
+    def test_fields_require_at_least_two_dimensions(self):
+        with pytest.raises(ValueError, match="at least two dimensions"):
+            Field2D(np.ones(2))
+
+    def test_field_properties_for_integer_values(self):
+        field = Field2D(np.ones((2, 3), dtype=np.int64))
+
+        assert field.shape == (2, 3)
+        assert field.dtype == np.dtype(np.int64)
+        assert field.ndim == 2
+        assert field.n_observations == 2
+        assert field.n_assets == 3
+        assert not field.is_categorical
+        assert not field.is_3d
+        np.testing.assert_array_equal(field.missing_mask, np.zeros((2, 3), dtype=bool))
+
     def test_field_2d_rejects_object_dtype(self):
         with pytest.raises(ValueError, match="dtype=object"):
             Field2D(np.array([["a", "b"]], dtype=object))
@@ -193,6 +209,16 @@ class TestFields:
 
         with pytest.raises(ValueError, match="integer dtype"):
             FieldCategorical(np.array([[0.0]]), levels=["A"])
+
+        with pytest.raises(ValueError, match=">= -1"):
+            FieldCategorical(np.array([[-2]], dtype=np.int32), levels=["A"])
+
+    def test_categorical_levels_must_be_one_dimensional(self):
+        with pytest.raises(ValueError, match="levels must be a 1D"):
+            FieldCategorical(
+                np.array([[0]], dtype=np.int32),
+                levels=np.array([["A"]]),
+            )
 
     def test_categorical_requires_unique_levels(self):
         with pytest.raises(ValueError, match="unique"):
@@ -288,8 +314,48 @@ class TestFields:
                 third_axis_labels=["mkt", "mkt"],
             )
 
+    @pytest.mark.parametrize(
+        "overrides,error",
+        [
+            ({"values": np.ones((1, 1))}, "must be 3D"),
+            ({"values": np.full((1, 1, 1), "value", dtype=object)}, "dtype=object"),
+            ({"third_axis_labels": [["value"]]}, "labels must be a 1D"),
+            ({"third_axis_groups": [["group"]]}, "groups must be a 1D"),
+        ],
+    )
+    def test_field_3d_rejects_invalid_values_and_metadata(self, overrides, error):
+        parameters = {
+            "values": np.ones((1, 1, 1)),
+            "third_axis_name": "factor",
+            "third_axis_labels": ["value"],
+        }
+        parameters.update(overrides)
+
+        with pytest.raises(ValueError, match=error):
+            Field3D(**parameters)
+
 
 class TestPanelConstruction:
+    def test_integer_object_observations_are_converted(self):
+        observations = np.array([1, np.int64(2)], dtype=object)
+
+        panel = AssetPanel(
+            fields={"x": np.ones((2, 1))},
+            observations=observations,
+            asset_names=["A"],
+        )
+
+        assert panel.observations.dtype != object
+        np.testing.assert_array_equal(panel.observations, [1, 2])
+
+    def test_custom_object_observations_are_rejected(self):
+        with pytest.raises(ValueError, match="object dtype must contain"):
+            AssetPanel(
+                fields={"x": np.ones((2, 1))},
+                observations=np.array([object(), object()], dtype=object),
+                asset_names=["A"],
+            )
+
     def test_basic_construction_coerces_raw_arrays_to_field_2d(self):
         panel = _make_panel()
 
@@ -505,6 +571,7 @@ class TestPanelConstruction:
             "back\\slash",
             "1starts_with_num",
             "CON",
+            "x" * 201,
         ],
     )
     def test_invalid_field_names_raise_at_construction(self, name):
@@ -638,6 +705,28 @@ class TestPanelConstruction:
                         levels=["A", "B"],
                     ),
                 },
+                observations=np.arange(2),
+                asset_names=np.array(["A", "B"]),
+                active_mask=active_mask,
+            )
+
+    @pytest.mark.parametrize(
+        "field",
+        [
+            Field2D(np.ones((2, 2), dtype=int)),
+            Field3D(
+                np.ones((2, 2, 1), dtype=int),
+                third_axis_name="factor",
+                third_axis_labels=["value"],
+            ),
+        ],
+    )
+    def test_missing_policy_requires_floating_values(self, field):
+        active_mask = np.array([[False, True], [True, True]])
+
+        with pytest.raises(ValueError, match="floating dtype"):
+            AssetPanel(
+                fields={"field": field},
                 observations=np.arange(2),
                 asset_names=np.array(["A", "B"]),
                 active_mask=active_mask,
@@ -901,6 +990,12 @@ class TestSelectionAndDrop:
         with pytest.raises(ValueError, match="Boolean selector"):
             panel.isel(observations=np.array([True, False]))
 
+        with pytest.raises(ValueError, match="Selector must be 1D"):
+            panel.isel(observations=[[0, 1]])
+
+        with pytest.raises(TypeError, match="integers or booleans"):
+            panel.isel(observations=[0.5, 1.5])
+
     def test_isel_rejects_out_of_bounds_positions(self):
         panel = _make_panel()
 
@@ -965,6 +1060,12 @@ class TestSelectionAndDrop:
         with pytest.raises(KeyError, match="Fields not found"):
             panel.sel(fields=["missing"])
 
+        with pytest.raises(ValueError, match="zero fields"):
+            panel.sel(fields=[])
+
+        with pytest.raises(ValueError, match="Duplicate field names"):
+            panel.sel(fields=["x", "x"])
+
     def test_sel_3d_scalar_label_returns_2d_values(self):
         panel = _make_full_panel()
 
@@ -989,6 +1090,27 @@ class TestSelectionAndDrop:
         assert values.shape == (N_OBS, N_ASSETS, 2)
         np.testing.assert_array_equal(values, panel["exposures"][:, :, [1, 2]])
 
+    def test_sel_3d_repeated_groups_preserve_requested_order(self):
+        panel = _make_panel()
+        values = np.arange(N_OBS * N_ASSETS * 3, dtype=float).reshape(
+            N_OBS, N_ASSETS, 3
+        )
+        panel.add_3d_field(
+            "exposures",
+            values,
+            third_axis_name="factor",
+            third_axis_labels=["value", "market", "quality"],
+            third_axis_groups=["style", "risk", "style"],
+        )
+
+        np.testing.assert_array_equal(
+            panel.sel_3d("exposures", groups="style"), values[:, :, [0, 2]]
+        )
+        np.testing.assert_array_equal(
+            panel.sel_3d("exposures", groups=["risk", "style"]),
+            values[:, :, [1, 0, 2]],
+        )
+
     def test_sel_3d_validates_arguments_and_field_type(self):
         panel = _make_full_panel()
 
@@ -1006,6 +1128,9 @@ class TestSelectionAndDrop:
 
         with pytest.raises(KeyError):
             panel.sel_3d("exposures", groups="missing")
+
+        with pytest.raises(KeyError):
+            panel.sel_3d("exposures", groups=["style", "missing"])
 
     def test_sel_3d_groups_require_group_metadata(self):
         panel = _make_panel()
@@ -1661,6 +1786,22 @@ class TestView:
         view = panel[2:18][3:8]
 
         np.testing.assert_array_equal(view["x"], panel["x"][5:10])
+        assert np.shares_memory(view["x"], panel["x"])
+
+    def test_nested_array_view_composes_selectors(self):
+        panel = _make_panel()
+        view = panel[[1, 3, 5]]
+
+        np.testing.assert_array_equal(view[[0, 2]]["x"], panel["x"][[1, 5]])
+        np.testing.assert_array_equal(view[1]["x"], panel["x"][3:4])
+        assert view[np.array([], dtype=int)].n_observations == 0
+
+    def test_contiguous_position_array_preserves_view_semantics(self):
+        panel = _make_panel()
+
+        view = panel[[1, 2, 3]]
+
+        np.testing.assert_array_equal(view["x"], panel["x"][1:4])
         assert np.shares_memory(view["x"], panel["x"])
 
     def test_direct_view_construction_normalizes_selector(self):

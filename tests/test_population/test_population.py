@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import operator
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -138,6 +140,88 @@ def test_non_dominated_sorting(population):
                     if population[idx_1].dominates(population[idx_2]):
                         dominates = True
         assert dominates
+
+
+def test_population_collection_contracts(small_population):
+    empty = Population([])
+    first = small_population[:1]
+    second = small_population[1:2]
+
+    assert repr(empty) == "<Population([])>"
+    with pytest.raises(TypeError, match="Cannot add a Population"):
+        operator.add(empty, [])
+
+    combined = first + second
+    assert isinstance(combined, Population)
+    assert list(combined) == [first[0], second[0]]
+
+    empty.insert(0, first[0])
+    empty.extend(second)
+    assert list(empty) == [first[0], second[0]]
+    assert empty.set_portfolio_params() is empty
+
+    with pytest.raises(ValueError, match="Invalid parameter"):
+        empty.set_portfolio_params(unknown_parameter=True)
+    with pytest.raises(TypeError, match="inherit from BasePortfolio"):
+        Population([object()])
+
+
+def test_set_portfolio_params_updates_population_and_returns_self(small_population):
+    result = small_population.set_portfolio_params(compounded=True)
+
+    assert result is small_population
+    assert all(portfolio.compounded for portfolio in small_population)
+
+
+def test_population_compounded_validation(small_population):
+    with pytest.raises(ValueError, match="population is empty"):
+        Population([])._validate_compounded()
+
+    mixed_population = small_population[:2]
+    mixed_population[0].compounded = True
+    mixed_population[1].compounded = False
+
+    with pytest.raises(ValueError, match="mix of compounded"):
+        mixed_population._validate_compounded()
+
+
+def test_population_sorting_requires_common_fitness_measures(small_population):
+    mixed_population = small_population[:2]
+    mixed_population[0].fitness_measures = [PerfMeasure.MEAN]
+
+    with pytest.raises(ValueError, match="mixed `fitness_measures`"):
+        mixed_population.non_dominated_sort()
+
+
+def test_deprecated_non_denominated_sort_alias(small_population):
+    expected = small_population.non_dominated_sort(first_front_only=True)
+
+    with pytest.warns(FutureWarning, match="non_denominated_sort"):
+        result = small_population.non_denominated_sort(first_front_only=True)
+
+    assert result == expected
+
+
+def test_population_filter_contracts_and_tagged_returns(small_population):
+    small_population[0].name = "first"
+    small_population[0].tag = "selected"
+    small_population[1].name = "second"
+    small_population[1].tag = "selected"
+
+    assert small_population.filter() is small_population
+    assert small_population.filter(names="first") == [small_population[0]]
+    assert small_population.filter(tags="selected") == small_population[:2]
+    assert small_population.filter(names="first", tags="selected") == [
+        small_population[0]
+    ]
+
+    returns = small_population[:1].returns_df()
+    assert list(returns.columns) == ["first_selected"]
+
+
+def test_population_quantile_rejects_values_outside_unit_interval(small_population):
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        small_population.quantile(RatioMeasure.SHARPE_RATIO, q=-0.1)
 
 
 @pytest.mark.parametrize("to_surface", [False, True])

@@ -717,3 +717,55 @@ def test_cross_val_predict_and_grid_search(
 def test_expend_train_removed():
     with pytest.raises(TypeError, match="expend_train"):
         WalkForward(test_size=2, train_size=3, expend_train=True)
+
+
+@pytest.mark.parametrize(
+    ("cv", "match"),
+    [
+        (WalkForward(test_size=1.5, train_size=2), "test_size"),
+        (WalkForward(test_size=2, train_size=1.5), "train_size"),
+    ],
+)
+def test_walk_forward_rejects_non_integer_sizes_without_frequency(cv, match):
+    with pytest.raises(ValueError, match=match):
+        list(cv.split(np.ones((8, 2))))
+
+
+def test_walk_forward_frequency_requires_datetime_index():
+    cv = WalkForward(test_size=1, train_size=2, freq="MS")
+    X = np.ones((8, 2))
+
+    with pytest.raises(ValueError, match="DatetimeIndex"):
+        list(cv.split(X))
+
+    with pytest.raises(ValueError, match="DatetimeIndex"):
+        cv.get_n_splits(X)
+
+
+def test_walk_forward_get_n_splits_requires_data():
+    with pytest.raises(ValueError, match="should not be None"):
+        WalkForward(test_size=2, train_size=3).get_n_splits()
+
+
+def test_walk_forward_offset_with_date_based_training_window(X_medium):
+    cv = WalkForward(
+        test_size=1,
+        train_size=pd.DateOffset(months=3),
+        freq="MS",
+        freq_offset=pd.offsets.BDay(1),
+        reduce_test=True,
+        expand_train=True,
+    )
+
+    splits = list(cv.split(X_medium))
+    boundaries = _generate(splits, X_medium.index)
+
+    assert len(splits) == cv.get_n_splits(X_medium) == 33
+    assert boundaries[0] == (
+        (dt.date(2020, 1, 2), dt.date(2020, 4, 1)),
+        (dt.date(2020, 4, 2), dt.date(2020, 5, 1)),
+    )
+    assert boundaries[-1] == (
+        (dt.date(2020, 1, 2), dt.date(2022, 12, 1)),
+        (dt.date(2022, 12, 2), dt.date(2022, 12, 28)),
+    )

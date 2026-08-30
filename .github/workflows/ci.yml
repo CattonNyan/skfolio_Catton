@@ -73,6 +73,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: lint
     timeout-minutes: 50
+    permissions:
+      contents: read
+      # Authenticate protected-branch uploads without exposing a repository token.
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -125,11 +129,28 @@ jobs:
         if: ${{ matrix.python-version == env.MAIN_PYTHON && matrix.deps == 'latest' }}
         run: uv run pytest -q --cov=skfolio --cov-report=xml
 
+      # Upload failures block same-repo pull requests, where they reveal an
+      # authentication or configuration regression before it reaches `main`.
+      # They do not block pushes to `main`, so a Codecov outage cannot hold
+      # back the release workflow, and they do not block fork pull requests,
+      # whose tokenless uploads can fail intermittently under Codecov rate
+      # limits. The step below reports non-blocking failures as a warning.
       - name: Upload coverage to Codecov
+        id: codecov
         if: ${{ matrix.python-version == env.MAIN_PYTHON && matrix.deps == 'latest' }}
         uses: codecov/codecov-action@v7
+        continue-on-error: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository }}
         with:
-          fail_ci_if_error: false
+          fail_ci_if_error: true
+          # Uploads for pushes to `main` and for pull requests opened from
+          # branches of this repository require authentication. Pull requests
+          # from forks cannot request OIDC tokens and use the tokenless
+          # upload path instead.
+          use_oidc: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+
+      - name: Warn on Codecov upload failure
+        if: ${{ !cancelled() && steps.codecov.outcome == 'failure' }}
+        run: echo '::warning title=Codecov upload failed::Coverage was not uploaded. The Codecov report for this commit is missing and the main branch report may go stale.'
 
 # -----------------------------------------------------------------------------
 # 3) Cross-OS tests

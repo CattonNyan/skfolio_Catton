@@ -113,6 +113,7 @@ class Population(list):
         for portfolio in self:
             for key, value in params.items():
                 setattr(portfolio, key, value)
+        return self
 
     @staticmethod
     def _validate_item(

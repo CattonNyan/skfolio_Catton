@@ -6,6 +6,7 @@ import pytest
 from skfolio._constants import _IDIO_VARIANCES
 from skfolio.alpha import FixedWeightedAlpha, ForecastUnit
 from skfolio.descriptor import Passthrough
+from skfolio.preprocessing import CSStandardScaler
 
 
 class TestBasicFunctionality:
@@ -21,6 +22,18 @@ class TestBasicFunctionality:
         )
 
         assert model.fit(alpha_deterministic_panel) is model
+        assert model.alpha_.shape == (alpha_deterministic_panel.n_assets,)
+
+    def test_partial_fit_returns_self(self, alpha_deterministic_panel):
+        """partial_fit supports estimator-style method chaining."""
+        model = FixedWeightedAlpha(
+            descriptors=[("signal", Passthrough("signal"))],
+            forecast_scale=0.01,
+            outlier_transformer="passthrough",
+            scoring_transformer="passthrough",
+        )
+
+        assert model.partial_fit(alpha_deterministic_panel) is model
         assert model.alpha_.shape == (alpha_deterministic_panel.n_assets,)
 
     def test_fit_transform_returns_alpha_path(self, alpha_deterministic_panel):
@@ -140,6 +153,34 @@ class TestFixedWeights:
         assert np.isnan(alphas[:, 0]).all()
         assert np.isfinite(alphas[:, 1:]).all()
 
+    def test_scoring_transformer_applies_within_groups(self, alpha_deterministic_panel):
+        """Composite scores can be standardized within categorical groups."""
+        panel = alpha_deterministic_panel.copy(deep=True)
+        panel["signal_2"] = panel["signal"].copy()
+        panel["signal_2"][:, 2:] += 100.0
+        panel.add_categorical_field(
+            "group",
+            np.tile([0, 0, 1, 1], (panel.n_observations, 1)),
+            levels=["first", "second"],
+        )
+        model = FixedWeightedAlpha(
+            descriptors=[
+                ("signal", Passthrough("signal")),
+                ("signal_2", Passthrough("signal_2")),
+            ],
+            forecast_scale=0.01,
+            outlier_transformer="passthrough",
+            scoring_transformer=CSStandardScaler(min_group_size=2),
+            transform_by_group="group",
+        )
+
+        alphas = model.fit_transform(panel)
+
+        assert alphas.shape == (panel.n_observations, panel.n_assets)
+        assert np.isfinite(alphas).all()
+        np.testing.assert_allclose(alphas[:, :2].mean(axis=1), 0.0, atol=1e-12)
+        np.testing.assert_allclose(alphas[:, 2:].mean(axis=1), 0.0, atol=1e-12)
+
 
 class TestForecastUnit:
     """Test forecast unit conversion."""
@@ -211,15 +252,23 @@ class TestValidation:
         ):
             model.fit(alpha_deterministic_panel)
 
-    def test_bad_weights_shape_raises(self, alpha_deterministic_panel):
-        """weights length must match descriptors length."""
+    @pytest.mark.parametrize(
+        ("weights", "match"),
+        [
+            ([1.0, -1.0], "same length as descriptors"),
+            (np.ones((1, 1)), "1D array"),
+            ([np.nan], "finite values"),
+        ],
+    )
+    def test_invalid_weights_raise(self, alpha_deterministic_panel, weights, match):
+        """Descriptor weights must be finite, one-dimensional, and aligned."""
         model = FixedWeightedAlpha(
             descriptors=[("signal", Passthrough("signal"))],
-            weights=[1.0, -1.0],
+            weights=weights,
             forecast_scale=0.01,
         )
 
-        with pytest.raises(ValueError, match="same length as descriptors"):
+        with pytest.raises(ValueError, match=match):
             model.fit(alpha_deterministic_panel)
 
     def test_all_zero_weights_raises(self, alpha_deterministic_panel):
