@@ -441,6 +441,182 @@ def test_walk_forward_with_period_long(
     assert cv.get_n_splits(X_medium) == len(list(cv.split(X_medium)))
 
 
+@pytest.mark.parametrize(
+    "test_size,train_size,freq,purged_size,match",
+    [
+        pytest.param(
+            0,
+            2,
+            None,
+            0,
+            r"test_size must be a positive integer",
+            id="test-size-zero",
+        ),
+        pytest.param(
+            -1,
+            2,
+            None,
+            0,
+            r"test_size must be a positive integer",
+            id="test-size-negative",
+        ),
+        pytest.param(
+            1.5,
+            2,
+            None,
+            0,
+            r"test_size must be a positive integer",
+            id="test-size-float",
+        ),
+        pytest.param(
+            True,
+            2,
+            None,
+            0,
+            r"test_size must be a positive integer",
+            id="test-size-bool",
+        ),
+        pytest.param(
+            np.bool_(True),
+            2,
+            None,
+            0,
+            r"test_size must be a positive integer",
+            id="test-size-numpy-bool",
+        ),
+        pytest.param(
+            2,
+            0,
+            None,
+            0,
+            r"train_size must be a positive integer",
+            id="train-size-zero",
+        ),
+        pytest.param(
+            2,
+            -1,
+            None,
+            0,
+            r"train_size must be a positive integer",
+            id="train-size-negative",
+        ),
+        pytest.param(
+            2,
+            1.5,
+            None,
+            0,
+            r"train_size must be an integer when freq is None",
+            id="train-size-float",
+        ),
+        pytest.param(
+            2,
+            True,
+            None,
+            0,
+            r"train_size must be an integer when freq is None",
+            id="train-size-bool",
+        ),
+        pytest.param(
+            2,
+            np.bool_(True),
+            None,
+            0,
+            r"train_size must be an integer when freq is None",
+            id="train-size-numpy-bool",
+        ),
+        pytest.param(
+            2,
+            "6M",
+            "D",
+            0,
+            r"train_size must be an integer, pandas DateOffset",
+            id="train-size-string-with-frequency",
+        ),
+        pytest.param(
+            2,
+            True,
+            "D",
+            0,
+            r"train_size must be an integer, pandas DateOffset",
+            id="train-size-bool-with-frequency",
+        ),
+        pytest.param(
+            2,
+            2,
+            None,
+            -1,
+            r"purged_size must be a non-negative integer",
+            id="purged-size-negative",
+        ),
+        pytest.param(
+            2,
+            2,
+            None,
+            1.5,
+            r"purged_size must be a non-negative integer",
+            id="purged-size-float",
+        ),
+        pytest.param(
+            2,
+            2,
+            None,
+            True,
+            r"purged_size must be a non-negative integer",
+            id="purged-size-bool",
+        ),
+        pytest.param(
+            2,
+            2,
+            None,
+            np.bool_(True),
+            r"purged_size must be a non-negative integer",
+            id="purged-size-numpy-bool",
+        ),
+    ],
+)
+@pytest.mark.parametrize("method_name", ["split", "get_n_splits"])
+def test_walk_forward_rejects_invalid_window_sizes(
+    test_size, train_size, freq, purged_size, match, method_name
+):
+    """Reject invalid window sizes before splitting or counting folds."""
+    X = pd.DataFrame(
+        np.arange(20).reshape(10, 2),
+        index=pd.date_range("2026-01-01", periods=10),
+    )
+    cv = WalkForward(
+        test_size=test_size,
+        train_size=train_size,
+        freq=freq,
+        purged_size=purged_size,
+    )
+
+    with pytest.raises(ValueError, match=match):
+        if method_name == "split":
+            list(cv.split(X))
+        else:
+            cv.get_n_splits(X)
+
+
+@pytest.mark.parametrize("freq", [None, "D"])
+def test_walk_forward_accepts_numpy_integer_window_sizes(freq):
+    """Accept NumPy integer sizes for index- and calendar-based windows."""
+    X = pd.DataFrame(
+        np.arange(20).reshape(10, 2),
+        index=pd.date_range("2026-01-01", periods=10),
+    )
+    cv = WalkForward(
+        test_size=np.int64(2),
+        train_size=np.int32(2),
+        freq=freq,
+        purged_size=np.int64(1),
+    )
+
+    splits = list(cv.split(X))
+    assert splits
+    assert cv.get_n_splits(X) == len(splits)
+    assert all(train.size > 0 and test.size > 0 for train, test in splits)
+
+
 def test_walk_forward_without_period():
     X = np.random.randn(12, 2)
 
