@@ -2,6 +2,20 @@
 
 <!-- version list -->
 
+## v1.0.3 (2026-08-31)
+
+### Bug Fixes
+
+- **model-selection**: Reject invalid WalkForward window sizes
+  ([#266](https://github.com/skfolio/skfolio/pull/266),
+  [`29cac26`](https://github.com/skfolio/skfolio/commit/29cac26a39853b4be96de8dcbf78f52e6d780cbc))
+
+### Continuous Integration
+
+- Bump python-semantic-release (#268) [skip ci]
+  ([`a6c8cb5`](https://github.com/skfolio/skfolio/commit/a6c8cb54956c5c3889875d44940e62c30e26983c))
+
+
 ## v1.0.2 (2026-08-30)
 
 ### Bug Fixes
