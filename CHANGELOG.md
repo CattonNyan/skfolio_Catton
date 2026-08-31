@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.0.4 (2026-08-31)
+
+### Bug Fixes
+
+- **model-selection**: Purge offset training windows
+  ([#269](https://github.com/skfolio/skfolio/pull/269),
+  [`0b6e333`](https://github.com/skfolio/skfolio/commit/0b6e3337eaae7f0c9c7f5bb10c68a13136da8e2f))
+
+
 ## v1.0.3 (2026-08-31)
 
 ### Bug Fixes
