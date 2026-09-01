@@ -27,8 +27,10 @@ import numpy as np
 import pandas as pd
 
 from scripts.crypto_portfolio_optimizer import (
+    MarketDataUnavailableError,
     find_freqtrade_data_dirs,
     generate_synthetic_crypto_data,
+    load_market_data,
     load_from_feather_dir,
     run_optimization,
 )
@@ -162,7 +164,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class="container">
         <div class="header">
             <h1>📈 skfolio 암호화폐 퀀트 포트폴리오 분석 리포트</h1>
-            <p>생성 일시: {created_at} | 분석 모델: {model_name} | 데이터 표본: {sample_count}개 캔들</p>
+            <p>생성 일시: {created_at} | 분석 모델: {model_name} | 데이터 모드: {data_source} | 데이터 표본: {sample_count}개 캔들</p>
         </div>
 
         <div class="metric-cards">
@@ -226,6 +228,7 @@ def generate_html_report(
     model_name: str = "Risk Parity (ERC)",
     total_wallet: float = 10000.0,
     output_file: Path | str = "reports/crypto_portfolio_report.html",
+    data_source: str = "unspecified",
 ) -> Path:
     """Generate and write standalone HTML report."""
     output_path = Path(output_file)
@@ -289,6 +292,7 @@ def generate_html_report(
     full_html = HTML_TEMPLATE.format(
         created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         model_name=model_name,
+        data_source=data_source.upper(),
         sample_count=len(prices),
         mean_return=mean_ret,
         volatility=vol,
@@ -311,22 +315,26 @@ def main():
     parser.add_argument("--output", type=str, default="reports/crypto_portfolio_report.html", help="Target HTML path")
     parser.add_argument("--model", type=str, default="Risk Parity (ERC)", help="Optimization model name")
     parser.add_argument("--wallet", type=float, default=10000.0, help="Total wallet in USDT")
+    parser.add_argument("--data-dir", type=str, default="", help="Directory containing Freqtrade feather files")
     parser.add_argument("--timeframe", type=str, default="15m", help="Candle timeframe")
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic data")
     args = parser.parse_args()
 
-    prices = pd.DataFrame()
-    if not args.use_synthetic:
-        candidate_dirs = find_freqtrade_data_dirs()
-        for d in candidate_dirs:
-            if d.is_dir():
-                prices = load_from_feather_dir(d, timeframe=args.timeframe)
-                if not prices.empty:
-                    print(f"[*] Loaded data from {d} ({len(prices)} bars)")
-                    break
+    try:
+        prices, data_source = load_market_data(
+            data_dir=args.data_dir or None,
+            timeframe=args.timeframe,
+            use_synthetic=args.use_synthetic,
+            synthetic_periods=1000,
+        )
+    except MarketDataUnavailableError as error:
+        parser.error(str(error))
 
-    if prices.empty or args.use_synthetic:
-        prices = generate_synthetic_crypto_data(periods=1000)
+    print(
+        "[!] DATA SOURCE: SYNTHETIC (--use-synthetic was explicitly enabled)"
+        if data_source == "synthetic"
+        else f"[+] DATA SOURCE: REAL ({data_source}, {len(prices)} bars)"
+    )
 
     # Run quick optimization
     results = run_optimization(prices)
@@ -341,6 +349,7 @@ def main():
         model_name=args.model,
         total_wallet=args.wallet,
         output_file=args.output,
+        data_source=data_source,
     )
 
 

@@ -24,8 +24,10 @@ import numpy as np
 import pandas as pd
 
 from scripts.crypto_portfolio_optimizer import (
+    MarketDataUnavailableError,
     find_freqtrade_data_dirs,
     generate_synthetic_crypto_data,
+    load_market_data,
     load_from_feather_dir,
     run_optimization,
 )
@@ -107,11 +109,16 @@ def print_risk_report(guidelines: dict[str, dict[str, float]]):
     print("================================================================================\n")
 
 
-def export_risk_json(guidelines: dict[str, dict[str, float]], output_path: Path):
+def export_risk_json(
+    guidelines: dict[str, dict[str, float]],
+    output_path: Path,
+    data_source: str = "unspecified",
+):
     """Export guidelines to JSON for easy loading in Freqtrade strategies."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     export_payload = {
         "generated_at": pd.Timestamp.now().isoformat(),
+        "data_source": data_source,
         "assets": guidelines,
         "freqtrade_stoploss_config": {
             k: v["recommended_stoploss"] for k, v in guidelines.items()
@@ -137,18 +144,21 @@ def main():
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic data")
     args = parser.parse_args()
 
-    prices = pd.DataFrame()
-    if not args.use_synthetic:
-        candidate_dirs = find_freqtrade_data_dirs()
-        for d in candidate_dirs:
-            if d.is_dir():
-                prices = load_from_feather_dir(d, timeframe=args.timeframe)
-                if not prices.empty:
-                    print(f"[*] Loaded market data from: {d} ({len(prices)} bars)")
-                    break
+    try:
+        prices, data_source = load_market_data(
+            data_dir=args.data_dir or None,
+            timeframe=args.timeframe,
+            use_synthetic=args.use_synthetic,
+            synthetic_periods=500,
+        )
+    except MarketDataUnavailableError as error:
+        parser.error(str(error))
 
-    if prices.empty or args.use_synthetic:
-        prices = generate_synthetic_crypto_data(periods=500)
+    print(
+        "[!] DATA SOURCE: SYNTHETIC (--use-synthetic was explicitly enabled)"
+        if data_source == "synthetic"
+        else f"[+] DATA SOURCE: REAL ({data_source}, {len(prices)} bars)"
+    )
 
     # Calculate optimal weights
     results = run_optimization(prices)
@@ -164,7 +174,7 @@ def main():
     print_risk_report(guidelines)
 
     if args.export_json:
-        export_risk_json(guidelines, Path(args.export_json))
+        export_risk_json(guidelines, Path(args.export_json), data_source=data_source)
 
 
 if __name__ == "__main__":

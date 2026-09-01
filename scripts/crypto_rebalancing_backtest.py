@@ -25,8 +25,10 @@ import numpy as np
 import pandas as pd
 
 from scripts.crypto_portfolio_optimizer import (
+    MarketDataUnavailableError,
     find_freqtrade_data_dirs,
     generate_synthetic_crypto_data,
+    load_market_data,
     load_from_feather_dir,
 )
 
@@ -231,19 +233,21 @@ def main():
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic data")
     args = parser.parse_args()
 
-    prices = pd.DataFrame()
-    if not args.use_synthetic:
-        candidate_dirs = [Path(args.data_dir)] if args.data_dir else find_freqtrade_data_dirs()
-        for d in candidate_dirs:
-            if d.is_dir():
-                prices = load_from_feather_dir(d, timeframe=args.timeframe)
-                if not prices.empty:
-                    print(f"[*] Loaded market data from: {d} ({len(prices)} bars)")
-                    break
+    try:
+        prices, data_source = load_market_data(
+            data_dir=args.data_dir or None,
+            timeframe=args.timeframe,
+            use_synthetic=args.use_synthetic,
+            synthetic_periods=1000,
+        )
+    except MarketDataUnavailableError as error:
+        parser.error(str(error))
 
-    if prices.empty or args.use_synthetic:
-        print("[*] Using synthetic multi-asset crypto dataset (1000 bars).")
-        prices = generate_synthetic_crypto_data(periods=1000)
+    print(
+        "[!] DATA SOURCE: SYNTHETIC (--use-synthetic was explicitly enabled)"
+        if data_source == "synthetic"
+        else f"[+] DATA SOURCE: REAL ({data_source}, {len(prices)} bars)"
+    )
 
     res = simulate_rebalancing(
         prices=prices,

@@ -22,10 +22,9 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from scripts.crypto_portfolio_optimizer import (
+    MarketDataUnavailableError,
     export_freqtrade_allocation,
-    find_freqtrade_data_dirs,
-    generate_synthetic_crypto_data,
-    load_from_feather_dir,
+    load_market_data,
 )
 from scripts.crypto_rebalancing_backtest import simulate_rebalancing
 
@@ -195,22 +194,25 @@ def main():
         )
 
     # 2. Data Loading
-    prices = pd.DataFrame()
-    if data_source == "Freqtrade 로컬 데이터":
-        candidate_dirs = find_freqtrade_data_dirs()
-        if candidate_dirs:
-            prices = load_from_feather_dir(candidate_dirs[0], timeframe=timeframe)
-            if not prices.empty:
-                st.success(f"Freqtrade 시세 데이터 로드 완료 ({len(prices)}개 캔들, 페어: {', '.join(prices.columns)})")
-        if prices.empty:
-            st.warning("로컬 Freqtrade 데이터를 찾지 못하여 합성 시뮬레이션 데이터를 불러옵니다.")
-            prices = generate_synthetic_crypto_data(periods=1000)
-    else:
-        prices = generate_synthetic_crypto_data(periods=1000)
-
-    if prices.empty:
-        st.error("데이터를 로드할 수 없습니다.")
+    is_synthetic = data_source == "합성 시뮬레이션 데이터"
+    try:
+        prices, provenance = load_market_data(
+            timeframe=timeframe,
+            use_synthetic=is_synthetic,
+            synthetic_periods=1000,
+        )
+    except MarketDataUnavailableError as error:
+        st.error(f"실데이터를 불러오지 못했습니다: {error}")
+        st.info("합성데이터 분석이 필요하면 사이드바에서 '합성 시뮬레이션 데이터'를 명시적으로 선택하세요.")
         return
+
+    if is_synthetic:
+        st.warning("⚠️ 데이터 모드: SYNTHETIC — 시뮬레이션 전용이며 Freqtrade 설정 내보내기가 차단됩니다.")
+    else:
+        st.success(
+            f"✅ 데이터 모드: REAL — {provenance} "
+            f"({len(prices)}개 캔들, 페어: {', '.join(prices.columns)})"
+        )
 
     # Calculate returns
     returns = prices.pct_change().dropna()
@@ -284,7 +286,13 @@ def main():
             })
             st.dataframe(table_df, use_container_width=True, hide_index=True)
 
-            if st.button("🚀 Freqtrade config.json으로 최적 비중 내보내기"):
+            if is_synthetic:
+                st.caption("합성데이터 결과는 실제 Freqtrade 설정으로 내보낼 수 없습니다.")
+
+            if st.button(
+                "🚀 Freqtrade config.json으로 최적 비중 내보내기",
+                disabled=is_synthetic,
+            ):
                 cfg_path = Path(freqtrade_config_path)
                 res = {model_type: weights_dict}
                 success = export_freqtrade_allocation(

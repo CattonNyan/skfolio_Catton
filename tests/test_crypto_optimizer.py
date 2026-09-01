@@ -5,8 +5,10 @@ from pathlib import Path
 import pandas as pd
 
 from scripts.crypto_portfolio_optimizer import (
+    MarketDataUnavailableError,
     generate_synthetic_crypto_data,
     find_freqtrade_data_dirs,
+    load_market_data,
 )
 
 
@@ -24,6 +26,18 @@ class CryptoOptimizerTests(unittest.TestCase):
         self.assertIsInstance(dirs, list)
         for d in dirs:
             self.assertTrue(d.is_dir())
+
+    def test_real_data_load_fails_closed(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with self.assertRaises(MarketDataUnavailableError):
+                load_market_data(data_dir=tmpdir, timeframe="15m")
+
+    def test_synthetic_data_requires_explicit_opt_in(self):
+        prices, source = load_market_data(use_synthetic=True, synthetic_periods=25)
+        self.assertEqual(source, "synthetic")
+        self.assertEqual(len(prices), 25)
 
     def test_export_freqtrade_allocation(self):
         import json

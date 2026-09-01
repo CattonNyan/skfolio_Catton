@@ -22,8 +22,10 @@ import numpy as np
 import pandas as pd
 
 from scripts.crypto_portfolio_optimizer import (
+    MarketDataUnavailableError,
     find_freqtrade_data_dirs,
     generate_synthetic_crypto_data,
+    load_market_data,
     load_from_feather_dir,
 )
 
@@ -119,24 +121,20 @@ def main():
     print("  Hierarchical Risk Parity (HRP) Crypto Optimizer         ")
     print("==========================================================")
 
-    prices = pd.DataFrame()
+    try:
+        prices, data_source = load_market_data(
+            data_dir=args.data_dir or None,
+            timeframe=args.timeframe,
+            use_synthetic=args.use_synthetic,
+        )
+    except MarketDataUnavailableError as error:
+        parser.error(str(error))
 
-    if not args.use_synthetic:
-        candidate_dirs = [Path(args.data_dir)] if args.data_dir else find_freqtrade_data_dirs()
-        for d in candidate_dirs:
-            if d.is_dir():
-                print(f"[*] Reading market data from: {d}")
-                prices = load_from_feather_dir(d, timeframe=args.timeframe)
-                if not prices.empty:
-                    print(f"[+] Successfully loaded pairs: {list(prices.columns)}")
-                    break
-
-    if prices.empty or args.use_synthetic:
-        if not args.use_synthetic:
-            print("[*] No Freqtrade market feather files found. Using realistic crypto sample data.")
-        else:
-            print("[*] Generating synthetic multi-asset crypto dataset.")
-        prices = generate_synthetic_crypto_data()
+    print(
+        "[!] DATA SOURCE: SYNTHETIC (--use-synthetic was explicitly enabled)"
+        if data_source == "synthetic"
+        else f"[+] DATA SOURCE: REAL ({data_source})"
+    )
 
     results = run_hrp_analysis(prices)
 

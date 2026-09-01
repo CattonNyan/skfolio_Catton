@@ -94,6 +94,41 @@ def generate_synthetic_crypto_data(periods: int = 1000) -> pd.DataFrame:
     return pd.DataFrame(price_series, index=dates)
 
 
+class MarketDataUnavailableError(RuntimeError):
+    """Raised when real market data was requested but could not be loaded."""
+
+
+def load_market_data(
+    *,
+    data_dir: str | Path | None = None,
+    timeframe: str = "15m",
+    use_synthetic: bool = False,
+    synthetic_periods: int = 1000,
+) -> tuple[pd.DataFrame, str]:
+    """Load explicitly requested synthetic data or fail closed on missing real data.
+
+    Returns the prices and a human-readable provenance label. Synthetic data is
+    never selected implicitly, so callers cannot accidentally export allocations
+    produced from generated prices as if they came from live market history.
+    """
+    if use_synthetic:
+        return generate_synthetic_crypto_data(periods=synthetic_periods), "synthetic"
+
+    candidate_dirs = [Path(data_dir)] if data_dir else find_freqtrade_data_dirs()
+    for candidate in candidate_dirs:
+        if not candidate.is_dir():
+            continue
+        prices = load_from_feather_dir(candidate, timeframe=timeframe)
+        if not prices.empty:
+            return prices, str(candidate.resolve())
+
+    searched = ", ".join(str(path) for path in candidate_dirs) or "no known data directories"
+    raise MarketDataUnavailableError(
+        f"No real Freqtrade market data found for timeframe '{timeframe}' "
+        f"(searched: {searched}). Provide --data-dir or explicitly pass --use-synthetic."
+    )
+
+
 def run_optimization(prices: pd.DataFrame) -> dict[str, dict[str, float]]:
     """Run multiple skfolio optimization models and return comparative results."""
     if not HAS_SKFOLIO:
@@ -240,24 +275,20 @@ def main():
     print("       skfolio Crypto Portfolio Optimizer Pipeline        ")
     print("==========================================================")
 
-    prices = pd.DataFrame()
+    try:
+        prices, data_source = load_market_data(
+            data_dir=args.data_dir or None,
+            timeframe=args.timeframe,
+            use_synthetic=args.use_synthetic,
+        )
+    except MarketDataUnavailableError as error:
+        parser.error(str(error))
 
-    if not args.use_synthetic:
-        candidate_dirs = [Path(args.data_dir)] if args.data_dir else find_freqtrade_data_dirs()
-        for d in candidate_dirs:
-            if d.is_dir():
-                print(f"[*] Reading market data from: {d}")
-                prices = load_from_feather_dir(d, timeframe=args.timeframe)
-                if not prices.empty:
-                    print(f"[+] Successfully loaded pairs: {list(prices.columns)}")
-                    break
-
-    if prices.empty or args.use_synthetic:
-        if not args.use_synthetic:
-            print("[*] No Freqtrade market feather files found. Using realistic crypto sample data.")
-        else:
-            print("[*] Generating synthetic multi-asset crypto dataset.")
-        prices = generate_synthetic_crypto_data()
+    if data_source == "synthetic":
+        print("[!] DATA SOURCE: SYNTHETIC (--use-synthetic was explicitly enabled)")
+    else:
+        print(f"[+] DATA SOURCE: REAL ({data_source})")
+        print(f"[+] Successfully loaded pairs: {list(prices.columns)}")
 
     results = run_optimization(prices)
 
@@ -278,6 +309,7 @@ def main():
             model_name=args.export_model,
             total_wallet=args.wallet_size or 10000.0,
             output_file=args.export_html,
+            data_source=data_source,
         )
 
 
