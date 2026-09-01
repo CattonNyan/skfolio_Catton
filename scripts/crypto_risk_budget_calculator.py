@@ -32,6 +32,7 @@ from scripts.crypto_portfolio_optimizer import (
     generate_synthetic_crypto_data,
     load_market_data,
     load_from_feather_dir,
+    positive_float,
     run_optimization,
 )
 
@@ -69,6 +70,11 @@ def compute_risk_guidelines(
     - Base Stoploss = -1.0 * (semi_dev * risk_multiplier) (bounded between -2.0% and -15.0%)
     - Base Take-Profit = abs(Stoploss) * risk_reward_ratio
     """
+    if not np.isfinite(risk_multiplier) or risk_multiplier <= 0:
+        raise ValueError("risk_multiplier must be a positive finite number")
+    if not np.isfinite(risk_reward_ratio) or risk_reward_ratio <= 0:
+        raise ValueError("risk_reward_ratio must be a positive finite number")
+
     vol_df = calculate_volatility_metrics(prices)
     guidelines: dict[str, dict[str, float]] = {}
 
@@ -195,8 +201,8 @@ def main():
     parser = argparse.ArgumentParser(description="Volatility-Based Dynamic SL/TP Guide Calculator")
     parser.add_argument("--data-dir", type=str, default="", help="Directory containing Freqtrade feather files")
     parser.add_argument("--timeframe", type=str, default="15m", help="Candle timeframe")
-    parser.add_argument("--risk-mult", type=float, default=2.0, help="Multiplier for downside deviation (default: 2.0)")
-    parser.add_argument("--rr-ratio", type=float, default=2.0, help="Risk-Reward ratio (default: 2.0)")
+    parser.add_argument("--risk-mult", type=positive_float, default=2.0, help="Multiplier for downside deviation (default: 2.0)")
+    parser.add_argument("--rr-ratio", type=positive_float, default=2.0, help="Risk-Reward ratio (default: 2.0)")
     parser.add_argument("--export-json", type=str, default="", help="Path to export risk guideline JSON")
     parser.add_argument("--freqtrade-config", type=str, default="", help="Existing Freqtrade config.json to update")
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic data")

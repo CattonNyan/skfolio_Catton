@@ -102,6 +102,17 @@ class MarketDataUnavailableError(RuntimeError):
     """Raised when real market data was requested but could not be loaded."""
 
 
+def positive_float(value: str) -> float:
+    """Argparse converter accepting only positive finite numbers."""
+    try:
+        number = float(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("expected a number") from error
+    if not math.isfinite(number) or number <= 0:
+        raise argparse.ArgumentTypeError("expected a positive finite number")
+    return number
+
+
 def load_market_data(
     *,
     data_dir: str | Path | None = None,
@@ -326,7 +337,7 @@ def main():
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic sample crypto data")
     parser.add_argument("--export-freqtrade", type=str, default="", help="Path to export Freqtrade config or allocation JSON")
     parser.add_argument("--export-model", type=str, default="Risk Parity (ERC)", help="Model to use for export")
-    parser.add_argument("--wallet-size", type=float, default=None, help="Optional wallet size in USDT for stake allocation")
+    parser.add_argument("--wallet-size", type=positive_float, default=None, help="Optional wallet size in USDT for stake allocation")
     parser.add_argument("--export-html", type=str, default="", help="Path to export standalone HTML report")
     args = parser.parse_args()
 

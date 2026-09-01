@@ -34,6 +34,13 @@ class RiskCalculatorTests(unittest.TestCase):
         # Take-profit should be roughly 2x stoploss
         self.assertAlmostEqual(g["recommended_take_profit"], abs(g["recommended_stoploss"]) * 2.0, places=3)
 
+    def test_non_positive_risk_parameters_are_rejected(self):
+        prices = generate_synthetic_crypto_data(periods=50)
+        with self.assertRaises(ValueError):
+            compute_risk_guidelines(prices, risk_multiplier=0)
+        with self.assertRaises(ValueError):
+            compute_risk_guidelines(prices, risk_reward_ratio=-1)
+
     def test_export_risk_json(self):
         sample = {
             "BTC/USDT": {"recommended_stoploss": -0.04, "recommended_take_profit": 0.08, "weight": 0.5, "semi_dev": 1.2, "risk_reward_ratio": 2.0}

@@ -10,6 +10,11 @@ from scripts.export_html_report import generate_html_report
 
 
 class HtmlReportTests(unittest.TestCase):
+    def test_non_positive_wallet_is_rejected(self):
+        prices = generate_synthetic_crypto_data(periods=50)
+        with self.assertRaises(ValueError):
+            generate_html_report(prices, {"BTC/USDT": 1.0}, total_wallet=0)
+
     def test_generate_html_report(self):
         prices = generate_synthetic_crypto_data(periods=50)
         weights = {"BTC/USDT": 0.6, "ETH/USDT": 0.4}

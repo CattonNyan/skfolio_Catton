@@ -32,6 +32,7 @@ from scripts.crypto_portfolio_optimizer import (
     generate_synthetic_crypto_data,
     load_market_data,
     load_from_feather_dir,
+    positive_float,
     run_optimization,
 )
 
@@ -231,6 +232,9 @@ def generate_html_report(
     data_source: str = "unspecified",
 ) -> Path:
     """Generate and write standalone HTML report."""
+    if not np.isfinite(total_wallet) or total_wallet <= 0:
+        raise ValueError("total_wallet must be a positive finite number")
+
     output_path = Path(output_file)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -314,7 +318,7 @@ def main():
     parser = argparse.ArgumentParser(description="Export Standalone HTML Quant Report")
     parser.add_argument("--output", type=str, default="reports/crypto_portfolio_report.html", help="Target HTML path")
     parser.add_argument("--model", type=str, default="Risk Parity (ERC)", help="Optimization model name")
-    parser.add_argument("--wallet", type=float, default=10000.0, help="Total wallet in USDT")
+    parser.add_argument("--wallet", type=positive_float, default=10000.0, help="Total wallet in USDT")
     parser.add_argument("--data-dir", type=str, default="", help="Directory containing Freqtrade feather files")
     parser.add_argument("--timeframe", type=str, default="15m", help="Candle timeframe")
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic data")

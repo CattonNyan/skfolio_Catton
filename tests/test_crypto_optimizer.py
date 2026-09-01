@@ -9,6 +9,7 @@ from scripts.crypto_portfolio_optimizer import (
     generate_synthetic_crypto_data,
     find_freqtrade_data_dirs,
     load_market_data,
+    positive_float,
 )
 
 
@@ -38,6 +39,14 @@ class CryptoOptimizerTests(unittest.TestCase):
         prices, source = load_market_data(use_synthetic=True, synthetic_periods=25)
         self.assertEqual(source, "synthetic")
         self.assertEqual(len(prices), 25)
+
+    def test_positive_float_rejects_invalid_wallet_values(self):
+        import argparse
+
+        self.assertEqual(positive_float("1000"), 1000.0)
+        for value in ("0", "-1", "nan", "inf"):
+            with self.assertRaises(argparse.ArgumentTypeError):
+                positive_float(value)
 
     def test_export_freqtrade_allocation(self):
         import json
