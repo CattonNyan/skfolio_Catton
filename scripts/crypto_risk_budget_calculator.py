@@ -10,7 +10,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
+import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Ensure local skfolio source and scripts are discovered
@@ -115,23 +118,77 @@ def export_risk_json(
     data_source: str = "unspecified",
 ):
     """Export guidelines to JSON for easy loading in Freqtrade strategies."""
-    output_path.parent.mkdir(parents=True, exist_ok=True)
     export_payload = {
-        "generated_at": pd.Timestamp.now().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "data_source": data_source,
         "assets": guidelines,
-        "freqtrade_stoploss_config": {
-            k: v["recommended_stoploss"] for k, v in guidelines.items()
-        },
-        "freqtrade_minimal_roi": {
-            "0": 0.05,
-            "30": 0.025,
-            "60": 0.01,
-        }
     }
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(export_payload, f, indent=2)
+    _atomic_write_json(output_path, export_payload)
     print(f"[+] Risk guidelines exported to: {output_path}")
+
+
+def _atomic_write_json(output_path: Path, payload: dict) -> None:
+    """Durably replace a JSON file without exposing a partially written file."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    temp_name = ""
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=output_path.parent,
+            prefix=f".{output_path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as temp_file:
+            json.dump(payload, temp_file, indent=2)
+            temp_file.write("\n")
+            temp_file.flush()
+            os.fsync(temp_file.fileno())
+            temp_name = temp_file.name
+        os.replace(temp_name, output_path)
+    finally:
+        if temp_name and Path(temp_name).exists():
+            Path(temp_name).unlink()
+
+
+def update_freqtrade_risk_config(
+    guidelines: dict[str, dict[str, float]],
+    config_path: Path,
+    data_source: str,
+) -> bool:
+    """Inject callback-consumable pair risk limits into a Freqtrade config."""
+    if data_source.lower() == "synthetic":
+        print("[!] Refusing to inject synthetic-data risk limits into Freqtrade.")
+        return False
+    try:
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        if not isinstance(config, dict) or not isinstance(config.get("exchange"), dict):
+            raise ValueError("target is not a Freqtrade configuration")
+
+        limits: dict[str, dict[str, float]] = {}
+        for pair, values in guidelines.items():
+            stoploss = float(values["recommended_stoploss"])
+            take_profit = float(values["recommended_take_profit"])
+            if not np.isfinite(stoploss) or not -1 < stoploss < 0:
+                raise ValueError(f"invalid stoploss for {pair}")
+            if not np.isfinite(take_profit) or not 0 < take_profit < 10:
+                raise ValueError(f"invalid take-profit for {pair}")
+            limits[pair] = {
+                "recommended_stoploss": stoploss,
+                "recommended_take_profit": take_profit,
+            }
+
+        config["pair_risk_limits"] = limits
+        config["skfolio_risk"] = {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "data_source": data_source,
+        }
+        _atomic_write_json(config_path, config)
+        print(f"[+] Freqtrade risk callbacks configured in: {config_path}")
+        return True
+    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
+        print(f"[!] Freqtrade risk config was not modified: {error}")
+        return False
 
 
 def main():
@@ -141,6 +198,7 @@ def main():
     parser.add_argument("--risk-mult", type=float, default=2.0, help="Multiplier for downside deviation (default: 2.0)")
     parser.add_argument("--rr-ratio", type=float, default=2.0, help="Risk-Reward ratio (default: 2.0)")
     parser.add_argument("--export-json", type=str, default="", help="Path to export risk guideline JSON")
+    parser.add_argument("--freqtrade-config", type=str, default="", help="Existing Freqtrade config.json to update")
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic data")
     args = parser.parse_args()
 
@@ -175,6 +233,14 @@ def main():
 
     if args.export_json:
         export_risk_json(guidelines, Path(args.export_json), data_source=data_source)
+
+    if args.freqtrade_config:
+        if not update_freqtrade_risk_config(
+            guidelines,
+            Path(args.freqtrade_config),
+            data_source=data_source,
+        ):
+            raise SystemExit(2)
 
 
 if __name__ == "__main__":

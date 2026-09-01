@@ -11,6 +11,7 @@ from scripts.crypto_risk_budget_calculator import (
     calculate_volatility_metrics,
     compute_risk_guidelines,
     export_risk_json,
+    update_freqtrade_risk_config,
 )
 
 
@@ -42,8 +43,36 @@ class RiskCalculatorTests(unittest.TestCase):
             export_risk_json(sample, out_file)
             self.assertTrue(out_file.is_file())
             data = json.loads(out_file.read_text(encoding="utf-8"))
-            self.assertIn("freqtrade_stoploss_config", data)
-            self.assertEqual(data["freqtrade_stoploss_config"]["BTC/USDT"], -0.04)
+            self.assertEqual(data["assets"]["BTC/USDT"]["recommended_stoploss"], -0.04)
+
+    def test_update_freqtrade_risk_config(self):
+        sample = {
+            "BTC/USDT": {
+                "recommended_stoploss": -0.04,
+                "recommended_take_profit": 0.08,
+            }
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.json"
+            config_path.write_text(json.dumps({"exchange": {"name": "binance"}}), encoding="utf-8")
+            self.assertTrue(update_freqtrade_risk_config(sample, config_path, "real-test-data"))
+            data = json.loads(config_path.read_text(encoding="utf-8"))
+            self.assertEqual(data["pair_risk_limits"]["BTC/USDT"]["recommended_take_profit"], 0.08)
+            self.assertEqual(data["skfolio_risk"]["data_source"], "real-test-data")
+
+    def test_synthetic_risk_config_update_is_rejected(self):
+        sample = {
+            "BTC/USDT": {
+                "recommended_stoploss": -0.04,
+                "recommended_take_profit": 0.08,
+            }
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.json"
+            original = json.dumps({"exchange": {"name": "binance"}})
+            config_path.write_text(original, encoding="utf-8")
+            self.assertFalse(update_freqtrade_risk_config(sample, config_path, "synthetic"))
+            self.assertEqual(config_path.read_text(encoding="utf-8"), original)
 
 
 if __name__ == "__main__":

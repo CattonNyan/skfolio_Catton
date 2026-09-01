@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import math
+from pathlib import Path
 from typing import Any
 
 
@@ -81,3 +83,89 @@ class SkfolioAllocationMixin:
                 amount = proposed_stake
 
         return self._clamp_stake(amount, min_stake, max_stake)
+
+
+class SkfolioRiskMixin:
+    """Apply per-pair volatility limits through Freqtrade risk callbacks."""
+
+    use_custom_stoploss = True
+    use_custom_roi = True
+
+    def _validated_risk_limits(self) -> dict[str, dict[str, float]]:
+        cached = getattr(self, "_skfolio_risk_limits_cache", None)
+        if cached is not None:
+            return cached
+
+        config = getattr(self, "config", {})
+        raw = config.get("pair_risk_limits", {})
+        if not raw and config.get("skfolio_risk_file"):
+            try:
+                payload = json.loads(Path(config["skfolio_risk_file"]).read_text(encoding="utf-8"))
+                if str(payload.get("data_source", "")).lower() == "synthetic":
+                    raw = {}
+                else:
+                    raw = payload.get("assets", {})
+            except (OSError, TypeError, ValueError, json.JSONDecodeError):
+                raw = {}
+
+        limits: dict[str, dict[str, float]] = {}
+        if isinstance(raw, dict):
+            for pair, values in raw.items():
+                if not isinstance(pair, str) or not isinstance(values, dict):
+                    continue
+                try:
+                    stoploss = abs(float(values["recommended_stoploss"]))
+                    take_profit = float(values["recommended_take_profit"])
+                except (KeyError, TypeError, ValueError):
+                    continue
+                if (
+                    math.isfinite(stoploss)
+                    and math.isfinite(take_profit)
+                    and 0 < stoploss < 1
+                    and 0 < take_profit < 10
+                ):
+                    limits[pair] = {
+                        "stoploss": stoploss,
+                        "take_profit": take_profit,
+                    }
+
+        self._skfolio_risk_limits_cache = limits
+        return limits
+
+    def custom_stoploss(
+        self,
+        pair: str,
+        trade: Any,
+        current_time: Any,
+        current_rate: float,
+        current_profit: float,
+        after_fill: bool = False,
+        **kwargs: Any,
+    ) -> float | None:
+        """Return the pair-specific stop distance, adjusted for leverage."""
+        risk = self._validated_risk_limits().get(pair)
+        if risk is None:
+            return None
+        leverage = max(float(getattr(trade, "leverage", 1.0) or 1.0), 1.0)
+        return risk["stoploss"] * leverage
+
+    def custom_roi(
+        self,
+        pair: str,
+        trade: Any,
+        current_time: Any,
+        trade_duration: int,
+        entry_tag: str | None,
+        side: str,
+        **kwargs: Any,
+    ) -> float | None:
+        """Return the pair-specific take-profit threshold."""
+        risk = self._validated_risk_limits().get(pair)
+        if risk is None:
+            return None
+        leverage = max(float(getattr(trade, "leverage", 1.0) or 1.0), 1.0)
+        return risk["take_profit"] * leverage
+
+
+class SkfolioFreqtradeMixin(SkfolioRiskMixin, SkfolioAllocationMixin):
+    """Combined allocation, stoploss, and take-profit integration."""

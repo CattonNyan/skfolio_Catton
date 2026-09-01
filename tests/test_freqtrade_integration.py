@@ -1,8 +1,11 @@
 """Tests for the Freqtrade allocation callback integration."""
 
+import json
+import tempfile
 import unittest
+from pathlib import Path
 
-from freqtrade_integration import SkfolioAllocationMixin
+from freqtrade_integration import SkfolioAllocationMixin, SkfolioFreqtradeMixin
 
 
 class _Wallets:
@@ -17,6 +20,16 @@ class _Strategy(SkfolioAllocationMixin):
     def __init__(self, config: dict, wallet: float = 1000.0):
         self.config = config
         self.wallets = _Wallets(wallet)
+
+
+class _IntegratedStrategy(SkfolioFreqtradeMixin):
+    def __init__(self, config: dict):
+        self.config = config
+
+
+class _Trade:
+    def __init__(self, leverage: float = 1.0):
+        self.leverage = leverage
 
 
 class FreqtradeAllocationTests(unittest.TestCase):
@@ -55,3 +68,64 @@ class FreqtradeAllocationTests(unittest.TestCase):
     def test_exchange_limits_are_respected(self):
         strategy = _Strategy({"pair_weights": {"BTC/USDT": 1.0}}, wallet=5000.0)
         self.assertEqual(self._stake(strategy, "BTC/USDT", max_stake=750.0), 750.0)
+
+    def test_dynamic_stoploss_and_roi_use_pair_limits(self):
+        strategy = _IntegratedStrategy(
+            {
+                "pair_risk_limits": {
+                    "BTC/USDT": {
+                        "recommended_stoploss": -0.04,
+                        "recommended_take_profit": 0.08,
+                    }
+                }
+            }
+        )
+        trade = _Trade()
+        stop = strategy.custom_stoploss("BTC/USDT", trade, None, 100.0, 0.0)
+        roi = strategy.custom_roi("BTC/USDT", trade, None, 10, None, "long")
+        self.assertEqual(stop, 0.04)
+        self.assertEqual(roi, 0.08)
+
+    def test_risk_callbacks_adjust_price_targets_for_leverage(self):
+        strategy = _IntegratedStrategy(
+            {
+                "pair_risk_limits": {
+                    "BTC/USDT": {
+                        "recommended_stoploss": -0.04,
+                        "recommended_take_profit": 0.08,
+                    }
+                }
+            }
+        )
+        trade = _Trade(leverage=2.0)
+        self.assertEqual(strategy.custom_stoploss("BTC/USDT", trade, None, 100.0, 0.0), 0.08)
+        self.assertEqual(strategy.custom_roi("BTC/USDT", trade, None, 10, None, "long"), 0.16)
+
+    def test_risk_file_is_loaded_and_synthetic_file_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            risk_file = Path(tmpdir) / "risk.json"
+            risk_file.write_text(
+                json.dumps(
+                    {
+                        "data_source": "real-test-data",
+                        "assets": {
+                            "ETH/USDT": {
+                                "recommended_stoploss": -0.03,
+                                "recommended_take_profit": 0.06,
+                            }
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            strategy = _IntegratedStrategy({"skfolio_risk_file": str(risk_file)})
+            self.assertEqual(strategy.custom_roi("ETH/USDT", _Trade(), None, 10, None, "long"), 0.06)
+
+            risk_file.write_text(
+                json.dumps({"data_source": "synthetic", "assets": {"ETH/USDT": {}}}),
+                encoding="utf-8",
+            )
+            synthetic_strategy = _IntegratedStrategy({"skfolio_risk_file": str(risk_file)})
+            self.assertIsNone(
+                synthetic_strategy.custom_stoploss("ETH/USDT", _Trade(), None, 100.0, 0.0)
+            )

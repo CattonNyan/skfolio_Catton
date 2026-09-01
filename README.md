@@ -132,14 +132,14 @@ python scripts/crypto_portfolio_optimizer.py `
 
 ```python
 from freqtrade.strategy import IStrategy
-from freqtrade_integration import SkfolioAllocationMixin
+from freqtrade_integration import SkfolioFreqtradeMixin
 
-class MyStrategy(SkfolioAllocationMixin, IStrategy):
+class MyStrategy(SkfolioFreqtradeMixin, IStrategy):
     # 기존 전략 설정과 populate_* 메서드
     pass
 ```
 
-`SkfolioAllocationMixin.custom_stake_amount()`는 `pair_stake_amounts`를 우선 사용하고, 해당 값이 없으면 사용 가능한 지갑 금액에 `pair_weights`를 적용합니다. 설정이 잘못되었거나 목록에 없는 페어는 기본적으로 주문금액 `0`을 반환하여 신규 진입을 차단합니다. 합성데이터 결과는 Freqtrade 설정으로 내보낼 수 없습니다.
+`SkfolioFreqtradeMixin.custom_stake_amount()`는 `pair_stake_amounts`를 우선 사용하고, 해당 값이 없으면 사용 가능한 지갑 금액에 `pair_weights`를 적용합니다. 설정이 잘못되었거나 목록에 없는 페어는 기본적으로 주문금액 `0`을 반환하여 신규 진입을 차단합니다. 합성데이터 결과는 Freqtrade 설정으로 내보낼 수 없습니다.
 
 ---
 
@@ -219,9 +219,20 @@ python scripts/export_html_report.py --output reports/crypto_portfolio_report.ht
 각 코인의 하방 변동성(Semi-Deviation)과 위험-보상 비율(RR Ratio)을 분석하여 개별 코인별 권장 손절폭(Stoploss)과 익절폭(Take-Profit)을 자동 산출합니다:
 
 ```powershell
-# 코인별 맞춤 손절/익절 가이드 산출 및 Freqtrade 설정용 JSON 내보내기
-python scripts/crypto_risk_budget_calculator.py --risk-mult 2.0 --rr-ratio 2.0 --export-json user_data/risk_params.json
+# 분석용 리스크 JSON 생성
+python scripts/crypto_risk_budget_calculator.py `
+  --risk-mult 2.0 `
+  --rr-ratio 2.0 `
+  --export-json user_data/risk_params.json
+
+# 기존 Freqtrade config.json에 콜백용 종목별 SL/TP를 안전하게 주입
+python scripts/crypto_risk_budget_calculator.py `
+  --risk-mult 2.0 `
+  --rr-ratio 2.0 `
+  --freqtrade-config ../freqtrade/user_data/config.json
 ```
+
+`SkfolioFreqtradeMixin`은 `use_custom_stoploss`와 `use_custom_roi`를 활성화하고, 주입된 `pair_risk_limits`를 `custom_stoploss()`와 `custom_roi()`에서 종목별로 적용합니다. 별도 JSON을 사용하려면 Freqtrade 설정의 `skfolio_risk_file`에 `risk_params.json` 경로를 지정할 수도 있습니다. 레버리지 거래에서는 기초자산 가격 기준 SL/TP 거리를 유지하도록 콜백 반환값에 레버리지를 반영합니다.
 
 ---
 
