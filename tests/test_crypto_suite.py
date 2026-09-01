@@ -8,6 +8,7 @@ import unittest
 from tests.test_crypto_optimizer import CryptoOptimizerTests
 from tests.test_hrp_clustering import HrpClusteringTests
 from tests.test_live_fetcher import LiveFetcherTests
+from tests.test_dashboard import DashboardTests
 
 
 def suite():
@@ -16,6 +17,7 @@ def suite():
     s.addTests(loader.loadTestsFromTestCase(CryptoOptimizerTests))
     s.addTests(loader.loadTestsFromTestCase(HrpClusteringTests))
     s.addTests(loader.loadTestsFromTestCase(LiveFetcherTests))
+    s.addTests(loader.loadTestsFromTestCase(DashboardTests))
     return s
 
 

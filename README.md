@@ -152,6 +152,17 @@ jupyter lab
 
 ---
 
+### 6. 인터랙티브 웹 대시보드 (Streamlit)
+
+마우스 클릭만으로 실시간 자산 배분 비중(파이 차트), 코인 간 상관계수 히트맵, 누적 수익률 시뮬레이션을 시각적으로 확인하고 Freqtrade로 원클릭 내보내기를 수행합니다:
+
+```powershell
+streamlit run app_dashboard.py
+```
+- 브라우저에서 대시보드가 열리며 알고리즘별 성과 비교 및 Freqtrade `config.json` 자동 반영이 가능합니다.
+
+---
+
 ## 📁 프로젝트 구조
 
 ```text
@@ -174,6 +185,7 @@ skfolio_Catton/
 │   └── test_live_fetcher.py
 ├── requirements-local.txt             # 로컬 개발 및 퀀트 연구용 패키지 목록
 ├── setup.ps1                          # Windows PowerShell 원클릭 설치 스크립트
+├── app_dashboard.py                   # Streamlit 인터랙티브 웹 대시보드
 ├── README.md                          # 프로젝트 메인 한국어 안내 문서
 └── LICENSE                            # BSD 3-Clause 라이선스 전문
 ```
