@@ -12,6 +12,7 @@ from tests.test_dashboard import DashboardTests
 from tests.test_rebalancing import RebalancingTests
 from tests.test_html_report import HtmlReportTests
 from tests.test_risk_calculator import RiskCalculatorTests
+from tests.test_freqtrade_integration import FreqtradeAllocationTests
 
 
 def suite():
@@ -24,6 +25,7 @@ def suite():
     s.addTests(loader.loadTestsFromTestCase(RebalancingTests))
     s.addTests(loader.loadTestsFromTestCase(HtmlReportTests))
     s.addTests(loader.loadTestsFromTestCase(RiskCalculatorTests))
+    s.addTests(loader.loadTestsFromTestCase(FreqtradeAllocationTests))
     return s
 
 

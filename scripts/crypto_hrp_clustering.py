@@ -136,6 +136,9 @@ def main():
         else f"[+] DATA SOURCE: REAL ({data_source})"
     )
 
+    if data_source == "synthetic" and args.export_freqtrade:
+        parser.error("Freqtrade export is disabled for synthetic data.")
+
     results = run_hrp_analysis(prices)
 
     if args.export_freqtrade and results:
@@ -144,6 +147,7 @@ def main():
             results=results,
             target_path=Path(args.export_freqtrade),
             model_name="HRP (Variance)",
+            data_source=data_source,
         )
 
 

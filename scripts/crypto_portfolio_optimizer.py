@@ -12,7 +12,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
+import os
 import sys
+import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Ensure local skfolio source is discovered
@@ -212,19 +216,45 @@ def export_freqtrade_allocation(
     target_path: Path,
     model_name: str = "Risk Parity (ERC)",
     total_wallet: float | None = None,
+    data_source: str = "unspecified",
 ) -> bool:
-    """Export optimal asset allocation to Freqtrade config or JSON file."""
+    """Export validated allocation data using an atomic JSON replacement."""
     if not results:
+        return False
+
+    if data_source.lower() == "synthetic":
+        print("[!] Refusing to export synthetic-data allocations to Freqtrade.")
         return False
 
     if model_name not in results:
         model_name = list(results.keys())[0]
 
-    weights = results[model_name]
+    raw_weights = results[model_name]
+    try:
+        weights = {pair: float(weight) for pair, weight in raw_weights.items()}
+    except (AttributeError, TypeError, ValueError):
+        print("[!] Invalid allocation: weights must be a pair-to-number mapping.")
+        return False
+    if (
+        not weights
+        or any(not isinstance(pair, str) or not math.isfinite(weight) or weight < 0 for pair, weight in weights.items())
+        or sum(weights.values()) <= 0
+    ):
+        print("[!] Invalid allocation: weights must be finite, non-negative, and have a positive sum.")
+        return False
+    weight_sum = sum(weights.values())
+    weights = {pair: weight / weight_sum for pair, weight in weights.items()}
+
+    if total_wallet is not None and (not math.isfinite(total_wallet) or total_wallet <= 0):
+        print("[!] Invalid wallet size: expected a positive finite number.")
+        return False
+
     pair_whitelist = list(weights.keys())
 
     export_data = {
         "source_model": model_name,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "data_source": data_source,
         "pair_whitelist": pair_whitelist,
         "pair_weights": {k: round(float(v), 4) for k, v in weights.items()},
     }
@@ -234,27 +264,56 @@ def export_freqtrade_allocation(
             k: round(float(v) * total_wallet, 2) for k, v in weights.items()
         }
 
-    target_path.parent.mkdir(parents=True, exist_ok=True)
+    def atomic_write_json(payload: dict) -> None:
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        temp_name = ""
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=target_path.parent,
+                prefix=f".{target_path.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as temp_file:
+                json.dump(payload, temp_file, indent=2)
+                temp_file.write("\n")
+                temp_file.flush()
+                os.fsync(temp_file.fileno())
+                temp_name = temp_file.name
+            os.replace(temp_name, target_path)
+        finally:
+            if temp_name and Path(temp_name).exists():
+                Path(temp_name).unlink()
+
     if target_path.suffix.lower() == ".json":
-        # If target file exists and is a Freqtrade config, selectively update pair_whitelist and pair_weights
         if target_path.is_file():
             try:
-                with open(target_path, "r", encoding="utf-8") as f:
-                    existing_config = json.load(f)
-                if "exchange" in existing_config and isinstance(existing_config["exchange"], dict):
+                existing_config = json.loads(target_path.read_text(encoding="utf-8"))
+                if not isinstance(existing_config, dict):
+                    raise ValueError("JSON root must be an object")
+                is_freqtrade_config = isinstance(existing_config.get("exchange"), dict)
+                is_allocation_file = "pair_weights" in existing_config or "source_model" in existing_config
+                if not is_freqtrade_config and not is_allocation_file:
+                    raise ValueError("existing file is neither a Freqtrade config nor an allocation file")
+                if is_freqtrade_config:
                     existing_config["exchange"]["pair_whitelist"] = pair_whitelist
                 existing_config["pair_weights"] = export_data["pair_weights"]
                 if "stake_amounts" in export_data:
                     existing_config["pair_stake_amounts"] = export_data["stake_amounts"]
-                with open(target_path, "w", encoding="utf-8") as f:
-                    json.dump(existing_config, f, indent=2)
+                existing_config["skfolio_allocation"] = {
+                    "source_model": model_name,
+                    "generated_at": export_data["generated_at"],
+                    "data_source": data_source,
+                }
+                atomic_write_json(existing_config)
                 print(f"\n[+] Successfully updated existing Freqtrade config: {target_path}")
                 return True
             except Exception as e:
-                print(f"[!] Warning updating {target_path}: {e}. Writing standalone allocation file.")
+                print(f"[!] Refusing to overwrite existing JSON file {target_path}: {e}")
+                return False
 
-        with open(target_path, "w", encoding="utf-8") as f:
-            json.dump(export_data, f, indent=2)
+        atomic_write_json(export_data)
         print(f"\n[+] Exported Freqtrade allocation: {target_path}")
         return True
     return False
@@ -290,6 +349,9 @@ def main():
         print(f"[+] DATA SOURCE: REAL ({data_source})")
         print(f"[+] Successfully loaded pairs: {list(prices.columns)}")
 
+    if data_source == "synthetic" and args.export_freqtrade:
+        parser.error("Freqtrade export is disabled for synthetic data.")
+
     results = run_optimization(prices)
 
     if args.export_freqtrade and results:
@@ -298,6 +360,7 @@ def main():
             target_path=Path(args.export_freqtrade),
             model_name=args.export_model,
             total_wallet=args.wallet_size,
+            data_source=data_source,
         )
 
     if args.export_html and results:

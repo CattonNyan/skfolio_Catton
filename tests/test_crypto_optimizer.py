@@ -62,6 +62,60 @@ class CryptoOptimizerTests(unittest.TestCase):
             self.assertEqual(data["pair_weights"]["BTC/USDT"], 0.6)
             self.assertEqual(data["stake_amounts"]["BTC/USDT"], 600.0)
 
+    def test_export_normalizes_weights_and_updates_freqtrade_config(self):
+        import json
+        import tempfile
+        from scripts.crypto_portfolio_optimizer import export_freqtrade_allocation
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target_path = Path(tmpdir) / "config.json"
+            target_path.write_text(
+                json.dumps({"exchange": {"name": "binance", "pair_whitelist": []}}),
+                encoding="utf-8",
+            )
+            success = export_freqtrade_allocation(
+                results={"model": {"BTC/USDT": 3.0, "ETH/USDT": 1.0}},
+                target_path=target_path,
+                model_name="model",
+                data_source="real-test-data",
+            )
+            self.assertTrue(success)
+            data = json.loads(target_path.read_text(encoding="utf-8"))
+            self.assertEqual(data["exchange"]["pair_whitelist"], ["BTC/USDT", "ETH/USDT"])
+            self.assertEqual(data["pair_weights"], {"BTC/USDT": 0.75, "ETH/USDT": 0.25})
+            self.assertEqual(data["skfolio_allocation"]["data_source"], "real-test-data")
+
+    def test_export_preserves_malformed_existing_json(self):
+        import tempfile
+        from scripts.crypto_portfolio_optimizer import export_freqtrade_allocation
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target_path = Path(tmpdir) / "config.json"
+            original = "{ malformed user config"
+            target_path.write_text(original, encoding="utf-8")
+            success = export_freqtrade_allocation(
+                results={"model": {"BTC/USDT": 1.0}},
+                target_path=target_path,
+                model_name="model",
+            )
+            self.assertFalse(success)
+            self.assertEqual(target_path.read_text(encoding="utf-8"), original)
+
+    def test_synthetic_allocation_export_is_rejected(self):
+        import tempfile
+        from scripts.crypto_portfolio_optimizer import export_freqtrade_allocation
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target_path = Path(tmpdir) / "allocation.json"
+            success = export_freqtrade_allocation(
+                results={"model": {"BTC/USDT": 1.0}},
+                target_path=target_path,
+                model_name="model",
+                data_source="synthetic",
+            )
+            self.assertFalse(success)
+            self.assertFalse(target_path.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

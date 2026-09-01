@@ -300,6 +300,7 @@ def main():
                     target_path=cfg_path,
                     model_name=model_type,
                     total_wallet=wallet_size,
+                    data_source=provenance,
                 )
                 if success:
                     st.success(f"Freqtrade 설정 파일({cfg_path})에 최적 비중이 성공적으로 업데이트되었습니다!")

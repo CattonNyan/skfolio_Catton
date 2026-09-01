@@ -126,7 +126,20 @@ python scripts/crypto_portfolio_optimizer.py `
   --export-model "Risk Parity (ERC)" `
   --wallet-size 10000
 ```
-> **결과**: `config.json`의 `pair_whitelist`가 최적 코인들로 자동 갱신되며, 총 투자금(10,000 USDT)에 따른 코인별 `pair_stake_amounts`가 자동으로 계산되어 저장됩니다.
+> **결과**: `config.json`의 `pair_whitelist`가 최적 코인들로 자동 갱신되며, 총 투자금(10,000 USDT)에 따른 코인별 `pair_stake_amounts`가 자동으로 계산되어 저장됩니다. 기존 JSON은 검증 후 원자적으로 갱신되며, 손상된 설정 파일은 덮어쓰지 않습니다.
+
+계산된 비중을 실제 주문금액에 반영하려면 `freqtrade_integration/skfolio_callbacks.py`를 Freqtrade 프로젝트에서 import할 수 있는 위치에 두고 기존 전략에 믹스인을 추가합니다:
+
+```python
+from freqtrade.strategy import IStrategy
+from freqtrade_integration import SkfolioAllocationMixin
+
+class MyStrategy(SkfolioAllocationMixin, IStrategy):
+    # 기존 전략 설정과 populate_* 메서드
+    pass
+```
+
+`SkfolioAllocationMixin.custom_stake_amount()`는 `pair_stake_amounts`를 우선 사용하고, 해당 값이 없으면 사용 가능한 지갑 금액에 `pair_weights`를 적용합니다. 설정이 잘못되었거나 목록에 없는 페어는 기본적으로 주문금액 `0`을 반환하여 신규 진입을 차단합니다. 합성데이터 결과는 Freqtrade 설정으로 내보낼 수 없습니다.
 
 ---
 
