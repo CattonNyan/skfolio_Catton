@@ -1,13 +1,25 @@
 # 📈 skfolio_Catton
 
-[![Crypto Pipeline CI](https://github.com/CattonNyan/skfolio_Catton/actions/workflows/crypto_ci.yml/badge.svg)](https://github.com/CattonNyan/skfolio_Catton/actions/workflows/crypto_ci.yml)
-[![License: BSD 3-Clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](LICENSE)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
-[![Scikit-Learn Compatible](https://img.shields.io/badge/scikit--learn-compatible-orange.svg)](https://scikit-learn.org/)
+<div align="center">
+  <img src="https://raw.githubusercontent.com/skfolio/skfolio/main/docs/_static/logo_animate.svg" width="90" alt="skfolio logo">
+  <br>
+  <h3>scikit-learn 기반 포트폴리오 최적화 & 암호화폐 자산배분 프레임워크</h3>
+</div>
 
-> **scikit-learn 기반 포트폴리오 최적화(Portfolio Optimization) & Freqtrade 자동매매 봇 연계 암호화폐 자산배분 프레임워크**
+<p align="center">
+  <a href="https://skfolio.org/auto_examples/index.html">
+    <img src="https://raw.githubusercontent.com/skfolio/skfolio/main/docs/_static/expo.jpg" alt="skfolio 4개 핵심 시각화 그래프" width="850">
+  </a>
+</p>
 
-**`skfolio_Catton`**은 오픈소스 포트폴리오 최적화 라이브러리인 [`skfolio`](https://github.com/skfolio/skfolio)를 기반으로, **암호화폐(Crypto) 시장과 Freqtrade 자동매매 봇에 맞춤 연계**할 수 있도록 실전 퀀트 파이프라인과 한국어 튜토리얼을 결합한 독립 프로젝트입니다.
+<p align="center">
+  <a href="https://github.com/CattonNyan/skfolio_Catton/actions/workflows/crypto_ci.yml"><img src="https://github.com/CattonNyan/skfolio_Catton/actions/workflows/crypto_ci.yml/badge.svg" alt="Crypto Pipeline CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-BSD%203--Clause-blue.svg" alt="License: BSD 3-Clause"></a>
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg" alt="Python 3.10+"></a>
+  <a href="https://scikit-learn.org/"><img src="https://img.shields.io/badge/scikit--learn-compatible-orange.svg" alt="Scikit-Learn Compatible"></a>
+</p>
+
+> **`skfolio_Catton`**은 오픈소스 포트폴리오 최적화 라이브러리인 [`skfolio`](https://github.com/skfolio/skfolio)를 기반으로, **암호화폐(Crypto) 시장과 Freqtrade 자동매매 봇에 맞춤 연계**할 수 있도록 실전 퀀트 파이프라인과 한국어 튜토리얼을 결합한 독립 프로젝트입니다.
 
 ---
 
