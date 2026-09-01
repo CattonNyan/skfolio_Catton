@@ -5,7 +5,7 @@
    Content placed outside those regions stays in the README only.
 
 .. note::
-   🇰🇷 **한국어 안내 및 크립토/Freqtrade 자산배분 튜토리얼은 `README_KR.md <README_KR.md>`_ 를 참고하세요.**
+   🇰🇷 **한국어 안내 및 크립토/Freqtrade 자산배분 튜토리얼은 `README.md <README.md>`_ 를 참고하세요.**
 
 |CryptoCI| |Licence| |Codecov| |PythonVersion| |PyPi| |CI/CD| |Downloads| |Ruff| |Contribution| |Website| |JupyterLite| |Discord| |DOI|
 

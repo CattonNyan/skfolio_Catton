@@ -14,7 +14,7 @@ authors = [
     { name = "Hugo Delatte", email = "hugo.delatte@skfoliolabs.com" },
 ]
 description = "Portfolio optimization, factor model construction, and risk management built on top of scikit-learn"
-readme = "README.rst"
+readme = "README.md"
 keywords = [
     "portfolio",
     "optimization",
