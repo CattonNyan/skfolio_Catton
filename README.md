@@ -163,6 +163,21 @@ streamlit run app_dashboard.py
 
 ---
 
+### 7. 주기적 포트폴리오 리밸런싱(Rebalancing) 롤링 백테스트
+
+일정 주기(예: 50개 캔들 또는 7일)마다 자산 비중을 재조정(Rebalancing)할 때, 단순 보유(Buy & Hold) 대비 수익률과 낙폭(MDD)이 어떻게 개선되는지 워크포워드 시뮬레이션을 수행합니다:
+
+```powershell
+# 리스크 패리티 모델 기반 롤링 리밸런싱 백테스트 실행 (거래 수수료 0.1% 반영)
+python scripts/crypto_rebalancing_backtest.py --model "Risk Parity" --timeframe 15m --fee 0.001
+
+# 합성 데이터로 빠른 검증 실행
+python scripts/crypto_rebalancing_backtest.py --use-synthetic --model "Equal Weight"
+```
+- **산출 지표**: 누적 수익률(Total Return), 최대 낙폭(MDD), 연환산 샤프 지수, 회전율(Turnover Rate), 리밸런싱 횟수 비교 요약표 출력
+
+---
+
 ## 📁 프로젝트 구조
 
 ```text
@@ -175,6 +190,7 @@ skfolio_Catton/
 ├── scripts/                           # 실전 자동화 스크립트 모음
 │   ├── crypto_portfolio_optimizer.py  # Freqtrade 연계 크립토 최적화 파이프라인
 │   ├── crypto_hrp_clustering.py       # HRP 계층적 트리 군집화 및 상관계수 분석
+│   ├── crypto_rebalancing_backtest.py # 주기적 포트폴리오 롤링 리밸런싱 백테스트
 │   ├── fetch_live_crypto.py           # 거래소(바이낸스/업비트) 실시간 시세 수집기
 │   └── verify_environment.py          # 환경 검증 스크립트
 ├── src/skfolio/                       # skfolio 핵심 최적화 알고리즘 엔진
@@ -182,7 +198,9 @@ skfolio_Catton/
 │   ├── test_crypto_suite.py           # 통합 테스트 스위트 러너 (Python 3.10~3.14 호환)
 │   ├── test_crypto_optimizer.py
 │   ├── test_hrp_clustering.py
-│   └── test_live_fetcher.py
+│   ├── test_live_fetcher.py
+│   ├── test_dashboard.py
+│   └── test_rebalancing.py
 ├── requirements-local.txt             # 로컬 개발 및 퀀트 연구용 패키지 목록
 ├── setup.ps1                          # Windows PowerShell 원클릭 설치 스크립트
 ├── app_dashboard.py                   # Streamlit 인터랙티브 웹 대시보드
