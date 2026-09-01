@@ -73,7 +73,7 @@ Tutorials = "https://skfolio.org/auto_examples/"
 [project.optional-dependencies]
 dev = [
     # TODO: drop the upper bound once https://github.com/cvxpy/cvxpy/pull/3467 is released
-    "PySCIPOpt<6.0.0",
+    "PySCIPOpt<7.0.0",
     "pytest",
     "pytest-xdist",
     "pytest-cov",
@@ -82,7 +82,7 @@ dev = [
 ]
 docs = [
     # TODO: drop the upper bound once https://github.com/cvxpy/cvxpy/pull/3467 is released
-    "PySCIPOpt<6.0.0",
+    "PySCIPOpt<7.0.0",
     "Sphinx>=7.2",
     "sphinx-gallery",
     "pydata-sphinx-theme~=0.16",
