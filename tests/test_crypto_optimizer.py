@@ -25,6 +25,29 @@ class CryptoOptimizerTests(unittest.TestCase):
         for d in dirs:
             self.assertTrue(d.is_dir())
 
+    def test_export_freqtrade_allocation(self):
+        import json
+        import tempfile
+        from scripts.crypto_portfolio_optimizer import export_freqtrade_allocation
+
+        sample_results = {
+            "Risk Parity (ERC)": {"BTC/USDT": 0.6, "ETH/USDT": 0.4}
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target_path = Path(tmpdir) / "test_allocation.json"
+            success = export_freqtrade_allocation(
+                results=sample_results,
+                target_path=target_path,
+                model_name="Risk Parity (ERC)",
+                total_wallet=1000.0,
+            )
+            self.assertTrue(success)
+            self.assertTrue(target_path.is_file())
+            data = json.loads(target_path.read_text(encoding="utf-8"))
+            self.assertEqual(data["pair_whitelist"], ["BTC/USDT", "ETH/USDT"])
+            self.assertEqual(data["pair_weights"]["BTC/USDT"], 0.6)
+            self.assertEqual(data["stake_amounts"]["BTC/USDT"], 600.0)
+
 
 if __name__ == "__main__":
     unittest.main()

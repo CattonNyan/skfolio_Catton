@@ -11,8 +11,15 @@ computes asset returns, and runs portfolio optimization models using skfolio:
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
+import json
 import sys
+from pathlib import Path
+
+# Ensure local skfolio source is discovered
+src_dir = str(Path(__file__).resolve().parents[1] / "src")
+if src_dir not in sys.path:
+    sys.path.insert(0, src_dir)
+
 import numpy as np
 import pandas as pd
 
@@ -165,11 +172,67 @@ def run_optimization(prices: pd.DataFrame) -> dict[str, dict[str, float]]:
     return results
 
 
+def export_freqtrade_allocation(
+    results: dict[str, dict[str, float]],
+    target_path: Path,
+    model_name: str = "Risk Parity (ERC)",
+    total_wallet: float | None = None,
+) -> bool:
+    """Export optimal asset allocation to Freqtrade config or JSON file."""
+    if not results:
+        return False
+
+    if model_name not in results:
+        model_name = list(results.keys())[0]
+
+    weights = results[model_name]
+    pair_whitelist = list(weights.keys())
+
+    export_data = {
+        "source_model": model_name,
+        "pair_whitelist": pair_whitelist,
+        "pair_weights": {k: round(float(v), 4) for k, v in weights.items()},
+    }
+
+    if total_wallet is not None:
+        export_data["stake_amounts"] = {
+            k: round(float(v) * total_wallet, 2) for k, v in weights.items()
+        }
+
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    if target_path.suffix.lower() == ".json":
+        # If target file exists and is a Freqtrade config, selectively update pair_whitelist and pair_weights
+        if target_path.is_file():
+            try:
+                with open(target_path, "r", encoding="utf-8") as f:
+                    existing_config = json.load(f)
+                if "exchange" in existing_config and isinstance(existing_config["exchange"], dict):
+                    existing_config["exchange"]["pair_whitelist"] = pair_whitelist
+                existing_config["pair_weights"] = export_data["pair_weights"]
+                if "stake_amounts" in export_data:
+                    existing_config["pair_stake_amounts"] = export_data["stake_amounts"]
+                with open(target_path, "w", encoding="utf-8") as f:
+                    json.dump(existing_config, f, indent=2)
+                print(f"\n[+] Successfully updated existing Freqtrade config: {target_path}")
+                return True
+            except Exception as e:
+                print(f"[!] Warning updating {target_path}: {e}. Writing standalone allocation file.")
+
+        with open(target_path, "w", encoding="utf-8") as f:
+            json.dump(export_data, f, indent=2)
+        print(f"\n[+] Exported Freqtrade allocation: {target_path}")
+        return True
+    return False
+
+
 def main():
     parser = argparse.ArgumentParser(description="Crypto Portfolio Optimizer via skfolio")
     parser.add_argument("--data-dir", type=str, default="", help="Directory containing Freqtrade feather files")
     parser.add_argument("--timeframe", type=str, default="15m", help="Candle timeframe (e.g., 5m, 15m)")
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic sample crypto data")
+    parser.add_argument("--export-freqtrade", type=str, default="", help="Path to export Freqtrade config or allocation JSON")
+    parser.add_argument("--export-model", type=str, default="Risk Parity (ERC)", help="Model to use for export")
+    parser.add_argument("--wallet-size", type=float, default=None, help="Optional wallet size in USDT for stake allocation")
     args = parser.parse_args()
 
     print("==========================================================")
@@ -195,7 +258,15 @@ def main():
             print("[*] Generating synthetic multi-asset crypto dataset.")
         prices = generate_synthetic_crypto_data()
 
-    run_optimization(prices)
+    results = run_optimization(prices)
+
+    if args.export_freqtrade and results:
+        export_freqtrade_allocation(
+            results=results,
+            target_path=Path(args.export_freqtrade),
+            model_name=args.export_model,
+            total_wallet=args.wallet_size,
+        )
 
 
 if __name__ == "__main__":
