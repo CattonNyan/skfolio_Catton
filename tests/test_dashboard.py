@@ -46,6 +46,17 @@ class DashboardTests(unittest.TestCase):
         self.assertIsInstance(fig, go.Figure)
         self.assertEqual(len(fig.data), 3)
 
+    @unittest.skipUnless(HAS_DASHBOARD_DEPS, "plotly or streamlit not installed")
+    def test_create_rebalancing_nav_chart(self):
+        from app_dashboard import create_rebalancing_nav_chart
+        dates = pd.date_range("2026-01-01", periods=5, freq="15min")
+        s1 = pd.Series([1.0, 1.05, 1.03, 1.08, 1.10], index=dates, name="Portfolio")
+        s2 = pd.Series([1.0, 1.02, 1.01, 1.04, 1.05], index=dates, name="Equal Weight")
+        s3 = pd.Series([1.0, 0.98, 0.99, 1.02, 1.03], index=dates, name="Buy & Hold")
+        fig = create_rebalancing_nav_chart(s1, s2, s3)
+        self.assertIsInstance(fig, go.Figure)
+        self.assertEqual(len(fig.data), 3)
+
 
 if __name__ == "__main__":
     unittest.main()
