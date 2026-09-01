@@ -178,6 +178,28 @@ python scripts/crypto_rebalancing_backtest.py --use-synthetic --model "Equal Wei
 
 ---
 
+### 8. 독립 실행형 인터랙티브 HTML 퀀트 리포트 내보내기
+
+오프라인 브라우저에서도 열어볼 수 있는 단일 HTML 보고서 파일(`reports/crypto_portfolio_report.html`)을 생성합니다:
+
+```powershell
+python scripts/export_html_report.py --output reports/crypto_portfolio_report.html --model "Risk Parity (ERC)"
+```
+- **포함 내용**: KPI 성과 지표 카드, 최적 자산 배분 도넛 차트, 코인 간 상관관계 히트맵, 누적 수익률 시뮬레이션 인터랙티브 차트, Freqtrade 설정 코드
+
+---
+
+### 9. 변동성 기반 동적 손절/익절(SL/TP) 가이드 계산기
+
+각 코인의 하방 변동성(Semi-Deviation)과 위험-보상 비율(RR Ratio)을 분석하여 개별 코인별 권장 손절폭(Stoploss)과 익절폭(Take-Profit)을 자동 산출합니다:
+
+```powershell
+# 코인별 맞춤 손절/익절 가이드 산출 및 Freqtrade 설정용 JSON 내보내기
+python scripts/crypto_risk_budget_calculator.py --risk-mult 2.0 --rr-ratio 2.0 --export-json user_data/risk_params.json
+```
+
+---
+
 ## 📁 프로젝트 구조
 
 ```text
@@ -191,6 +213,8 @@ skfolio_Catton/
 │   ├── crypto_portfolio_optimizer.py  # Freqtrade 연계 크립토 최적화 파이프라인
 │   ├── crypto_hrp_clustering.py       # HRP 계층적 트리 군집화 및 상관계수 분석
 │   ├── crypto_rebalancing_backtest.py # 주기적 포트폴리오 롤링 리밸런싱 백테스트
+│   ├── export_html_report.py          # 인터랙티브 HTML 퀀트 보고서 생성기
+│   ├── crypto_risk_budget_calculator.py # 변동성 기반 동적 SL/TP 리스크 계산기
 │   ├── fetch_live_crypto.py           # 거래소(바이낸스/업비트) 실시간 시세 수집기
 │   └── verify_environment.py          # 환경 검증 스크립트
 ├── src/skfolio/                       # skfolio 핵심 최적화 알고리즘 엔진
@@ -200,7 +224,9 @@ skfolio_Catton/
 │   ├── test_hrp_clustering.py
 │   ├── test_live_fetcher.py
 │   ├── test_dashboard.py
-│   └── test_rebalancing.py
+│   ├── test_rebalancing.py
+│   ├── test_html_report.py
+│   └── test_risk_calculator.py
 ├── requirements-local.txt             # 로컬 개발 및 퀀트 연구용 패키지 목록
 ├── setup.ps1                          # Windows PowerShell 원클릭 설치 스크립트
 ├── app_dashboard.py                   # Streamlit 인터랙티브 웹 대시보드
