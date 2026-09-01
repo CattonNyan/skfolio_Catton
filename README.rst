@@ -4,6 +4,9 @@
    comments are included verbatim in `docs/index.rst`. Do not rename or remove them.
    Content placed outside those regions stays in the README only.
 
+.. note::
+   🇰🇷 **한국어 안내 및 크립토/Freqtrade 자산배분 튜토리얼은 `README_KR.md <README_KR.md>`_ 를 참고하세요.**
+
 |Licence| |Codecov| |PythonVersion| |PyPi| |CI/CD| |Downloads| |Ruff| |Contribution| |Website| |JupyterLite| |Discord| |DOI|
 
 .. |Licence| image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
