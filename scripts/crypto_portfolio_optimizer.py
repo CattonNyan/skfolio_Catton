@@ -233,6 +233,7 @@ def main():
     parser.add_argument("--export-freqtrade", type=str, default="", help="Path to export Freqtrade config or allocation JSON")
     parser.add_argument("--export-model", type=str, default="Risk Parity (ERC)", help="Model to use for export")
     parser.add_argument("--wallet-size", type=float, default=None, help="Optional wallet size in USDT for stake allocation")
+    parser.add_argument("--export-html", type=str, default="", help="Path to export standalone HTML report")
     args = parser.parse_args()
 
     print("==========================================================")
@@ -266,6 +267,17 @@ def main():
             target_path=Path(args.export_freqtrade),
             model_name=args.export_model,
             total_wallet=args.wallet_size,
+        )
+
+    if args.export_html and results:
+        from scripts.export_html_report import generate_html_report
+        weights = results.get(args.export_model, list(results.values())[0])
+        generate_html_report(
+            prices=prices,
+            weights=weights,
+            model_name=args.export_model,
+            total_wallet=args.wallet_size or 10000.0,
+            output_file=args.export_html,
         )
 
 

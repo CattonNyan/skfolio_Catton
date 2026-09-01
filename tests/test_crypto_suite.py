@@ -10,6 +10,7 @@ from tests.test_hrp_clustering import HrpClusteringTests
 from tests.test_live_fetcher import LiveFetcherTests
 from tests.test_dashboard import DashboardTests
 from tests.test_rebalancing import RebalancingTests
+from tests.test_html_report import HtmlReportTests
 
 
 def suite():
@@ -20,6 +21,7 @@ def suite():
     s.addTests(loader.loadTestsFromTestCase(LiveFetcherTests))
     s.addTests(loader.loadTestsFromTestCase(DashboardTests))
     s.addTests(loader.loadTestsFromTestCase(RebalancingTests))
+    s.addTests(loader.loadTestsFromTestCase(HtmlReportTests))
     return s
 
 
