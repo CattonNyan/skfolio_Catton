@@ -82,9 +82,13 @@ def simulate_monte_carlo_paths(
     returns_pct = (final_wealth / initial_capital) - 1.0
 
     # Risk Metrics
-    var_95 = float(np.percentile(initial_capital - final_wealth, 95))
-    var_99 = float(np.percentile(initial_capital - final_wealth, 99))
-    cvar_95 = float(np.mean([loss for loss in (initial_capital - final_wealth) if loss >= var_95]))
+    losses = initial_capital - final_wealth
+    var_95 = float(np.percentile(losses, 95))
+    var_99 = float(np.percentile(losses, 99))
+    cvar_candidates = [loss for loss in losses if loss >= var_95]
+    cvar_95 = float(np.mean(cvar_candidates)) if len(cvar_candidates) > 0 else max(0.0, var_95)
+    if np.isnan(cvar_95):
+        cvar_95 = max(0.0, var_95)
 
     prob_loss = float(np.mean(final_wealth < initial_capital) * 100)
     prob_severe_loss = float(np.mean(final_wealth < initial_capital * 0.70) * 100)

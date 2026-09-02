@@ -41,6 +41,17 @@ class MonteCarloTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             simulate_monte_carlo_paths(prices, weights)
 
+    def test_cvar_never_returns_nan(self):
+        # Monotonically increasing prices where loss is virtually 0
+        dates = pd.date_range("2026-01-01", periods=100, freq="1D")
+        prices = pd.DataFrame({"BTC/USDT": [100.0 * (1.05**i) for i in range(100)]}, index=dates)
+        weights = {"BTC/USDT": 1.0}
+        res = simulate_monte_carlo_paths(prices, weights, days=10, num_simulations=50)
+
+        import math
+        self.assertFalse(math.isnan(res["cvar_95_dollar"]))
+        self.assertGreaterEqual(res["cvar_95_dollar"], 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()
