@@ -49,8 +49,12 @@ if (Test-Path $reqFile) {
 # 5. Done
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host "  설치가 완료되었습니다!" -ForegroundColor Green
-Write-Host "  가상환경 활성화 명령어:" -ForegroundColor White
-Write-Host "  .\.venv\Scripts\Activate.ps1" -ForegroundColor Yellow
-Write-Host "  주피터 랩 실행:" -ForegroundColor White
-Write-Host "  .\.venv\Scripts\jupyter-lab.exe" -ForegroundColor Yellow
+Write-Host "  1. 가상환경 활성화:" -ForegroundColor White
+Write-Host "     .\.venv\Scripts\Activate.ps1" -ForegroundColor Yellow
+Write-Host "  2. 퀀트 웹 대시보드 실행:" -ForegroundColor White
+Write-Host "     streamlit run app_dashboard.py" -ForegroundColor Yellow
+Write-Host "  3. 통합 단위 테스트(80개) 검증:" -ForegroundColor White
+Write-Host "     python tests/test_crypto_suite.py" -ForegroundColor Yellow
+Write-Host "  4. 주피터 랩 실행:" -ForegroundColor White
+Write-Host "     .\.venv\Scripts\jupyter-lab.exe" -ForegroundColor Yellow
 Write-Host "==========================================================" -ForegroundColor Cyan
