@@ -41,6 +41,16 @@ class BlackLittermanTests(unittest.TestCase):
         post_w = res["posterior_weights"]
         self.assertIn("SOL/USDT", post_w)
         self.assertAlmostEqual(sum(post_w.values()), 1.0, places=4)
+        self.assertFalse(res["fallback_to_prior"])
+
+    def test_extreme_bearish_views_fallback_flag(self):
+        prices = generate_synthetic_crypto_data(periods=50)
+        # Apply extreme negative view on all assets
+        views = [f"{col}:-0.99" for col in prices.columns]
+        res = compute_black_litterman_weights(prices, views=views)
+        self.assertIn("fallback_to_prior", res)
+        # Weights should sum to 1.0 and be non-negative
+        self.assertAlmostEqual(sum(res["posterior_weights"].values()), 1.0, places=4)
 
 
 if __name__ == "__main__":

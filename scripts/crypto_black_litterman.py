@@ -128,16 +128,20 @@ def compute_black_litterman_weights(
 
     # Long-only projection (non-negative clipping)
     w_post = np.clip(raw_weights, 0.0, None)
+    fallback_used = False
     if w_post.sum() > 0:
         w_post = w_post / w_post.sum()
     else:
+        print("[!] Warning: All posterior weights were non-positive due to extreme bearish views. Falling back to prior weights.")
         w_post = w_prior
+        fallback_used = True
 
     return {
         "prior_weights": dict(zip(assets, w_prior)),
         "posterior_weights": dict(zip(assets, w_post)),
         "implied_returns": dict(zip(assets, pi)),
         "posterior_returns": dict(zip(assets, er_posterior)),
+        "fallback_to_prior": fallback_used,
     }
 
 
