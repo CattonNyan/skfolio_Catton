@@ -21,6 +21,7 @@ from tests.test_strategy_optimizer import StrategyOptimizerTests
 from tests.test_monte_carlo import MonteCarloTests
 from tests.test_macro_regime import MacroRegimeTests
 from tests.test_factor_analyzer import FactorAnalyzerTests
+from tests.test_enhanced_strategy import EnhancedStrategyTests
 
 
 def suite():
@@ -42,6 +43,7 @@ def suite():
     s.addTests(loader.loadTestsFromTestCase(MonteCarloTests))
     s.addTests(loader.loadTestsFromTestCase(MacroRegimeTests))
     s.addTests(loader.loadTestsFromTestCase(FactorAnalyzerTests))
+    s.addTests(loader.loadTestsFromTestCase(EnhancedStrategyTests))
     return s
 
 

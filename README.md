@@ -305,6 +305,44 @@ python scripts/freqtrade_strategy_optimizer.py --capital 10000 --model "Risk Par
 
 ---
 
+### 15. 몬테카를로 미래 자산 경로 및 VaR 리스크 시뮬레이터
+
+기하 브라운 운동(GBM)을 기반으로 향후 90일간 발생 가능한 1,000개의 가상 가격 경로를 시뮬레이션하여 95% 신뢰구간 콘 차트와 최대 손실액(VaR, CVaR), 원금 손실 확률을 계산합니다:
+
+```powershell
+python scripts/crypto_monte_carlo.py --days 90 --sims 1000 --capital 10000
+```
+
+---
+
+### 16. 공포·탐욕 지수 기반 거시 국면 동적 현금(USDT) 비중 조절기
+
+Alternative.me 실시간 공포·탐욕 지수를 읽어와 시장 과열(Extreme Greed) 시 최대 40%의 현금 버퍼를 강제 확보하여 자산을 보호하고, 공포 국면에서는 적극 투자로 스위칭합니다:
+
+```powershell
+python scripts/crypto_macro_regime.py --wallet-size 10000
+```
+
+---
+
+### 17. 퀀트 멀티 팩터 분석 및 스마트 베타 유니버스 스크리너
+
+모멘텀(Momentum), 저변동성(Low Volatility), 추세 강도(Trend Strength) 팩터를 Z-score로 정규화 합산하여 상위 우량 코인을 자동 선별(Smart Beta Universe)합니다:
+
+```powershell
+python scripts/crypto_factor_analyzer.py --lookback 60 --top-n 3
+```
+
+---
+
+### 18. Freqtrade 완전체 실전 전략 샘플 (`strategies/SkfolioEnhancedAtrStrategy.py`)
+
+`freqtrade-vibe-strategies`에 바로 투입할 수 있는 완전체 전략 파일입니다.
+- **동적 주문 금액**: `custom_stake_amount()`에서 skfolio 최적 비중을 읽어와 코인별 매수 주문액을 자동 차등 집행
+- **동적 손절/익절**: `custom_stoploss()`에서 코인별 하방 변동성 맞춤 손절폭 적용 및 수익 발생 시 브레이크이븐 트레일링
+
+---
+
 ## 📁 프로젝트 구조
 
 ```text
@@ -326,11 +364,16 @@ skfolio_Catton/
 │   ├── crypto_stress_tester.py        # 역사적 블랙스완 스트레스 테스터
 │   ├── crypto_kimchi_premium.py       # 김치 프리미엄 & 환율 차익 분석기
 │   ├── freqtrade_strategy_optimizer.py # 멀티 전략 간 자금 배분 최적화기
+│   ├── crypto_monte_carlo.py          # 몬테카를로 미래 자산 경로 및 VaR 시뮬레이터
+│   ├── crypto_macro_regime.py         # 공포·탐욕 지수 기반 동적 현금 비중 조절기
+│   ├── crypto_factor_analyzer.py      # 퀀트 멀티 팩터 분석 및 스마트 베타 스크리너
 │   ├── freqtrade_stake_allocator.py   # Freqtrade 전략 동적 주문금액 연동 브릿지
 │   ├── fetch_live_crypto.py           # 거래소(바이낸스/업비트) 실시간 시세 수집기
 │   └── verify_environment.py          # 환경 검증 스크립트
+├── strategies/                        # Freqtrade 실전 전략 모음
+│   └── SkfolioEnhancedAtrStrategy.py  # skfolio 동적 비중/리스크 완전 연동 실전 전략
 ├── src/skfolio/                       # skfolio 핵심 최적화 알고리즘 엔진
-├── tests/                             # 단위 테스트 모음 (총 54개 테스트)
+├── tests/                             # 단위 테스트 모음 (총 67개 테스트)
 │   ├── test_crypto_suite.py           # 통합 테스트 스위트 러너 (Python 3.10~3.14 호환)
 │   ├── test_crypto_optimizer.py
 │   ├── test_hrp_clustering.py
@@ -344,7 +387,11 @@ skfolio_Catton/
 │   ├── test_black_litterman.py
 │   ├── test_stress_tester.py
 │   ├── test_kimchi_premium.py
-│   └── test_strategy_optimizer.py
+│   ├── test_strategy_optimizer.py
+│   ├── test_monte_carlo.py
+│   ├── test_macro_regime.py
+│   ├── test_factor_analyzer.py
+│   └── test_enhanced_strategy.py
 ├── requirements-local.txt             # 로컬 개발 및 퀀트 연구용 패키지 목록
 ├── setup.ps1                          # Windows PowerShell 원클릭 설치 스크립트
 ├── app_dashboard.py                   # Streamlit 인터랙티브 웹 대시보드 (효율적 투자선 탑재)
