@@ -62,7 +62,9 @@ def create_pie_chart(weights: dict[str, float], title: str = "최적 자산 배�
     )
     fig.update_layout(
         title=title,
-        template="plotly_white",
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=20, r=20, t=40, b=20),
         legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
     )
@@ -81,7 +83,9 @@ def create_correlation_heatmap(corr_df: pd.DataFrame) -> go.Figure:
         title="코인 간 상관관계 히트맵 (Correlation)",
     )
     fig.update_layout(
-        template="plotly_white",
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=20, r=20, t=40, b=20),
     )
     return fig
@@ -121,7 +125,9 @@ def create_cumulative_return_chart(returns: pd.DataFrame, weights: dict[str, flo
         title="누적 수익률(Cumulative Wealth) 비교 시뮬레이션",
         xaxis_title="일시",
         yaxis_title="누적 배수 (초기값 = 1.0)",
-        template="plotly_white",
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=20, r=20, t=40, b=20),
         hovermode="x unified",
     )
@@ -138,7 +144,9 @@ def create_rebalancing_nav_chart(nav_port: pd.Series, nav_eq: pd.Series, nav_bh:
         title="주기적 리밸런싱 포트폴리오 자산 가치(NAV) 추이",
         xaxis_title="일시",
         yaxis_title="순자산 가치 (NAV, 초기값 = 1.0)",
-        template="plotly_white",
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=20, r=20, t=40, b=20),
         hovermode="x unified",
     )
@@ -219,7 +227,9 @@ def create_efficient_frontier_chart(
         title="효율적 투자선(Efficient Frontier) & 리스크-수익률 분포",
         xaxis_title="변동성(리스크, %)",
         yaxis_title="기대 수익률(%)",
-        template="plotly_white",
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=20, r=20, t=40, b=20),
     )
     return fig
