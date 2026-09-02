@@ -15,6 +15,7 @@ from tests.test_risk_calculator import RiskCalculatorTests
 from tests.test_freqtrade_integration import FreqtradeAllocationTests
 from tests.test_stake_allocator import StakeAllocatorTests
 from tests.test_black_litterman import BlackLittermanTests
+from tests.test_stress_tester import StressTesterTests
 
 
 def suite():
@@ -30,6 +31,7 @@ def suite():
     s.addTests(loader.loadTestsFromTestCase(FreqtradeAllocationTests))
     s.addTests(loader.loadTestsFromTestCase(StakeAllocatorTests))
     s.addTests(loader.loadTestsFromTestCase(BlackLittermanTests))
+    s.addTests(loader.loadTestsFromTestCase(StressTesterTests))
     return s
 
 
