@@ -78,7 +78,9 @@ def evaluate_stress_test(
         default_drop = asset_shocks.get("DEFAULT", -0.30)
 
         for pair, weight in weights.items():
-            base_coin = pair.split("/")[0].upper()
+            # Robust normalization for "BTC/USDT", "BTC_USDT", "BTC:USDT", or plain "BTC"
+            normalized = pair.replace("_", "/").replace(":", "/")
+            base_coin = normalized.split("/")[0].strip().upper()
             drop_rate = asset_shocks.get(base_coin, default_drop)
             portfolio_shock += weight * drop_rate
 
