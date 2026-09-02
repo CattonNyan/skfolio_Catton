@@ -4,7 +4,7 @@
 -e .
 
 # Interactive Analysis & Jupyter
-streamlit>=1.35.0
+streamlit>=1.62.0
 jupyterlab>=4.0.0
 notebook>=7.0.0
 ipywidgets>=8.0.0
