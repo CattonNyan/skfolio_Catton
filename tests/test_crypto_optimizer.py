@@ -178,5 +178,22 @@ class CryptoOptimizerTests(unittest.TestCase):
                 self.assertLessEqual(w, 0.52)
 
 
+    def test_sanitize_weight_constraints(self):
+        from scripts.crypto_portfolio_optimizer import sanitize_weight_constraints
+
+        # 3 assets, max_weight 0.2 is infeasible (sum < 0.6) -> clamped to 1/3 ~ 0.3333
+        min_w, max_w = sanitize_weight_constraints(3, min_weight=None, max_weight=0.2)
+        self.assertAlmostEqual(max_w, 0.3333, places=3)
+
+        # 3 assets, min_weight 0.5 is infeasible (sum > 1.5) -> clamped to 1/3 ~ 0.3333
+        min_w, max_w = sanitize_weight_constraints(3, min_weight=0.5, max_weight=None)
+        self.assertAlmostEqual(min_w, 0.3333, places=3)
+
+        # 3 assets, min_weight 0.4 and max_weight 0.2 -> both sanitized to 0.3333
+        min_w, max_w = sanitize_weight_constraints(3, min_weight=0.4, max_weight=0.2)
+        self.assertEqual(min_w, max_w)
+        self.assertAlmostEqual(min_w, 0.3333, places=3)
+
+
 if __name__ == "__main__":
     unittest.main()

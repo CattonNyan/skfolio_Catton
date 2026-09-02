@@ -142,6 +142,37 @@ def load_market_data(
     )
 
 
+def sanitize_weight_constraints(
+    n_assets: int,
+    min_weight: float | None,
+    max_weight: float | None,
+) -> tuple[float | None, float | None]:
+    """Validate and sanitize weight constraints to guarantee solver feasibility."""
+    if n_assets <= 0:
+        return None, None
+
+    min_w, max_w = min_weight, max_weight
+
+    # 1. Check infeasible upper bound: N * max_w must be >= 1.0
+    if max_w is not None and (max_w * n_assets) < 1.0:
+        clamped = round(1.0 / n_assets, 4)
+        print(f"[!] Warning: max_weight ({max_w}) is infeasible for {n_assets} assets (sum < 1.0). Adjusted to {clamped}.")
+        max_w = clamped
+
+    # 2. Check infeasible lower bound: N * min_w must be <= 1.0
+    if min_w is not None and (min_w * n_assets) > 1.0:
+        clamped = round(1.0 / n_assets, 4)
+        print(f"[!] Warning: min_weight ({min_w}) is infeasible for {n_assets} assets (sum > 1.0). Adjusted to {clamped}.")
+        min_w = clamped
+
+    # 3. Final cross-check: min_weight must not exceed max_weight
+    if min_w is not None and max_w is not None and min_w > max_w:
+        print(f"[!] Warning: min_weight ({min_w}) > max_weight ({max_w}). Setting min_weight = max_weight.")
+        min_w = max_w
+
+    return min_w, max_w
+
+
 def run_optimization(
     prices: pd.DataFrame,
     min_weight: float | None = None,
@@ -156,6 +187,10 @@ def run_optimization(
     # Convert prices to returns
     returns = prices_to_returns(prices)
     assets = list(returns.columns)
+    n_assets = len(assets)
+
+    # Sanitize weight constraints to prevent solver crash
+    min_weight, max_weight = sanitize_weight_constraints(n_assets, min_weight, max_weight)
 
     print(f"[*] Loaded asset returns: {assets}")
     print(f"[*] Sample size: {len(returns)} bars from {returns.index[0]} to {returns.index[-1]}")
