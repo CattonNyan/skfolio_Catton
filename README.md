@@ -15,7 +15,7 @@
 <p align="center">
   <a href="https://github.com/CattonNyan/skfolio_Catton/actions/workflows/crypto_ci.yml"><img src="https://github.com/CattonNyan/skfolio_Catton/actions/workflows/crypto_ci.yml/badge.svg" alt="Crypto Pipeline CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-BSD%203--Clause-blue.svg" alt="License: BSD 3-Clause"></a>
-  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg" alt="Python 3.10+"></a>
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue.svg" alt="Python 3.10 ~ 3.14"></a>
   <a href="https://scikit-learn.org/"><img src="https://img.shields.io/badge/scikit--learn-compatible-orange.svg" alt="Scikit-Learn Compatible"></a>
 </p>
 
