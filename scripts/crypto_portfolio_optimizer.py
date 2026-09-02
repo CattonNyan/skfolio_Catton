@@ -376,7 +376,7 @@ def export_freqtrade_allocation(
                 return False
 
         atomic_write_json(export_data)
-        print(f"\n[+] Exported Freqtrade allocation: {target_path}")
+        print(f"\n[+] Successfully exported Freqtrade allocation to: {target_path}")
         return True
     return False
 
