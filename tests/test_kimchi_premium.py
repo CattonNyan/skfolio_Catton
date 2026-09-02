@@ -28,6 +28,13 @@ class KimchiPremiumTests(unittest.TestCase):
         res = compute_kimchi_premium(upbit, binance, usdt_krw_rate=1000.0)
         self.assertIn("Discount", res["ETH"]["status"])
 
+    def test_fetch_live_usd_krw_rate(self):
+        from scripts.crypto_kimchi_premium import fetch_live_usd_krw_rate
+        rate, source = fetch_live_usd_krw_rate(timeout=2.0)
+        self.assertIsInstance(rate, float)
+        self.assertGreater(rate, 500.0)
+        self.assertIsInstance(source, str)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -19,7 +19,29 @@ for p in [root_dir, src_dir]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
+import urllib.request
 import pandas as pd
+
+
+def fetch_live_usd_krw_rate(timeout: float = 3.0) -> tuple[float, str]:
+    """
+    Attempt to fetch real-time USD/KRW exchange rate from public open exchange API.
+
+    Returns tuple (rate, source_description).
+    Falls back safely to (1350.0, 'Default Fallback') on network error.
+    """
+    url = "https://open.er-api.com/v6/latest/USD"
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            rate = float(data["rates"].get("KRW", 1350.0))
+            return rate, "Live Open Exchange API"
+    except Exception:
+        return 1350.0, "Default Fallback (Use --usdt-krw to override)"
 
 
 def compute_kimchi_premium(
@@ -98,9 +120,16 @@ def print_kimchi_premium_report(
 
 def main():
     parser = argparse.ArgumentParser(description="Kimchi Premium Arbitrage Analyzer")
-    parser.add_argument("--usdt-krw", type=float, default=1350.0, help="USD/KRW exchange rate (default: 1350.0)")
+    parser.add_argument("--usdt-krw", type=float, default=None, help="Explicit USD/KRW exchange rate (default: fetch live)")
     parser.add_argument("--export-json", type=str, default="", help="Path to export results JSON")
     args = parser.parse_args()
+
+    if args.usdt_krw is not None:
+        rate = args.usdt_krw
+        rate_source = "User Specified (--usdt-krw)"
+    else:
+        rate, rate_source = fetch_live_usd_krw_rate()
+    print(f"[*] Applied Exchange Rate: {rate:,.2f} KRW/USD (Source: {rate_source})")
 
     # Default representative crypto prices if live API is unavailable
     sample_upbit = {"BTC": 136500000.0, "ETH": 4750000.0, "SOL": 298000.0, "XRP": 1150.0}
@@ -127,10 +156,10 @@ def main():
     results = compute_kimchi_premium(
         upbit_prices=sample_upbit,
         binance_prices=sample_binance,
-        usdt_krw_rate=args.usdt_krw,
+        usdt_krw_rate=rate,
     )
 
-    print_kimchi_premium_report(results, usdt_krw_rate=args.usdt_krw)
+    print_kimchi_premium_report(results, usdt_krw_rate=rate)
 
     if args.export_json:
         out_path = Path(args.export_json)
