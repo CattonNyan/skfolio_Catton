@@ -134,9 +134,9 @@ def print_stress_test_report(
 
 def main():
     parser = argparse.ArgumentParser(description="Crypto Historical Stress Testing Engine")
-    parser.add_argument("--wallet-size", type=float, default=10000.0, help="Total wallet value in USDT")
-    parser.add_argument("--config-file", type=str, default="", help="Path to allocation or config JSON")
-    parser.add_argument("--export-json", type=str, default="", help="Path to export results JSON")
+    parser.add_argument("--wallet-size", "--wallet", dest="wallet_size", type=float, default=10000.0, help="Total wallet value in USDT (default: 10000.0)")
+    parser.add_argument("--config-file", type=str, default="", help="Path to allocation or config JSON to read weights from")
+    parser.add_argument("--export-json", type=str, default="", help="Path to export results JSON file")
     args = parser.parse_args()
 
     weights = {"BTC/USDT": 0.50, "ETH/USDT": 0.30, "SOL/USDT": 0.20}
