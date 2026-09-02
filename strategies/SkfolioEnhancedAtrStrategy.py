@@ -98,6 +98,18 @@ class SkfolioEnhancedAtrStrategy(IStrategy):
         "360": 0.0,
     }
 
+    order_types = {
+        "entry": "limit",
+        "exit": "limit",
+        "stoploss": "market",
+        "stoploss_on_exchange": False,
+    }
+
+    order_time_in_force = {
+        "entry": "gtc",
+        "exit": "gtc",
+    }
+
     def __init__(self, config: dict | None = None):
         super().__init__(config=config) if hasattr(super(), "__init__") else None
         self.config = config or {}
