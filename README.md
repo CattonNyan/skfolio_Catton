@@ -232,7 +232,31 @@ python scripts/crypto_risk_budget_calculator.py `
   --freqtrade-config ../freqtrade/user_data/config.json
 ```
 
-`SkfolioFreqtradeMixin`은 `use_custom_stoploss`와 `use_custom_roi`를 활성화하고, 주입된 `pair_risk_limits`를 `custom_stoploss()`와 `custom_roi()`에서 종목별로 적용합니다. 별도 JSON을 사용하려면 Freqtrade 설정의 `skfolio_risk_file`에 `risk_params.json` 경로를 지정할 수도 있습니다. 레버리지 거래에서는 기초자산 가격 기준 SL/TP 거리를 유지하도록 콜백 반환값에 레버리지를 반영합니다.
+### 10. 실시간 시세 원스톱 최적화 및 Freqtrade 동적 주문금액 연동
+
+1. **실시간 시세 수집 후 즉시 최적화 실행 (`--optimize`)**:
+   ```powershell
+   # 바이낸스 최신 캔들을 받아와서 즉시 포트폴리오 최적화 실행
+   python scripts/fetch_live_crypto.py --exchange binance --optimize
+   ```
+
+2. **Freqtrade 실전 전략 주문 금액 동적 할당 (`scripts/freqtrade_stake_allocator.py`)**:
+   skfolio가 산출한 비중을 Freqtrade 전략(`custom_stake_amount`)에서 단 한 줄로 불러와 실제 매수 주문 금액을 코인별 비중대로 자동 집행합니다:
+   ```python
+   from scripts.freqtrade_stake_allocator import get_custom_stake_amount
+
+   def custom_stake_amount(self, pair: str, current_time, current_rate: float,
+                           proposed_stake: float, min_stake: float | None, max_stake: float | None,
+                           entry_tag: str | None, side: str, **kwargs) -> float:
+       return get_custom_stake_amount(
+           pair=pair,
+           proposed_stake=proposed_stake,
+           total_wallet=self.wallets.get_total_stake_amount(),
+           min_stake=min_stake,
+           max_stake=max_stake,
+           config_path="user_data/config.json",
+       )
+   ```
 
 ---
 
@@ -251,6 +275,7 @@ skfolio_Catton/
 │   ├── crypto_rebalancing_backtest.py # 주기적 포트폴리오 롤링 리밸런싱 백테스트
 │   ├── export_html_report.py          # 인터랙티브 HTML 퀀트 보고서 생성기
 │   ├── crypto_risk_budget_calculator.py # 변동성 기반 동적 SL/TP 리스크 계산기
+│   ├── freqtrade_stake_allocator.py   # Freqtrade 전략 동적 주문금액 연동 브릿지
 │   ├── fetch_live_crypto.py           # 거래소(바이낸스/업비트) 실시간 시세 수집기
 │   └── verify_environment.py          # 환경 검증 스크립트
 ├── src/skfolio/                       # skfolio 핵심 최적화 알고리즘 엔진
@@ -262,7 +287,9 @@ skfolio_Catton/
 │   ├── test_dashboard.py
 │   ├── test_rebalancing.py
 │   ├── test_html_report.py
-│   └── test_risk_calculator.py
+│   ├── test_risk_calculator.py
+│   ├── test_freqtrade_integration.py
+│   └── test_stake_allocator.py
 ├── requirements-local.txt             # 로컬 개발 및 퀀트 연구용 패키지 목록
 ├── setup.ps1                          # Windows PowerShell 원클릭 설치 스크립트
 ├── app_dashboard.py                   # Streamlit 인터랙티브 웹 대시보드
