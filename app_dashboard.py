@@ -28,6 +28,11 @@ from scripts.crypto_portfolio_optimizer import (
     sanitize_weight_constraints,
 )
 from scripts.crypto_rebalancing_backtest import simulate_rebalancing
+from scripts.crypto_monte_carlo import simulate_monte_carlo
+from scripts.crypto_stress_tester import evaluate_stress_test
+from scripts.crypto_macro_regime import calculate_macro_regime_weights, fetch_fear_and_greed_index
+from scripts.crypto_kimchi_premium import compute_kimchi_premium, fetch_live_usd_krw_rate
+from scripts.crypto_tax_calculator import compute_crypto_tax_impact
 
 # Optional skfolio optimization imports
 try:
@@ -268,6 +273,49 @@ def create_efficient_frontier_chart(
     return fig
 
 
+def create_monte_carlo_cone_chart(mc_res: dict[str, object]) -> go.Figure:
+    """Create fan/cone chart of Monte Carlo wealth paths."""
+    days = list(range(len(mc_res["path_p50"])))
+    fig = go.Figure()
+
+    # 95% Confidence Band
+    fig.add_trace(go.Scatter(
+        x=days, y=mc_res["path_p95"],
+        mode="lines",
+        line=dict(width=0),
+        name="상위 95% 경로 (낙관적)",
+        showlegend=False,
+    ))
+    fig.add_trace(go.Scatter(
+        x=days, y=mc_res["path_p05"],
+        mode="lines",
+        line=dict(width=0),
+        fill="tonexty",
+        fillcolor="rgba(0, 200, 83, 0.15)",
+        name="95% 신뢰구간 밴드",
+    ))
+
+    # Median Path
+    fig.add_trace(go.Scatter(
+        x=days, y=mc_res["path_p50"],
+        mode="lines",
+        name="중앙값 (Median)",
+        line=dict(color="#00E5FF", width=2.5),
+    ))
+
+    fig.update_layout(
+        title="몬테카를로 미래 자산 경로 시뮬레이션 (95% 신뢰구간)",
+        xaxis_title="경과 일수 (Days)",
+        yaxis_title="예상 자산 가치 ($)",
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=20, r=20, t=40, b=20),
+        hovermode="x unified",
+    )
+    return fig
+
+
 def main():
     st.set_page_config(
         page_title="skfolio Crypto Dashboard",
@@ -351,7 +399,15 @@ def main():
         weights_dict = (inv_vols / inv_vols.sum()).to_dict()
 
     # 4. Tab Interface
-    tab_opt, tab_rebalance = st.tabs(["📊 포트폴리오 최적화 & 자산배분", "🔄 주기적 리밸런싱 롤링 백테스트"])
+    tab_opt, tab_rebalance, tab_mc, tab_stress, tab_macro, tab_kimchi, tab_tax = st.tabs([
+        "📊 포트폴리오 최적화 & 자산배분",
+        "🔄 주기적 리밸런싱 백테스트",
+        "🎲 몬테카를로 미래 시뮬레이션",
+        "💥 역사적 블랙스완 스트레스 테스트",
+        "😨 공포·탐욕 매크로 현금 조절",
+        "⚡ 김치 프리미엄 차익거래",
+        "💰 세후 순수익률 & 세금 시뮬레이터",
+    ])
 
     with tab_opt:
         port_ret = returns.dot(pd.Series(weights_dict))
@@ -510,6 +566,124 @@ def main():
                     st.dataframe(comp_df, use_container_width=True, hide_index=True)
                 except Exception as ex:
                     st.error(f"시뮬레이션 실행 중 오류 발생: {ex}")
+
+    with tab_mc:
+        st.subheader("🎲 몬테카를로 미래 자산 경로 & VaR/CVaR 시뮬레이션")
+        st.caption("기하 브라운 운동(GBM) 기반으로 1,000개 이상의 미래 자산 경로를 시뮬레이션하여 95% 신뢰구간과 최대 손실 위험(VaR)을 산출합니다.")
+        col_m1, col_m2 = st.columns(2)
+        with col_m1:
+            mc_days = st.slider("미래 시뮬레이션 기간 (Days)", min_value=30, max_value=365, value=90, step=15)
+        with col_m2:
+            mc_sims = st.slider("시뮬레이션 경로 수 (Paths)", min_value=200, max_value=2000, value=1000, step=100)
+
+        if st.button("🚀 몬테카를로 시뮬레이션 실행", key="btn_run_mc"):
+            with st.spinner("몬테카를로 경로 시뮬레이션 계산 중..."):
+                try:
+                    mc_res = simulate_monte_carlo(prices, weights_dict, initial_capital=wallet_size, days=mc_days, num_simulations=mc_sims)
+                    m1, m2, m3, m4 = st.columns(4)
+                    m1.metric("기대 최종 자산 (평균)", f"${mc_res['expected_final_wealth']:,.2f}")
+                    m2.metric("중앙값 최종 자산", f"${mc_res['median_final_wealth']:,.2f}")
+                    m3.metric("95% VaR (최대 5% 손실)", f"-${mc_res['var_95_dollar']:,.2f}")
+                    m4.metric("95% CVaR (극단 평균 손실)", f"-${mc_res['cvar_95_dollar']:,.2f}")
+
+                    fig_cone = create_monte_carlo_cone_chart(mc_res)
+                    st.plotly_chart(fig_cone, use_container_width=True)
+
+                    p1, p2, p3 = st.columns(3)
+                    p1.metric("원금 손실 확률 (Prob of Loss)", f"{mc_res['prob_loss_pct']:.2f}%")
+                    p2.metric("원금 30% 폭락 확률", f"{mc_res['prob_severe_loss_pct']:.2f}%")
+                    p3.metric("원금 2배 달성 확률", f"{mc_res['prob_doubling_pct']:.2f}%")
+                except Exception as ex:
+                    st.error(f"몬테카를로 시뮬레이션 오류: {ex}")
+
+    with tab_stress:
+        st.subheader("💥 역사적 크립토 블랙스완 스트레스 테스터")
+        st.caption("2020년 코로나 쇼크, 2022년 루나 붕괴, FTX 파산, 2021년 중국 채굴 금지 등 실제 역사적 극단 위기 상황을 현재 포트폴리오에 주입하여 자본 방어력을 진단합니다.")
+        try:
+            stress_res = evaluate_stress_test(weights_dict, total_wallet=wallet_size)
+            stress_df = pd.DataFrame([
+                {
+                    "역사적 블랙스완 시나리오": k,
+                    "포트폴리오 손실률": f"{v['portfolio_loss_pct']:+.2f}%",
+                    "예상 손실액": f"-${v['dollar_loss']:,.2f}",
+                    "충격 후 잔여 자산": f"${v['remaining_balance']:,.2f}",
+                    "리스크 방어 등급": v["resilience_grade"],
+                }
+                for k, v in stress_res.items()
+            ])
+            st.dataframe(stress_df, use_container_width=True, hide_index=True)
+        except Exception as ex:
+            st.error(f"스트레스 테스트 오류: {ex}")
+
+    with tab_macro:
+        st.subheader("😨 공포·탐욕 지수 기반 거시 국면 동적 현금(USDT) 조절기")
+        st.caption("Alternative.me 암호화폐 공포·탐욕 지수를 실시간 수집하여, 극단적 탐욕 구간에서는 현금 버퍼를 최대 40%까지 자동으로 확보합니다.")
+        try:
+            fng_val, fng_class = fetch_fear_and_greed_index()
+            g1, g2 = st.columns(2)
+            g1.metric("현재 공포·탐욕 지수 (Fear & Greed)", f"{fng_val} / 100", fng_class)
+            macro_weights = calculate_macro_regime_weights(weights_dict, fear_and_greed_value=fng_val)
+            g2.metric("권장 안전자산(현금) 버퍼", f"{macro_weights.get('USDT (Cash)', 0.0)*100:.1f}%")
+
+            macro_df = pd.DataFrame({
+                "자산 / 현금 버퍼": list(macro_weights.keys()),
+                "거시 조정 비중": [f"{w*100:.2f}%" for w in macro_weights.values()],
+                "배분 금액": [f"${w * wallet_size:,.2f}" for w in macro_weights.values()],
+            })
+            st.dataframe(macro_df, use_container_width=True, hide_index=True)
+        except Exception as ex:
+            st.error(f"거시 국면 분석 오류: {ex}")
+
+    with tab_kimchi:
+        st.subheader("⚡ 김치 프리미엄 & 글로벌 거래소 차익거래 분석")
+        st.caption("업비트(KRW)와 바이낸스(USDT)의 동일 코인 가격 차이와 실시간 원/달러 환율을 분석합니다.")
+        try:
+            live_rate, rate_source = fetch_live_usd_krw_rate()
+            st.info(f"적용 환율: {live_rate:,.2f} KRW/USD (출처: {rate_source})")
+            sample_upbit = {"BTC": 136500000.0, "ETH": 4750000.0, "SOL": 298000.0, "XRP": 1150.0}
+            sample_binance = {"BTC": 98000.0, "ETH": 3450.0, "SOL": 215.0, "XRP": 0.83}
+            kp_res = compute_kimchi_premium(sample_upbit, sample_binance, usdt_krw_rate=live_rate)
+            kp_df = pd.DataFrame([
+                {
+                    "코인": k,
+                    "업비트 원화가": f"₩{v['upbit_krw']:,.0f}",
+                    "글로벌 적정 원화가": f"₩{v['fair_krw']:,.0f}",
+                    "프리미엄(%)": f"{v['premium_pct']:+.2f}%",
+                    "격차 금액": f"₩{v['krw_difference']:+,.0f}",
+                    "상태": v["status"],
+                }
+                for k, v in kp_res.items()
+            ])
+            st.dataframe(kp_df, use_container_width=True, hide_index=True)
+        except Exception as ex:
+            st.error(f"김치 프리미엄 분석 오류: {ex}")
+
+    with tab_tax:
+        st.subheader("💰 가상자산 세후 순수익률 & 양도소득세 시뮬레이터")
+        st.caption("대한민국 가상자산 소득세법(연간 기본공제 250만 원, 22% 분리과세) 규정에 따른 실현 손익 통산 및 세후 수익률을 계산합니다.")
+        try:
+            col_t1, col_t2 = st.columns(2)
+            with col_t1:
+                annual_profit_krw = st.number_input("연간 실현 손익 합계 (KRW)", value=12000000.0, step=1000000.0, format="%.0f")
+            with col_t2:
+                tax_allowance_krw = st.number_input("연간 법정 기본공제액 (KRW)", value=2500000.0, step=500000.0, format="%.0f")
+
+            sample_trades = [annual_profit_krw * 0.7, annual_profit_krw * 0.5, -annual_profit_krw * 0.2]
+            tax_res = compute_crypto_tax_impact(sample_trades, annual_allowance_krw=tax_allowance_krw, initial_capital_krw=wallet_size * 1350.0)
+
+            t1, t2, t3, t4 = st.columns(4)
+            t1.metric("손익 통산 실현순이익", f"₩{tax_res['net_realized_profit']:,.0f}")
+            t2.metric("과세 표준 (공제 후)", f"₩{tax_res['taxable_base']:,.0f}")
+            t3.metric("예상 납부 세액 (22%)", f"₩{tax_res['estimated_tax_krw']:,.0f}")
+            t4.metric("최종 세후 순이익", f"₩{tax_res['after_tax_profit_krw']:,.0f}")
+
+            st.markdown("---")
+            tr1, tr2, tr3 = st.columns(3)
+            tr1.metric("세전 순수익률", f"{tax_res['pre_tax_return_pct']:+.2f}%")
+            tr2.metric("세후 순수익률", f"{tax_res['after_tax_return_pct']:+.2f}%")
+            tr3.metric("세금 잠식률 (Tax Drag)", f"-{tax_res['tax_drag_pct']:.2f}%p")
+        except Exception as ex:
+            st.error(f"세금 시뮬레이터 오류: {ex}")
 
 
 if __name__ == "__main__":
