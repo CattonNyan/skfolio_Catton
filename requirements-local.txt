@@ -1,6 +1,7 @@
 # Local Development and Study Requirements for skfolio_Catton
 
 # Core dependencies (installed from current source)
+scikit-learn>=1.3.0
 -e .
 
 # Interactive Analysis & Jupyter
