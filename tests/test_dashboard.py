@@ -58,5 +58,19 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(len(fig.data), 3)
 
 
+    @unittest.skipUnless(HAS_DASHBOARD_DEPS, "plotly or streamlit not installed")
+    def test_create_efficient_frontier_chart(self):
+        from app_dashboard import create_efficient_frontier_chart
+        dates = pd.date_range("2026-01-01", periods=10, freq="15min")
+        returns = pd.DataFrame(
+            {"BTC": [0.01] * 10, "ETH": [0.02] * 10},
+            index=dates,
+        )
+        weights = {"BTC": 0.6, "ETH": 0.4}
+        fig = create_efficient_frontier_chart(returns, weights, num_simulations=50)
+        self.assertIsInstance(fig, go.Figure)
+        self.assertGreaterEqual(len(fig.data), 3)
+
+
 if __name__ == "__main__":
     unittest.main()

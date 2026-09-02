@@ -145,6 +145,86 @@ def create_rebalancing_nav_chart(nav_port: pd.Series, nav_eq: pd.Series, nav_bh:
     return fig
 
 
+def create_efficient_frontier_chart(
+    returns: pd.DataFrame,
+    optimal_weights: dict[str, float],
+    num_simulations: int = 400,
+) -> go.Figure:
+    """Generate 2D interactive Efficient Frontier scatter plot."""
+    n_assets = len(returns.columns)
+    mean_rets = returns.mean()
+    cov_matrix = returns.cov()
+
+    np.random.seed(42)
+    weights_matrix = np.random.dirichlet(np.ones(n_assets), size=num_simulations)
+    port_returns = np.dot(weights_matrix, mean_rets) * 100
+    port_vols = np.sqrt(np.diag(np.dot(weights_matrix, np.dot(cov_matrix, weights_matrix.T)))) * 100
+    sharpe_ratios = port_returns / (port_vols + 1e-9)
+
+    fig = go.Figure()
+
+    # Simulated portfolio cloud
+    fig.add_trace(
+        go.Scatter(
+            x=port_vols,
+            y=port_returns,
+            mode="markers",
+            marker=dict(
+                color=sharpe_ratios,
+                colorscale="Viridis",
+                size=5,
+                opacity=0.4,
+                showscale=True,
+                colorbar=dict(title="Sharpe"),
+            ),
+            name="시뮬레이션 포트폴리오",
+            hoverinfo="skip",
+        )
+    )
+
+    # Individual asset dots
+    for asset in returns.columns:
+        a_ret = float(mean_rets[asset] * 100)
+        a_vol = float(np.sqrt(cov_matrix.loc[asset, asset]) * 100)
+        fig.add_trace(
+            go.Scatter(
+                x=[a_vol],
+                y=[a_ret],
+                mode="markers+text",
+                marker=dict(size=11, symbol="circle", line=dict(width=1.5, color="white")),
+                text=[asset],
+                textposition="top center",
+                name=asset,
+            )
+        )
+
+    # Current optimal portfolio star
+    opt_w = np.array([optimal_weights.get(c, 0.0) for c in returns.columns])
+    opt_ret = float(np.dot(opt_w, mean_rets) * 100)
+    opt_vol = float(np.sqrt(np.dot(opt_w, np.dot(cov_matrix, opt_w))) * 100)
+
+    fig.add_trace(
+        go.Scatter(
+            x=[opt_vol],
+            y=[opt_ret],
+            mode="markers+text",
+            marker=dict(size=18, symbol="star", color="#FF1744", line=dict(width=2, color="white")),
+            text=["⭐ 최적 포트폴리오"],
+            textposition="top center",
+            name="⭐ 최적 포트폴리오",
+        )
+    )
+
+    fig.update_layout(
+        title="효율적 투자선(Efficient Frontier) & 리스크-수익률 분포",
+        xaxis_title="변동성(리스크, %)",
+        yaxis_title="기대 수익률(%)",
+        template="plotly_white",
+        margin=dict(l=20, r=20, t=40, b=20),
+    )
+    return fig
+
+
 def main():
     st.set_page_config(
         page_title="skfolio Crypto Dashboard",
@@ -359,6 +439,12 @@ def main():
             corr_df = returns.corr()
             fig_corr = create_correlation_heatmap(corr_df)
             st.plotly_chart(fig_corr, use_container_width=True)
+
+        st.markdown("---")
+        # Charts Row 3: Efficient Frontier
+        st.subheader("🎯 효율적 투자선 (Efficient Frontier)")
+        fig_frontier = create_efficient_frontier_chart(returns, weights_dict)
+        st.plotly_chart(fig_frontier, use_container_width=True)
 
     with tab_rebalance:
         st.subheader("🔄 주기적 포트폴리오 리밸런싱(Rolling Window) 백테스트")
