@@ -13,6 +13,13 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+# Ensure local skfolio source and scripts are discovered
+root_dir = str(Path(__file__).resolve().parents[1])
+src_dir = str(Path(__file__).resolve().parents[1] / "src")
+for p in [root_dir, src_dir]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
 import pandas as pd
 
 try:
@@ -20,6 +27,19 @@ try:
     HAS_CCXT = True
 except ImportError:
     HAS_CCXT = False
+
+
+def data_dict_to_prices(data_dict: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """Convert ccxt OHLCV dict to a combined Close price DataFrame indexed by date."""
+    close_series: dict[str, pd.Series] = {}
+    for symbol, df in data_dict.items():
+        if "date" in df.columns and "close" in df.columns:
+            s = df.set_index("date")["close"]
+            close_series[symbol] = s[~s.index.duplicated(keep="last")]
+    if not close_series:
+        return pd.DataFrame()
+    prices = pd.DataFrame(close_series).sort_index().ffill().dropna()
+    return prices
 
 
 def fetch_ohlcv_ccxt(
@@ -95,6 +115,7 @@ def main():
     parser.add_argument("--timeframe", type=str, default="1h", help="Timeframe (e.g. 15m, 1h, 1d)")
     parser.add_argument("--limit", type=int, default=500, help="Number of candles (max usually 500~1000)")
     parser.add_argument("--output-dir", type=str, default="data/live", help="Output directory")
+    parser.add_argument("--optimize", action="store_true", help="Run portfolio optimization immediately after fetching")
     args = parser.parse_args()
 
     default_pairs = (
@@ -117,6 +138,12 @@ def main():
 
     if data:
         save_market_data(data, Path(args.output_dir), timeframe=args.timeframe)
+        if args.optimize:
+            prices = data_dict_to_prices(data)
+            if not prices.empty:
+                print("\n[*] Running live portfolio optimization on fetched market prices...")
+                from scripts.crypto_portfolio_optimizer import run_optimization
+                run_optimization(prices)
 
 
 if __name__ == "__main__":
