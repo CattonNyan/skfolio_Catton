@@ -307,6 +307,41 @@ def main():
                 else:
                     st.error("내보내기 실패. 파일 경로를 확인해주세요.")
 
+            # CSV Download Button
+            csv_bytes = table_df.to_csv(index=False, encoding="utf-8-sig").encode("utf-8-sig")
+            st.download_button(
+                label="📊 최적 배분 비중 CSV 다운로드",
+                data=csv_bytes,
+                file_name="crypto_portfolio_allocation.csv",
+                mime="text/csv",
+                use_container_width=True,
+            )
+
+            # HTML Quant Report Download Button
+            try:
+                from scripts.export_html_report import generate_html_report
+                import tempfile
+                with tempfile.TemporaryDirectory() as tmp_dir:
+                    temp_html_path = Path(tmp_dir) / "report.html"
+                    generate_html_report(
+                        prices=prices,
+                        weights=weights_dict,
+                        model_name=model_type,
+                        total_wallet=wallet_size,
+                        output_file=temp_html_path,
+                        data_source=provenance,
+                    )
+                    html_content = temp_html_path.read_text(encoding="utf-8")
+                st.download_button(
+                    label="📥 인터랙티브 HTML 퀀트 리포트 다운로드",
+                    data=html_content,
+                    file_name="crypto_quant_report.html",
+                    mime="text/html",
+                    use_container_width=True,
+                )
+            except Exception as e:
+                pass
+
         st.markdown("---")
 
         # Charts Row 2: Correlation & Cumulative Returns
