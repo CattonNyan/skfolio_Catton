@@ -58,10 +58,12 @@ def compute_crypto_factors(
         vol = float(r_series.std() + 1e-9)
         low_vol = float(1.0 / vol)
 
-        # 3. Trend Strength Factor: SMA(20) / SMA(60)
-        sma20 = float(p_series.iloc[-20:].mean()) if len(p_series) >= 20 else float(p_series.mean())
-        sma60 = float(p_series.mean())
-        trend_ratio = float(sma20 / (sma60 + 1e-9))
+        # 3. Trend Strength Factor: Fast SMA(20) / Slow SMA(min(60, lookback))
+        fast_win = min(20, len(p_series))
+        slow_win = min(60, len(p_series))
+        sma_fast = float(p_series.iloc[-fast_win:].mean())
+        sma_slow = float(p_series.iloc[-slow_win:].mean())
+        trend_ratio = float(sma_fast / (sma_slow + 1e-9))
 
         records.append({
             "asset": asset,
