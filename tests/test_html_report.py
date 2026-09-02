@@ -2,7 +2,14 @@
 
 import unittest
 import tempfile
+import sys
 from pathlib import Path
+
+# Ensure project root is in sys.path
+root_dir = str(Path(__file__).resolve().parents[1])
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
+
 import pandas as pd
 
 from scripts.crypto_portfolio_optimizer import generate_synthetic_crypto_data
@@ -34,6 +41,9 @@ class HtmlReportTests(unittest.TestCase):
             self.assertIn("BTC/USDT", content)
             self.assertIn("Risk Parity (ERC)", content)
             self.assertIn("Freqtrade", content)
+            # Verify Dark Theme styling
+            self.assertIn("#0E1117", content)
+            self.assertIn("#161B22", content)
 
 
 if __name__ == "__main__":
