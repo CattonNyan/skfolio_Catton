@@ -57,32 +57,33 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <style>
         body {{
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: #f8f9fa;
-            color: #212529;
+            background-color: #0E1117;
+            color: #E0E3EB;
             margin: 0;
             padding: 30px;
         }}
         .container {{
             max-width: 1200px;
             margin: 0 auto;
-            background: #ffffff;
+            background: #161B22;
+            border: 1px solid #30363D;
             border-radius: 12px;
             padding: 35px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
         }}
         .header {{
-            border-bottom: 2px solid #e9ecef;
+            border-bottom: 1px solid #30363D;
             padding-bottom: 20px;
             margin-bottom: 30px;
         }}
         .header h1 {{
             margin: 0 0 10px 0;
-            color: #1a73e8;
+            color: #58A6FF;
             font-size: 28px;
         }}
         .header p {{
             margin: 0;
-            color: #6c757d;
+            color: #8B949E;
             font-size: 14px;
         }}
         .metric-cards {{
@@ -92,25 +93,25 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             margin-bottom: 35px;
         }}
         .card {{
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
+            background: #21262D;
+            border: 1px solid #30363D;
             border-radius: 8px;
             padding: 18px;
             text-align: center;
         }}
         .card-label {{
             font-size: 13px;
-            color: #6c757d;
+            color: #8B949E;
             margin-bottom: 8px;
             font-weight: 500;
         }}
         .card-value {{
             font-size: 22px;
             font-weight: 700;
-            color: #212529;
+            color: #F0F6FC;
         }}
-        .card-value.green {{ color: #2e7d32; }}
-        .card-value.blue {{ color: #1565c0; }}
+        .card-value.green {{ color: #3FB950; }}
+        .card-value.blue {{ color: #58A6FF; }}
         .section {{
             margin-bottom: 40px;
         }}
@@ -118,7 +119,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             font-size: 18px;
             font-weight: 600;
             margin-bottom: 15px;
-            color: #343a40;
+            color: #F0F6FC;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -136,16 +137,20 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         th, td {{
             padding: 12px;
             text-align: left;
-            border-bottom: 1px solid #dee2e6;
+            border-bottom: 1px solid #30363D;
         }}
         th {{
-            background-color: #f1f3f5;
-            color: #495057;
+            background-color: #21262D;
+            color: #8B949E;
             font-size: 13px;
         }}
+        td {{
+            color: #C9D1D9;
+        }}
         pre {{
-            background: #282c34;
-            color: #abb2bf;
+            background: #0D1117;
+            border: 1px solid #30363D;
+            color: #79C0FF;
             padding: 16px;
             border-radius: 8px;
             font-size: 13px;
@@ -155,8 +160,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             margin-top: 50px;
             text-align: center;
             font-size: 12px;
-            color: #adb5bd;
-            border-top: 1px solid #e9ecef;
+            color: #6E7681;
+            border-top: 1px solid #30363D;
             padding-top: 20px;
         }}
     </style>
