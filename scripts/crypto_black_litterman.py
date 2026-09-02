@@ -24,6 +24,7 @@ from scripts.crypto_portfolio_optimizer import (
     find_freqtrade_data_dirs,
     generate_synthetic_crypto_data,
     load_from_feather_dir,
+    positive_float,
 )
 
 
@@ -169,9 +170,9 @@ def main():
     parser = argparse.ArgumentParser(description="Crypto Black-Litterman Optimization Engine")
     parser.add_argument("--data-dir", type=str, default="", help="Directory containing Freqtrade feather files")
     parser.add_argument("--timeframe", type=str, default="15m", help="Candle timeframe")
-    parser.add_argument("--views", nargs="+", default=["BTC/USDT>ETH/USDT:0.02"], help="Views list (e.g. BTC/USDT>ETH/USDT:0.02 SOL/USDT:0.05)")
-    parser.add_argument("--tau", type=float, default=0.05, help="Scalar tau uncertainty (default: 0.05)")
-    parser.add_argument("--risk-aversion", type=float, default=2.5, help="Risk aversion lambda (default: 2.5)")
+    parser.add_argument("--views", nargs="+", default=["BTC/USDT>ETH/USDT:0.02"], help="정성적 전망(Views) 리스트 (상대전망: BTC/USDT>ETH/USDT:0.02, 절대전망: SOL/USDT:0.05)")
+    parser.add_argument("--tau", type=positive_float, default=0.05, help="사전 수익률 추정의 불확실성 스케일러 tau (0.01~0.1 권장, 기본: 0.05)")
+    parser.add_argument("--risk-aversion", type=positive_float, default=2.5, help="투자자 위험 회피 계수 lambda (1.0 공격적 ~ 5.0 보수적, 기본: 2.5)")
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic sample data")
     args = parser.parse_args()
 
