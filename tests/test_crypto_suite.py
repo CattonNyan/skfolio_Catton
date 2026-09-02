@@ -20,6 +20,7 @@ from tests.test_kimchi_premium import KimchiPremiumTests
 from tests.test_strategy_optimizer import StrategyOptimizerTests
 from tests.test_monte_carlo import MonteCarloTests
 from tests.test_macro_regime import MacroRegimeTests
+from tests.test_factor_analyzer import FactorAnalyzerTests
 
 
 def suite():
@@ -40,6 +41,7 @@ def suite():
     s.addTests(loader.loadTestsFromTestCase(StrategyOptimizerTests))
     s.addTests(loader.loadTestsFromTestCase(MonteCarloTests))
     s.addTests(loader.loadTestsFromTestCase(MacroRegimeTests))
+    s.addTests(loader.loadTestsFromTestCase(FactorAnalyzerTests))
     return s
 
 
