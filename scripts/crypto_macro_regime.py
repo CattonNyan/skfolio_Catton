@@ -101,15 +101,40 @@ def adjust_cash_allocation_by_regime(
         for coin, w in adjusted_weights.items()
     }
 
+    # Separate pure tradable pairs for Freqtrade
+    freqtrade_pairs = {
+        k: v for k, v in adjusted_weights.items()
+        if not ("(Cash)" in k or k.strip().upper() == "USDT")
+    }
+
     return {
         "fng_value": fng_value,
         "market_regime": regime,
         "cash_ratio": cash_ratio,
         "crypto_ratio": crypto_ratio,
         "adjusted_weights": adjusted_weights,
+        "freqtrade_pair_weights": freqtrade_pairs,
         "capital_allocation": capital_allocation,
         "total_wallet": total_wallet,
     }
+
+
+def filter_crypto_weights_for_freqtrade(
+    adjusted_weights: dict[str, float],
+) -> tuple[dict[str, float], float]:
+    """
+    Separates tradable crypto pairs from virtual cash reserve ('USDT (Cash)').
+
+    Returns (clean_pair_weights, cash_ratio).
+    """
+    clean_pairs = {}
+    cash_ratio = 0.0
+    for key, weight in adjusted_weights.items():
+        if "(Cash)" in key or key.strip().upper() == "USDT":
+            cash_ratio += weight
+        else:
+            clean_pairs[key] = weight
+    return clean_pairs, cash_ratio
 
 
 def print_macro_regime_report(res: dict[str, object]):

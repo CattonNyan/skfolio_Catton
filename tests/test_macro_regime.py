@@ -38,6 +38,17 @@ class MacroRegimeTests(unittest.TestCase):
         self.assertGreaterEqual(val, 0)
         self.assertLessEqual(val, 100)
 
+    def test_filter_crypto_weights_for_freqtrade(self):
+        from scripts.crypto_macro_regime import filter_crypto_weights_for_freqtrade
+
+        raw_weights = {"BTC/USDT": 0.35, "ETH/USDT": 0.25, "USDT (Cash)": 0.40}
+        clean_pairs, cash = filter_crypto_weights_for_freqtrade(raw_weights)
+
+        self.assertEqual(cash, 0.40)
+        self.assertNotIn("USDT (Cash)", clean_pairs)
+        self.assertIn("BTC/USDT", clean_pairs)
+        self.assertIn("ETH/USDT", clean_pairs)
+
 
 if __name__ == "__main__":
     unittest.main()
