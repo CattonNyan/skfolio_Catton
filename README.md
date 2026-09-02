@@ -192,14 +192,20 @@ jupyter lab
 
 ---
 
-### 6. 인터랙티브 웹 대시보드 (Streamlit)
+### 6. 인터랙티브 올인원 퀀트 웹 대시보드 (Streamlit)
 
-마우스 클릭만으로 실시간 자산 배분 비중(파이 차트), 코인 간 상관계수 히트맵, 누적 수익률 시뮬레이션을 시각적으로 확인하고 Freqtrade로 원클릭 내보내기를 수행합니다:
+마우스 클릭만으로 포트폴리오 최적화부터 미래 시뮬레이션, 스트레스 테스트까지 한 번에 수행하는 웹 대시보드를 제공합니다:
 
 ```powershell
 streamlit run app_dashboard.py
 ```
-- 브라우저에서 대시보드가 열리며 알고리즘별 성과 비교 및 Freqtrade `config.json` 자동 반영이 가능합니다.
+- **📊 포트폴리오 최적화 & 자산배분**: 리스크 패리티, HRP, 최대 샤프 모델 선택 및 Freqtrade `config.json` 원클릭 주입
+- **🔄 주기적 리밸런싱 백테스트**: 롤링 윈도우 워크포워드 백테스트 및 Buy & Hold 대비 초과수익률/MDD 측정
+- **🎲 몬테카를로 미래 시뮬레이션**: 1,000회 GBM 자산 경로 투영, 95% 신뢰구간 콘 차트, 95% VaR / CVaR 계산
+- **💥 역사적 블랙스완 스트레스 테스트**: 코로나 쇼크, 루나 폭락, FTX 파산 등 극단적 위기 시나리오별 잔여 자산 진단
+- **😨 공포·탐욕 매크로 현금 조절**: 실시간 Fear & Greed 지수 수집 및 고평가 국면 안전자산(USDT) 버퍼 계산
+- **⚡ 김치 프리미엄 차익거래 분석**: 실시간 원/달러 환율 반영 업비트-바이낸스 코인별 프리미엄 및 적정가 추정
+- **💰 세후 순수익률 & 세금 시뮬레이터**: 대한민국 가상자산 소득세법(기본공제 250만 원, 22% 분리과세) 기반 실질 순수익 계산
 
 ---
 
@@ -220,12 +226,12 @@ python scripts/crypto_rebalancing_backtest.py --use-synthetic --model "Equal Wei
 
 ### 8. 독립 실행형 인터랙티브 HTML 퀀트 리포트 내보내기
 
-오프라인 브라우저에서도 열어볼 수 있는 단일 HTML 보고서 파일(`reports/crypto_portfolio_report.html`)을 생성합니다:
+오프라인 브라우저에서도 열어볼 수 있는 프리미엄 다크 테마 기반 단일 HTML 보고서 파일(`reports/crypto_portfolio_report.html`)을 생성합니다:
 
 ```powershell
 python scripts/export_html_report.py --output reports/crypto_portfolio_report.html --model "Risk Parity (ERC)"
 ```
-- **포함 내용**: KPI 성과 지표 카드, 최적 자산 배분 도넛 차트, 코인 간 상관관계 히트맵, 누적 수익률 시뮬레이션 인터랙티브 차트, Freqtrade 설정 코드
+- **포함 내용**: 다크 핀테크 테마(#0E1117) 디자인, KPI 성과 카드, 최적 자산 배분 도넛 차트, 코인 간 상관관계 히트맵, 누적 수익률 시뮬레이션 인터랙티브 차트, Freqtrade 설정 코드
 
 ---
 
