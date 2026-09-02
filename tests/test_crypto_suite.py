@@ -17,6 +17,7 @@ from tests.test_stake_allocator import StakeAllocatorTests
 from tests.test_black_litterman import BlackLittermanTests
 from tests.test_stress_tester import StressTesterTests
 from tests.test_kimchi_premium import KimchiPremiumTests
+from tests.test_strategy_optimizer import StrategyOptimizerTests
 
 
 def suite():
@@ -34,6 +35,7 @@ def suite():
     s.addTests(loader.loadTestsFromTestCase(BlackLittermanTests))
     s.addTests(loader.loadTestsFromTestCase(StressTesterTests))
     s.addTests(loader.loadTestsFromTestCase(KimchiPremiumTests))
+    s.addTests(loader.loadTestsFromTestCase(StrategyOptimizerTests))
     return s
 
 
