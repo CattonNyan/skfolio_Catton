@@ -160,3 +160,12 @@ junit-results.xml
 # VS Code settings
 .vscode/
 settings.json
+
+# Quant output reports, cache and user data
+reports/*.html
+reports/*.csv
+reports/*.json
+user_data/
+*.feather
+*.parquet
+scratch/
