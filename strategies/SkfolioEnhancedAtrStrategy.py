@@ -27,11 +27,49 @@ except ImportError:
     class Trade:
         pass
 
-# Import skfolio integration bridges
+# Auto-detect skfolio_Catton root directory when copied into Freqtrade user_data/strategies/
+import sys
+current_dir = Path(__file__).resolve().parent
+candidate_roots = [
+    current_dir.parent,  # skfolio_Catton/
+    current_dir.parent.parent / "skfolio_Catton",  # ../skfolio_Catton
+    current_dir.parent.parent.parent / "skfolio_Catton",
+]
+for r in candidate_roots:
+    if r.is_dir() and str(r) not in sys.path:
+        sys.path.insert(0, str(r))
+
 try:
     from scripts.freqtrade_stake_allocator import get_custom_stake_amount
 except ImportError:
-    def get_custom_stake_amount(pair, proposed_stake, **kwargs):
+    # Built-in robust standalone fallback if scripts directory is not in path
+    def get_custom_stake_amount(
+        pair: str,
+        proposed_stake: float,
+        total_wallet: float | None = None,
+        min_stake: float | None = None,
+        max_stake: float | None = None,
+        config_path: str = "user_data/config.json",
+        **kwargs,
+    ) -> float:
+        cfg_file = Path(config_path)
+        if cfg_file.is_file():
+            try:
+                cfg = json.loads(cfg_file.read_text(encoding="utf-8"))
+                pair_stakes = cfg.get("pair_stake_amounts", {})
+                if pair in pair_stakes:
+                    val = float(pair_stakes[pair])
+                    if min_stake and val < min_stake: val = min_stake
+                    if max_stake and val > max_stake: val = max_stake
+                    return val
+                pair_weights = cfg.get("pair_weights", {})
+                if pair in pair_weights and total_wallet and total_wallet > 0:
+                    val = float(pair_weights[pair]) * total_wallet
+                    if min_stake and val < min_stake: val = min_stake
+                    if max_stake and val > max_stake: val = max_stake
+                    return val
+            except Exception:
+                pass
         return proposed_stake
 
 
