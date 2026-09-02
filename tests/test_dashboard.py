@@ -71,6 +71,26 @@ class DashboardTests(unittest.TestCase):
         self.assertIsInstance(fig, go.Figure)
         self.assertGreaterEqual(len(fig.data), 3)
 
+    @unittest.skipUnless(HAS_DASHBOARD_DEPS, "plotly or streamlit not installed")
+    def test_cached_load_market_data(self):
+        from app_dashboard import cached_load_market_data
+        prices, provenance = cached_load_market_data(timeframe="15m", use_synthetic=True)
+        self.assertFalse(prices.empty)
+        self.assertIn("Synthetic", provenance)
+
+    @unittest.skipUnless(HAS_DASHBOARD_DEPS, "plotly or streamlit not installed")
+    def test_cached_fit_model(self):
+        from app_dashboard import cached_fit_model
+        dates = pd.date_range("2026-01-01", periods=20, freq="15min")
+        returns = pd.DataFrame(
+            {"BTC": [0.01, -0.01] * 10, "ETH": [0.02, -0.015] * 10},
+            index=dates,
+        )
+        weights = cached_fit_model(returns, "Risk Parity (ERC)", min_w=0.1, max_w=0.9)
+        self.assertIn("BTC", weights)
+        self.assertIn("ETH", weights)
+        self.assertAlmostEqual(sum(weights.values()), 1.0, places=3)
+
 
 if __name__ == "__main__":
     unittest.main()
