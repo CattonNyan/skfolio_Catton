@@ -9,6 +9,7 @@ from scripts.crypto_portfolio_optimizer import (
     generate_synthetic_crypto_data,
     find_freqtrade_data_dirs,
     load_market_data,
+    load_from_feather_dir,
     positive_float,
 )
 
@@ -34,6 +35,23 @@ class CryptoOptimizerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             with self.assertRaises(MarketDataUnavailableError):
                 load_market_data(data_dir=tmpdir, timeframe="15m")
+
+    def test_loader_never_falls_back_to_another_timeframe(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            data_dir = Path(tmpdir)
+            pd.DataFrame(
+                {
+                    "date": pd.date_range("2026-01-01", periods=3, freq="1h"),
+                    "close": [100.0, 101.0, 102.0],
+                }
+            ).to_feather(data_dir / "BTC_USDT-1h.feather")
+
+            self.assertTrue(load_from_feather_dir(data_dir, timeframe="15m").empty)
+            loaded = load_from_feather_dir(data_dir, timeframe="1h")
+            self.assertEqual(list(loaded.columns), ["BTC/USDT"])
+            self.assertEqual(len(loaded), 3)
 
     def test_synthetic_data_requires_explicit_opt_in(self):
         prices, source = load_market_data(use_synthetic=True, synthetic_periods=25)
@@ -124,6 +142,28 @@ class CryptoOptimizerTests(unittest.TestCase):
             )
             self.assertFalse(success)
             self.assertFalse(target_path.exists())
+
+
+    def test_export_csv_allocation(self):
+        import tempfile
+        from scripts.crypto_portfolio_optimizer import export_csv_allocation
+
+        sample_results = {
+            "Risk Parity (ERC)": {"BTC/USDT": 0.6, "ETH/USDT": 0.4}
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target_path = Path(tmpdir) / "test_allocation.csv"
+            success = export_csv_allocation(
+                results=sample_results,
+                target_path=target_path,
+                model_name="Risk Parity (ERC)",
+                total_wallet=1000.0,
+            )
+            self.assertTrue(success)
+            self.assertTrue(target_path.is_file())
+            content = target_path.read_text(encoding="utf-8-sig")
+            self.assertIn("Asset,Weight_Percent,Weight_Fraction,Allocated_Amount", content)
+            self.assertIn("BTC/USDT,60.00%,0.6,600.0", content)
 
 
 if __name__ == "__main__":

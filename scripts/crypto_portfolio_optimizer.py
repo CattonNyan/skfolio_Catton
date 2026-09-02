@@ -54,9 +54,7 @@ def find_freqtrade_data_dirs() -> list[Path]:
 
 def load_from_feather_dir(data_dir: Path, timeframe: str = "15m") -> pd.DataFrame:
     """Load feather files for a specific timeframe and build a combined Close price DataFrame."""
-    feather_files = list(data_dir.glob(f"*-{timeframe}.feather"))
-    if not feather_files:
-        feather_files = list(data_dir.glob("*.feather"))
+    feather_files = sorted(data_dir.glob(f"*-{timeframe}.feather"))
 
     prices_dict: dict[str, pd.Series] = {}
     for f in feather_files:
@@ -330,6 +328,40 @@ def export_freqtrade_allocation(
     return False
 
 
+def export_csv_allocation(
+    results: dict[str, dict[str, float]],
+    target_path: Path,
+    model_name: str = "Risk Parity (ERC)",
+    total_wallet: float | None = None,
+) -> bool:
+    """Export asset allocation weights and optional capital to CSV format."""
+    if not results:
+        return False
+
+    if model_name not in results:
+        model_name = list(results.keys())[0]
+
+    weights = results[model_name]
+    records = []
+    for asset, weight in weights.items():
+        w_pct = round(weight * 100, 2)
+        row = {
+            "Asset": asset,
+            "Weight_Percent": f"{w_pct:.2f}%",
+            "Weight_Fraction": round(weight, 4),
+        }
+        if total_wallet is not None:
+            row["Allocated_Amount"] = round(weight * total_wallet, 2)
+        records.append(row)
+
+    df = pd.DataFrame(records)
+    target_path = Path(target_path)
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(target_path, index=False, encoding="utf-8-sig")
+    print(f"\n[+] Successfully exported CSV allocation to: {target_path}")
+    return True
+
+
 def main():
     parser = argparse.ArgumentParser(description="Crypto Portfolio Optimizer via skfolio")
     parser.add_argument("--data-dir", type=str, default="", help="Directory containing Freqtrade feather files")
@@ -339,6 +371,7 @@ def main():
     parser.add_argument("--export-model", type=str, default="Risk Parity (ERC)", help="Model to use for export")
     parser.add_argument("--wallet-size", type=positive_float, default=None, help="Optional wallet size in USDT for stake allocation")
     parser.add_argument("--export-html", type=str, default="", help="Path to export standalone HTML report")
+    parser.add_argument("--export-csv", type=str, default="", help="Path to export allocation CSV report")
     args = parser.parse_args()
 
     print("==========================================================")
@@ -384,6 +417,14 @@ def main():
             total_wallet=args.wallet_size or 10000.0,
             output_file=args.export_html,
             data_source=data_source,
+        )
+
+    if args.export_csv and results:
+        export_csv_allocation(
+            results=results,
+            target_path=Path(args.export_csv),
+            model_name=args.export_model,
+            total_wallet=args.wallet_size,
         )
 
 
