@@ -142,8 +142,12 @@ def load_market_data(
     )
 
 
-def run_optimization(prices: pd.DataFrame) -> dict[str, dict[str, float]]:
-    """Run multiple skfolio optimization models and return comparative results."""
+def run_optimization(
+    prices: pd.DataFrame,
+    min_weight: float | None = None,
+    max_weight: float | None = None,
+) -> dict[str, dict[str, float]]:
+    """Run multiple skfolio optimization models with optional weight bounds and return comparative results."""
     if not HAS_SKFOLIO:
         print("[!] Error: skfolio is not installed in the current environment.")
         print("    Please run setup.ps1 or pip install -r requirements-local.txt")
@@ -154,12 +158,23 @@ def run_optimization(prices: pd.DataFrame) -> dict[str, dict[str, float]]:
     assets = list(returns.columns)
 
     print(f"[*] Loaded asset returns: {assets}")
-    print(f"[*] Sample size: {len(returns)} bars from {returns.index[0]} to {returns.index[-1]}\n")
+    print(f"[*] Sample size: {len(returns)} bars from {returns.index[0]} to {returns.index[-1]}")
+    if min_weight is not None or max_weight is not None:
+        print(f"[*] Weight Constraints: min={min_weight}, max={max_weight}\n")
+    else:
+        print()
+
+    model_kwargs = {}
+    if min_weight is not None:
+        model_kwargs["min_weights"] = min_weight
+    if max_weight is not None:
+        model_kwargs["max_weights"] = max_weight
 
     # 1. Mean-Variance: Maximum Sharpe Ratio
     model_sharpe = MeanVariance(
         objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
         risk_measure=RiskMeasure.VARIANCE,
+        **model_kwargs,
     )
     model_sharpe.fit(returns)
 
@@ -167,12 +182,14 @@ def run_optimization(prices: pd.DataFrame) -> dict[str, dict[str, float]]:
     model_min_var = MeanVariance(
         objective_function=ObjectiveFunction.MINIMIZE_RISK,
         risk_measure=RiskMeasure.VARIANCE,
+        **model_kwargs,
     )
     model_min_var.fit(returns)
 
     # 3. Risk Budgeting: Equal Risk Contribution (Risk Parity)
     model_risk_parity = RiskBudgeting(
         risk_measure=RiskMeasure.VARIANCE,
+        **model_kwargs,
     )
     model_risk_parity.fit(returns)
 
@@ -180,6 +197,7 @@ def run_optimization(prices: pd.DataFrame) -> dict[str, dict[str, float]]:
     model_semi_variance = MeanVariance(
         objective_function=ObjectiveFunction.MINIMIZE_RISK,
         risk_measure=RiskMeasure.SEMI_VARIANCE,
+        **model_kwargs,
     )
     model_semi_variance.fit(returns)
 
@@ -372,6 +390,8 @@ def main():
     parser.add_argument("--wallet-size", type=positive_float, default=None, help="Optional wallet size in USDT for stake allocation")
     parser.add_argument("--export-html", type=str, default="", help="Path to export standalone HTML report")
     parser.add_argument("--export-csv", type=str, default="", help="Path to export allocation CSV report")
+    parser.add_argument("--min-weight", type=float, default=None, help="Minimum weight constraint per asset")
+    parser.add_argument("--max-weight", type=float, default=None, help="Maximum weight constraint per asset")
     args = parser.parse_args()
 
     print("==========================================================")
@@ -396,7 +416,11 @@ def main():
     if data_source == "synthetic" and args.export_freqtrade:
         parser.error("Freqtrade export is disabled for synthetic data.")
 
-    results = run_optimization(prices)
+    results = run_optimization(
+        prices,
+        min_weight=args.min_weight,
+        max_weight=args.max_weight,
+    )
 
     if args.export_freqtrade and results:
         export_freqtrade_allocation(

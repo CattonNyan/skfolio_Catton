@@ -166,5 +166,17 @@ class CryptoOptimizerTests(unittest.TestCase):
             self.assertIn("BTC/USDT,60.00%,0.6,600.0", content)
 
 
+    def test_run_optimization_with_constraints(self):
+        from scripts.crypto_portfolio_optimizer import HAS_SKFOLIO, run_optimization
+        if not HAS_SKFOLIO:
+            self.skipTest("skfolio not available")
+        prices = generate_synthetic_crypto_data(periods=50)
+        results = run_optimization(prices, min_weight=0.10, max_weight=0.50)
+        for model_name, weights in results.items():
+            for asset, w in weights.items():
+                self.assertGreaterEqual(w, 0.08)  # Allow small solver tolerance
+                self.assertLessEqual(w, 0.52)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -188,6 +188,13 @@ def main():
         )
 
         st.markdown("---")
+        st.subheader("⚖️ 비중 제약조건 (Constraints)")
+        max_weight_pct = st.slider("단일 종목 최대 비중(%)", min_value=20, max_value=100, value=100, step=5)
+        min_weight_pct = st.slider("단일 종목 최소 비중(%)", min_value=0, max_value=20, value=0, step=1)
+        max_w = max_weight_pct / 100.0 if max_weight_pct < 100 else None
+        min_w = min_weight_pct / 100.0 if min_weight_pct > 0 else None
+
+        st.markdown("---")
         freqtrade_config_path = st.text_input(
             "Freqtrade config.json 경로",
             value="../freqtrade/user_data/config.json",
@@ -199,48 +206,45 @@ def main():
         prices, provenance = load_market_data(
             timeframe=timeframe,
             use_synthetic=is_synthetic,
-            synthetic_periods=1000,
         )
     except MarketDataUnavailableError as error:
-        st.error(f"실데이터를 불러오지 못했습니다: {error}")
-        st.info("합성데이터 분석이 필요하면 사이드바에서 '합성 시뮬레이션 데이터'를 명시적으로 선택하세요.")
-        return
+        st.error(str(error))
+        st.stop()
 
-    if is_synthetic:
-        st.warning("⚠️ 데이터 모드: SYNTHETIC — 시뮬레이션 전용이며 Freqtrade 설정 내보내기가 차단됩니다.")
-    else:
-        st.success(
-            f"✅ 데이터 모드: REAL — {provenance} "
-            f"({len(prices)}개 캔들, 페어: {', '.join(prices.columns)})"
-        )
+    returns = prices_to_returns(prices)
+    assets = list(returns.columns)
 
-    # Calculate returns
-    returns = prices.pct_change().dropna()
-    assets = list(prices.columns)
-
-    # 3. Model Optimization Execution
-    weights_dict: dict[str, float] = {}
+    # 3. Model Optimization
     if HAS_SKFOLIO:
         try:
+            c_kwargs = {}
+            if min_w is not None:
+                c_kwargs["min_weights"] = min_w
+            if max_w is not None:
+                c_kwargs["max_weights"] = max_w
+
             if "Max Sharpe" in model_type:
                 model = MeanVariance(
                     objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
                     risk_measure=RiskMeasure.VARIANCE,
+                    **c_kwargs,
                 )
             elif "Min Variance" in model_type:
                 model = MeanVariance(
                     objective_function=ObjectiveFunction.MINIMIZE_RISK,
                     risk_measure=RiskMeasure.VARIANCE,
+                    **c_kwargs,
                 )
             elif "Min Semi-Variance" in model_type:
                 model = MeanVariance(
                     objective_function=ObjectiveFunction.MINIMIZE_RISK,
                     risk_measure=RiskMeasure.SEMI_VARIANCE,
+                    **c_kwargs,
                 )
             elif "HRP" in model_type:
                 model = HierarchicalRiskParity(risk_measure=RiskMeasure.VARIANCE)
             else:
-                model = RiskBudgeting(risk_measure=RiskMeasure.VARIANCE)
+                model = RiskBudgeting(risk_measure=RiskMeasure.VARIANCE, **c_kwargs)
 
             model.fit(returns)
             weights_dict = dict(zip(assets, model.weights_))
