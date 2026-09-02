@@ -14,6 +14,7 @@ from tests.test_html_report import HtmlReportTests
 from tests.test_risk_calculator import RiskCalculatorTests
 from tests.test_freqtrade_integration import FreqtradeAllocationTests
 from tests.test_stake_allocator import StakeAllocatorTests
+from tests.test_black_litterman import BlackLittermanTests
 
 
 def suite():
@@ -28,6 +29,7 @@ def suite():
     s.addTests(loader.loadTestsFromTestCase(RiskCalculatorTests))
     s.addTests(loader.loadTestsFromTestCase(FreqtradeAllocationTests))
     s.addTests(loader.loadTestsFromTestCase(StakeAllocatorTests))
+    s.addTests(loader.loadTestsFromTestCase(BlackLittermanTests))
     return s
 
 
