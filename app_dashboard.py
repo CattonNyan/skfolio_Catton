@@ -25,6 +25,7 @@ from scripts.crypto_portfolio_optimizer import (
     MarketDataUnavailableError,
     export_freqtrade_allocation,
     load_market_data,
+    sanitize_weight_constraints,
 )
 from scripts.crypto_rebalancing_backtest import simulate_rebalancing
 
@@ -41,6 +42,38 @@ try:
     HAS_SKFOLIO = True
 except ImportError:
     HAS_SKFOLIO = False
+
+
+@st.cache_data(show_spinner=False)
+def cached_load_market_data(timeframe: str, use_synthetic: bool):
+    """Cached market data loader to avoid repeated disk reads."""
+    return load_market_data(timeframe=timeframe, use_synthetic=use_synthetic)
+
+
+@st.cache_data(show_spinner=False)
+def cached_fit_model(returns_df: pd.DataFrame, model_type: str, min_w: float | None, max_w: float | None) -> dict[str, float]:
+    """Cached model optimization fitting with sanitized constraints."""
+    assets = list(returns_df.columns)
+    min_w, max_w = sanitize_weight_constraints(len(assets), min_w, max_w)
+    c_kwargs = {}
+    if min_w is not None:
+        c_kwargs["min_weights"] = min_w
+    if max_w is not None:
+        c_kwargs["max_weights"] = max_w
+
+    if "Max Sharpe" in model_type:
+        model = MeanVariance(objective_function=ObjectiveFunction.MAXIMIZE_RATIO, risk_measure=RiskMeasure.VARIANCE, **c_kwargs)
+    elif "Min Variance" in model_type:
+        model = MeanVariance(objective_function=ObjectiveFunction.MINIMIZE_RISK, risk_measure=RiskMeasure.VARIANCE, **c_kwargs)
+    elif "Min Semi-Variance" in model_type:
+        model = MeanVariance(objective_function=ObjectiveFunction.MINIMIZE_RISK, risk_measure=RiskMeasure.SEMI_VARIANCE, **c_kwargs)
+    elif "HRP" in model_type:
+        model = HierarchicalRiskParity(risk_measure=RiskMeasure.VARIANCE)
+    else:
+        model = RiskBudgeting(risk_measure=RiskMeasure.VARIANCE, **c_kwargs)
+
+    model.fit(returns_df)
+    return dict(zip(assets, model.weights_))
 
 
 def create_pie_chart(weights: dict[str, float], title: str = "최적 자산 배분 비중") -> go.Figure:
@@ -293,7 +326,7 @@ def main():
     # 2. Data Loading
     is_synthetic = data_source == "합성 시뮬레이션 데이터"
     try:
-        prices, provenance = load_market_data(
+        prices, provenance = cached_load_market_data(
             timeframe=timeframe,
             use_synthetic=is_synthetic,
         )
@@ -307,37 +340,7 @@ def main():
     # 3. Model Optimization
     if HAS_SKFOLIO:
         try:
-            c_kwargs = {}
-            if min_w is not None:
-                c_kwargs["min_weights"] = min_w
-            if max_w is not None:
-                c_kwargs["max_weights"] = max_w
-
-            if "Max Sharpe" in model_type:
-                model = MeanVariance(
-                    objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
-                    risk_measure=RiskMeasure.VARIANCE,
-                    **c_kwargs,
-                )
-            elif "Min Variance" in model_type:
-                model = MeanVariance(
-                    objective_function=ObjectiveFunction.MINIMIZE_RISK,
-                    risk_measure=RiskMeasure.VARIANCE,
-                    **c_kwargs,
-                )
-            elif "Min Semi-Variance" in model_type:
-                model = MeanVariance(
-                    objective_function=ObjectiveFunction.MINIMIZE_RISK,
-                    risk_measure=RiskMeasure.SEMI_VARIANCE,
-                    **c_kwargs,
-                )
-            elif "HRP" in model_type:
-                model = HierarchicalRiskParity(risk_measure=RiskMeasure.VARIANCE)
-            else:
-                model = RiskBudgeting(risk_measure=RiskMeasure.VARIANCE, **c_kwargs)
-
-            model.fit(returns)
-            weights_dict = dict(zip(assets, model.weights_))
+            weights_dict = cached_fit_model(returns, model_type, min_w, max_w)
         except Exception as e:
             st.warning(f"skfolio 최적화 중 예외 발생({e}). 동일 가중(Equal Weight)으로 폴백합니다.")
             weights_dict = {a: 1.0 / len(assets) for a in assets}
