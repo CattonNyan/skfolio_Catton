@@ -23,6 +23,7 @@ from tests.test_macro_regime import MacroRegimeTests
 from tests.test_factor_analyzer import FactorAnalyzerTests
 from tests.test_enhanced_strategy import EnhancedStrategyTests
 from tests.test_correlation_breakdown import CorrelationBreakdownTests
+from tests.test_tax_calculator import TaxCalculatorTests
 
 
 def suite():
@@ -46,6 +47,7 @@ def suite():
     s.addTests(loader.loadTestsFromTestCase(FactorAnalyzerTests))
     s.addTests(loader.loadTestsFromTestCase(EnhancedStrategyTests))
     s.addTests(loader.loadTestsFromTestCase(CorrelationBreakdownTests))
+    s.addTests(loader.loadTestsFromTestCase(TaxCalculatorTests))
     return s
 
 

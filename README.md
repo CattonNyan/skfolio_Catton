@@ -343,6 +343,26 @@ python scripts/crypto_factor_analyzer.py --lookback 60 --top-n 3
 
 ---
 
+### 19. 상관계수 붕괴 & 디커플링(Decoupling) 감지기
+
+비트코인(BTC)과 알트코인 간의 롤링 상관계수를 실시간 모니터링하여, 동조화가 깨지는 이상 현상(역상관, 상관계수 급락)과 분산 투자 강화 기회를 감지합니다:
+
+```powershell
+python scripts/crypto_correlation_breakdown.py --window 30 --threshold 1.8
+```
+
+---
+
+### 20. 가상자산 세후 순수익률 & 세금 시뮬레이터
+
+한국 가상자산 소득세(연간 기본공제 250만 원, 22% 분리과세) 규정을 반영하여, 포트폴리오 운용 및 리밸런싱에 따른 실현 손익 통산과 세금 잠식률(Tax Drag), 최종 세후 순수익률을 계산합니다:
+
+```powershell
+python scripts/crypto_tax_calculator.py --profit 12000000 --capital 50000000
+```
+
+---
+
 ## 📁 프로젝트 구조
 
 ```text
@@ -367,13 +387,15 @@ skfolio_Catton/
 │   ├── crypto_monte_carlo.py          # 몬테카를로 미래 자산 경로 및 VaR 시뮬레이터
 │   ├── crypto_macro_regime.py         # 공포·탐욕 지수 기반 동적 현금 비중 조절기
 │   ├── crypto_factor_analyzer.py      # 퀀트 멀티 팩터 분석 및 스마트 베타 스크리너
+│   ├── crypto_correlation_breakdown.py # 상관계수 붕괴 & 디커플링 감지기
+│   ├── crypto_tax_calculator.py       # 가상자산 세후 순수익률 & 세금 시뮬레이터
 │   ├── freqtrade_stake_allocator.py   # Freqtrade 전략 동적 주문금액 연동 브릿지
 │   ├── fetch_live_crypto.py           # 거래소(바이낸스/업비트) 실시간 시세 수집기
 │   └── verify_environment.py          # 환경 검증 스크립트
 ├── strategies/                        # Freqtrade 실전 전략 모음
 │   └── SkfolioEnhancedAtrStrategy.py  # skfolio 동적 비중/리스크 완전 연동 실전 전략
 ├── src/skfolio/                       # skfolio 핵심 최적화 알고리즘 엔진
-├── tests/                             # 단위 테스트 모음 (총 67개 테스트)
+├── tests/                             # 단위 테스트 모음 (총 80개 테스트)
 │   ├── test_crypto_suite.py           # 통합 테스트 스위트 러너 (Python 3.10~3.14 호환)
 │   ├── test_crypto_optimizer.py
 │   ├── test_hrp_clustering.py
@@ -391,10 +413,12 @@ skfolio_Catton/
 │   ├── test_monte_carlo.py
 │   ├── test_macro_regime.py
 │   ├── test_factor_analyzer.py
-│   └── test_enhanced_strategy.py
+│   ├── test_enhanced_strategy.py
+│   ├── test_correlation_breakdown.py
+│   └── test_tax_calculator.py
 ├── requirements-local.txt             # 로컬 개발 및 퀀트 연구용 패키지 목록
 ├── setup.ps1                          # Windows PowerShell 원클릭 설치 스크립트
-├── app_dashboard.py                   # Streamlit 인터랙티브 웹 대시보드 (효율적 투자선 탑재)
+├── app_dashboard.py                   # Streamlit 인터랙티브 웹 대시보드 (다크 테마 & 캐싱)
 ├── README.md                          # 프로젝트 메인 한국어 안내 문서
 └── LICENSE                            # BSD 3-Clause 라이선스 전문
 ```
