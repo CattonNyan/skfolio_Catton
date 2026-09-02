@@ -97,25 +97,26 @@ def compute_risk_guidelines(
     return guidelines
 
 
-def print_risk_report(guidelines: dict[str, dict[str, float]]):
+def print_risk_report(guidelines: dict[str, dict[str, float]], total_wallet: float = 10000.0):
     """Print formatted risk management guide table."""
-    print("================================================================================")
-    print("       VOLATILITY-BASED DYNAMIC STOPLOSS & TAKE-PROFIT GUIDELINE                ")
-    print("================================================================================")
-    print(f"{'Coin / Pair':<15} | {'Weight':>8} | {'Semi-Dev':>10} | {'Stoploss (SL)':>14} | {'Take-Profit (TP)':>16}")
-    print("--------------------------------------------------------------------------------")
+    print("==========================================================================================")
+    print("              VOLATILITY-BASED DYNAMIC STOPLOSS & TAKE-PROFIT GUIDELINE                   ")
+    print("==========================================================================================")
+    print(f"{'Coin / Pair':<15} | {'Weight':>8} | {'Stake ($)':>10} | {'Semi-Dev':>10} | {'Stoploss (SL)':>14} | {'Take-Profit (TP)':>16}")
+    print("------------------------------------------------------------------------------------------")
 
     for asset, g in guidelines.items():
         weight_str = f"{g['weight']*100:.1f}%"
+        stake_str = f"${g['weight'] * total_wallet:,.2f}"
         dev_str = f"{g['semi_dev']:.2f}%"
         sl_str = f"{g['recommended_stoploss']*100:.2f}%"
         tp_str = f"{g['recommended_take_profit']*100:.2f}%"
-        print(f"{asset:<15} | {weight_str:>8} | {dev_str:>10} | {sl_str:>14} | {tp_str:>16}")
+        print(f"{asset:<15} | {weight_str:>8} | {stake_str:>10} | {dev_str:>10} | {sl_str:>14} | {tp_str:>16}")
 
-    print("--------------------------------------------------------------------------------")
+    print("------------------------------------------------------------------------------------------")
     print(" - Stoploss is dynamically scaled to absorb routine downside noise.")
     print(" - Take-profit targets a 1:2.0 Risk-Reward ratio on average.")
-    print("================================================================================\n")
+    print("==========================================================================================\n")
 
 
 def export_risk_json(
@@ -203,6 +204,7 @@ def main():
     parser.add_argument("--timeframe", type=str, default="15m", help="Candle timeframe")
     parser.add_argument("--risk-mult", type=positive_float, default=2.0, help="Multiplier for downside deviation (default: 2.0)")
     parser.add_argument("--rr-ratio", type=positive_float, default=2.0, help="Risk-Reward ratio (default: 2.0)")
+    parser.add_argument("--total-wallet", "--wallet", type=positive_float, default=10000.0, help="Total wallet size in USDT (default: 10000.0)")
     parser.add_argument("--export-json", type=str, default="", help="Path to export risk guideline JSON")
     parser.add_argument("--freqtrade-config", type=str, default="", help="Existing Freqtrade config.json to update")
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic data")
@@ -235,7 +237,7 @@ def main():
         risk_reward_ratio=args.rr_ratio,
     )
 
-    print_risk_report(guidelines)
+    print_risk_report(guidelines, total_wallet=args.total_wallet)
 
     if args.export_json:
         export_risk_json(guidelines, Path(args.export_json), data_source=data_source)
