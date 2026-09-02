@@ -13,6 +13,8 @@ def verify():
         ("clarabel", "Clarabel Solver"),
         ("sklearn", "Scikit-Learn"),
         ("plotly", "Plotly"),
+        ("streamlit", "Streamlit"),
+        ("ccxt", "CCXT Crypto API"),
         ("skfolio", "skfolio"),
     ]
 
