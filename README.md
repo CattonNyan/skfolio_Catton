@@ -260,26 +260,77 @@ python scripts/crypto_risk_budget_calculator.py `
 
 ---
 
+### 11. 블랙-리터만(Black-Litterman) 베이지안 자산배분 모델
+
+시장 균형 수익률(Prior)과 트레이더의 주관적 시장 전망(Views)을 베이지안 통계로 결합하여 안정적이고 극단값 없는 최적 비중을 계산합니다:
+
+```powershell
+# 상대적 뷰(BTC가 ETH보다 +2% 초과 상승)와 절대적 뷰(SOL +5% 상승) 반영
+python scripts/crypto_black_litterman.py `
+  --views "BTC/USDT>ETH/USDT:0.02" "SOL/USDT:0.05" `
+  --risk-aversion 2.5
+```
+
+---
+
+### 12. 역사적 크립토 블랙스완 스트레스 테스트(Stress Testing)
+
+2020 코로나 빔, 2022 루나 폭락, FTX 파산, 2021 중국 채굴 금지 등 크립토 역사상 최악의 쇼크 시나리오를 현재 포트폴리오에 가상 주입하여 자산 방어력과 최대 낙폭을 평가합니다:
+
+```powershell
+# 현재 포트폴리오 자본금 $10,000 기준 스트레스 테스트 시뮬레이션
+python scripts/crypto_stress_tester.py --wallet-size 10000 --export-json reports/stress_test.json
+```
+
+---
+
+### 13. 김치 프리미엄 & 실시간 환율 차익 분석기
+
+국내 거래소(업비트 KRW)와 해외 거래소(바이낸스 USDT)의 실시간 시세를 환율(USD/KRW)로 정밀 환산하여 코인별 김치 프리미엄(%)과 차익 스프레드를 계산합니다:
+
+```powershell
+python scripts/crypto_kimchi_premium.py --usdt-krw 1350.0 --export-json reports/kimchi_premium.json
+```
+
+---
+
+### 14. Freqtrade 멀티 전략 자금 배분 최적화기
+
+여러 Freqtrade 매매 전략(추세추종, 역추세, 볼린저 밴드 돌파 등)의 백테스트 손익 곡선을 바탕으로, 전체 계좌의 낙폭(MDD)을 최소화하는 전략별 최적 자금 배분 비율을 도출합니다:
+
+```powershell
+# 백테스트 결과 기반 전략 간 리스크 패리티 가중치 산출
+python scripts/freqtrade_strategy_optimizer.py --capital 10000 --model "Risk Parity"
+```
+
+---
+
 ## 📁 프로젝트 구조
 
 ```text
 skfolio_Catton/
 ├── .github/workflows/
 │   └── crypto_ci.yml                  # GitHub Actions 자동 테스트 CI 워크플로우
+├── .streamlit/
+│   └── config.toml                    # 핀테크 다크 테마 대시보드 환경설정
 ├── notebooks/                         # 한국어 대화형 주피터 노트북
 │   ├── 01_quickstart_portfolio_optimization.ipynb
 │   └── 02_crypto_risk_parity_allocation.ipynb
 ├── scripts/                           # 실전 자동화 스크립트 모음
-│   ├── crypto_portfolio_optimizer.py  # Freqtrade 연계 크립토 최적화 파이프라인
+│   ├── crypto_portfolio_optimizer.py  # Freqtrade 연계 크립토 최적화 파이프라인 (제약조건 지원)
 │   ├── crypto_hrp_clustering.py       # HRP 계층적 트리 군집화 및 상관계수 분석
 │   ├── crypto_rebalancing_backtest.py # 주기적 포트폴리오 롤링 리밸런싱 백테스트
 │   ├── export_html_report.py          # 인터랙티브 HTML 퀀트 보고서 생성기
 │   ├── crypto_risk_budget_calculator.py # 변동성 기반 동적 SL/TP 리스크 계산기
+│   ├── crypto_black_litterman.py      # 블랙-리터만 베이지안 포트폴리오 최적화기
+│   ├── crypto_stress_tester.py        # 역사적 블랙스완 스트레스 테스터
+│   ├── crypto_kimchi_premium.py       # 김치 프리미엄 & 환율 차익 분석기
+│   ├── freqtrade_strategy_optimizer.py # 멀티 전략 간 자금 배분 최적화기
 │   ├── freqtrade_stake_allocator.py   # Freqtrade 전략 동적 주문금액 연동 브릿지
 │   ├── fetch_live_crypto.py           # 거래소(바이낸스/업비트) 실시간 시세 수집기
 │   └── verify_environment.py          # 환경 검증 스크립트
 ├── src/skfolio/                       # skfolio 핵심 최적화 알고리즘 엔진
-├── tests/                             # 단위 테스트 모음
+├── tests/                             # 단위 테스트 모음 (총 54개 테스트)
 │   ├── test_crypto_suite.py           # 통합 테스트 스위트 러너 (Python 3.10~3.14 호환)
 │   ├── test_crypto_optimizer.py
 │   ├── test_hrp_clustering.py
@@ -289,10 +340,14 @@ skfolio_Catton/
 │   ├── test_html_report.py
 │   ├── test_risk_calculator.py
 │   ├── test_freqtrade_integration.py
-│   └── test_stake_allocator.py
+│   ├── test_stake_allocator.py
+│   ├── test_black_litterman.py
+│   ├── test_stress_tester.py
+│   ├── test_kimchi_premium.py
+│   └── test_strategy_optimizer.py
 ├── requirements-local.txt             # 로컬 개발 및 퀀트 연구용 패키지 목록
 ├── setup.ps1                          # Windows PowerShell 원클릭 설치 스크립트
-├── app_dashboard.py                   # Streamlit 인터랙티브 웹 대시보드
+├── app_dashboard.py                   # Streamlit 인터랙티브 웹 대시보드 (효율적 투자선 탑재)
 ├── README.md                          # 프로젝트 메인 한국어 안내 문서
 └── LICENSE                            # BSD 3-Clause 라이선스 전문
 ```
