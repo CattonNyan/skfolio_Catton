@@ -18,6 +18,7 @@ from tests.test_black_litterman import BlackLittermanTests
 from tests.test_stress_tester import StressTesterTests
 from tests.test_kimchi_premium import KimchiPremiumTests
 from tests.test_strategy_optimizer import StrategyOptimizerTests
+from tests.test_monte_carlo import MonteCarloTests
 
 
 def suite():
@@ -36,6 +37,7 @@ def suite():
     s.addTests(loader.loadTestsFromTestCase(StressTesterTests))
     s.addTests(loader.loadTestsFromTestCase(KimchiPremiumTests))
     s.addTests(loader.loadTestsFromTestCase(StrategyOptimizerTests))
+    s.addTests(loader.loadTestsFromTestCase(MonteCarloTests))
     return s
 
 
