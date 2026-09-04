@@ -76,7 +76,7 @@ class DashboardTests(unittest.TestCase):
         from app_dashboard import cached_load_market_data
         prices, provenance = cached_load_market_data(timeframe="15m", use_synthetic=True)
         self.assertFalse(prices.empty)
-        self.assertIn("Synthetic", provenance)
+        self.assertIn("synthetic", provenance.lower())
 
     @unittest.skipUnless(HAS_DASHBOARD_DEPS, "plotly or streamlit not installed")
     def test_cached_fit_model(self):

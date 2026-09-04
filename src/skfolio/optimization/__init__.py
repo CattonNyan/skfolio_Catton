@@ -14,6 +14,7 @@ from skfolio.optimization.convex import (
     DistributionallyRobustCVaR,
     MaximumDiversification,
     MeanRisk,
+    MeanVariance,
     ObjectiveFunction,
     RiskBudgeting,
 )
@@ -32,6 +33,7 @@ __all__ = [
     "InverseVolatility",
     "MaximumDiversification",
     "MeanRisk",
+    "MeanVariance",
     "NestedClustersOptimization",
     "ObjectiveFunction",
     "Random",

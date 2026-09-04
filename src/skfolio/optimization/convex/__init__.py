@@ -9,12 +9,16 @@ from skfolio.optimization.convex._maximum_diversification import MaximumDiversif
 from skfolio.optimization.convex._mean_risk import MeanRisk
 from skfolio.optimization.convex._risk_budgeting import RiskBudgeting
 
+# Backwards compatibility alias: MeanVariance is MeanRisk with variance risk measure
+MeanVariance = MeanRisk
+
 __all__ = [
     "BenchmarkTracker",
     "ConvexOptimization",
     "DistributionallyRobustCVaR",
     "MaximumDiversification",
     "MeanRisk",
+    "MeanVariance",
     "ObjectiveFunction",
     "RiskBudgeting",
 ]
