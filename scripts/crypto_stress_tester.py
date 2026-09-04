@@ -67,6 +67,25 @@ def evaluate_stress_test(
 
     Returns dict mapping scenario name to performance metrics.
     """
+    if total_wallet <= 0:
+        raise ValueError("total_wallet must be strictly positive.")
+    if not weights:
+        raise ValueError("weights dictionary cannot be empty.")
+
+    # Validate and normalize weights to guarantee sum == 1.0
+    clean_weights = {}
+    for k, v in weights.items():
+        try:
+            w_val = float(v)
+            if w_val > 0:
+                clean_weights[k] = w_val
+        except (TypeError, ValueError):
+            pass
+    if not clean_weights:
+        raise ValueError("No valid positive weights found.")
+    total_w = sum(clean_weights.values())
+    norm_weights = {k: v / total_w for k, v in clean_weights.items()}
+
     shocks = dict(HISTORICAL_SHOCKS)
     if custom_shock:
         shocks["Custom User Shock"] = custom_shock
@@ -77,7 +96,7 @@ def evaluate_stress_test(
         portfolio_shock = 0.0
         default_drop = asset_shocks.get("DEFAULT", -0.30)
 
-        for pair, weight in weights.items():
+        for pair, weight in norm_weights.items():
             # Robust normalization for "BTC/USDT", "BTC_USDT", "BTC:USDT", or plain "BTC"
             normalized = pair.replace("_", "/").replace(":", "/")
             base_coin = normalized.split("/")[0].strip().upper()
@@ -113,9 +132,9 @@ def print_stress_test_report(
     total_wallet: float,
     weights: dict[str, float],
 ):
-    """Print clean terminal report of the stress test simulation."""
+    """Print terminal report of historical stress testing."""
     print("================================================================================")
-    print("            HISTORICAL BLACK SWAN CRYPTO STRESS TEST REPORT                     ")
+    print("           HISTORICAL BLACK SWAN CRYPTO STRESS TEST REPORT                      ")
     print("================================================================================")
     print(f"Total Portfolio Capital: ${total_wallet:,.2f}")
     w_str = ", ".join([f"{k}: {v*100:.1f}%" for k, v in weights.items()])
@@ -135,12 +154,22 @@ def print_stress_test_report(
 def main():
     parser = argparse.ArgumentParser(description="Crypto Historical Stress Testing Engine")
     parser.add_argument("--wallet-size", "--wallet", dest="wallet_size", type=float, default=10000.0, help="Total wallet value in USDT (default: 10000.0)")
+    parser.add_argument("--weights", nargs="+", default=None, help="Asset weights list (e.g. BTC/USDT:0.5 ETH/USDT:0.5)")
     parser.add_argument("--config-file", type=str, default="", help="Path to allocation or config JSON to read weights from")
     parser.add_argument("--export-json", type=str, default="", help="Path to export results JSON file")
     args = parser.parse_args()
 
     weights = {"BTC/USDT": 0.50, "ETH/USDT": 0.30, "SOL/USDT": 0.20}
-    if args.config_file and Path(args.config_file).is_file():
+    if args.weights:
+        weights = {}
+        for item in args.weights:
+            if ":" in item:
+                pair, w_str = item.split(":", 1)
+                try:
+                    weights[pair.strip()] = float(w_str)
+                except ValueError:
+                    pass
+    elif args.config_file and Path(args.config_file).is_file():
         try:
             data = json.loads(Path(args.config_file).read_text(encoding="utf-8"))
             weights = data.get("pair_weights", data.get("weights", weights))

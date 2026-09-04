@@ -62,6 +62,21 @@ class StressTesterTests(unittest.TestCase):
         self.assertEqual(r1, r4)
         self.assertEqual(r1, -38.0)
 
+    def test_unnormalized_weights_auto_scaled(self):
+        # Weights given in percentage sum = 100 instead of 1.0
+        w_pct = {"BTC/USDT": 50.0, "ETH/USDT": 50.0}
+        w_norm = {"BTC/USDT": 0.5, "ETH/USDT": 0.5}
+        r_pct = evaluate_stress_test(w_pct, total_wallet=10000.0)
+        r_norm = evaluate_stress_test(w_norm, total_wallet=10000.0)
+        self.assertEqual(
+            r_pct["2020 March Covid Crash"]["portfolio_loss_pct"],
+            r_norm["2020 March Covid Crash"]["portfolio_loss_pct"],
+        )
+
+    def test_invalid_wallet_rejected(self):
+        with self.assertRaises(ValueError):
+            evaluate_stress_test({"BTC/USDT": 1.0}, total_wallet=-1000.0)
+
 
 if __name__ == "__main__":
     unittest.main()
