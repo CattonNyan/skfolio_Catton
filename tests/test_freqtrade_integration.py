@@ -129,3 +129,18 @@ class FreqtradeAllocationTests(unittest.TestCase):
             self.assertIsNone(
                 synthetic_strategy.custom_stoploss("ETH/USDT", _Trade(), None, 100.0, 0.0)
             )
+
+    def test_alternative_risk_key_names(self):
+        strategy = _IntegratedStrategy(
+            {
+                "pair_risk_limits": {
+                    "SOL/USDT": {
+                        "stoploss": -0.05,
+                        "recommended_takeprofit": 0.10,
+                    }
+                }
+            }
+        )
+        trade = _Trade()
+        self.assertEqual(strategy.custom_stoploss("SOL/USDT", trade, None, 100.0, 0.0), 0.05)
+        self.assertEqual(strategy.custom_roi("SOL/USDT", trade, None, 10, None, "long"), 0.10)

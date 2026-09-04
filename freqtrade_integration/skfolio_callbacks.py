@@ -114,9 +114,16 @@ class SkfolioRiskMixin:
                 if not isinstance(pair, str) or not isinstance(values, dict):
                     continue
                 try:
-                    stoploss = abs(float(values["recommended_stoploss"]))
-                    take_profit = float(values["recommended_take_profit"])
-                except (KeyError, TypeError, ValueError):
+                    sl_raw = values.get("recommended_stoploss", values.get("stoploss"))
+                    tp_raw = values.get(
+                        "recommended_take_profit",
+                        values.get("recommended_takeprofit", values.get("take_profit")),
+                    )
+                    if sl_raw is None or tp_raw is None:
+                        continue
+                    stoploss = abs(float(sl_raw))
+                    take_profit = float(tp_raw)
+                except (TypeError, ValueError):
                     continue
                 if (
                     math.isfinite(stoploss)
