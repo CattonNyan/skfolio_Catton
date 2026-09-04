@@ -52,6 +52,15 @@ class BlackLittermanTests(unittest.TestCase):
         # Weights should sum to 1.0 and be non-negative
         self.assertAlmostEqual(sum(res["posterior_weights"].values()), 1.0, places=4)
 
+    def test_custom_prior_weights(self):
+        prices = generate_synthetic_crypto_data(periods=100)
+        custom_prior = {"BTC/USDT": 0.70, "ETH/USDT": 0.30}
+        res = compute_black_litterman_weights(prices, views=[], prior_weights=custom_prior)
+        prior_w = res["prior_weights"]
+        self.assertAlmostEqual(prior_w["BTC/USDT"], 0.70, places=3)
+        self.assertAlmostEqual(prior_w["ETH/USDT"], 0.30, places=3)
+        self.assertEqual(res["prior_weights"], res["posterior_weights"])
+
 
 if __name__ == "__main__":
     unittest.main()

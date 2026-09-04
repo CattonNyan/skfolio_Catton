@@ -33,6 +33,7 @@ def compute_black_litterman_weights(
     views: list[str] | None = None,
     tau: float = 0.05,
     risk_aversion: float = 2.5,
+    prior_weights: dict[str, float] | None = None,
 ) -> dict[str, object]:
     """
     Compute Black-Litterman posterior expected returns and optimal weights.
@@ -42,6 +43,7 @@ def compute_black_litterman_weights(
     - views: List of view strings, e.g. ["BTC/USDT>ETH/USDT:0.05", "SOL/USDT:0.10"]
     - tau: Scalar representing uncertainty in prior estimate (default: 0.05)
     - risk_aversion: Risk aversion parameter lambda (default: 2.5)
+    - prior_weights: Optional benchmark / market equilibrium weights (default: equal weights)
     """
     returns = prices.pct_change().dropna()
     assets = list(returns.columns)
@@ -50,8 +52,16 @@ def compute_black_litterman_weights(
     # Historical covariance matrix
     sigma = returns.cov().values
 
-    # 1. Market Prior (Equal weight benchmark if market-cap unavailable)
-    w_prior = np.ones(n) / n
+    # 1. Market Prior (Equal weight benchmark if custom prior not supplied)
+    if prior_weights:
+        w_prior = np.array([float(prior_weights.get(a, 0.0)) for a in assets], dtype=float)
+        if w_prior.sum() > 0:
+            w_prior = w_prior / w_prior.sum()
+        else:
+            w_prior = np.ones(n) / n
+    else:
+        w_prior = np.ones(n) / n
+
     pi = risk_aversion * np.dot(sigma, w_prior)
 
     if not views:
@@ -173,6 +183,8 @@ def main():
     parser.add_argument("--views", nargs="+", default=["BTC/USDT>ETH/USDT:0.02"], help="정성적 전망(Views) 리스트 (상대전망: BTC/USDT>ETH/USDT:0.02, 절대전망: SOL/USDT:0.05)")
     parser.add_argument("--tau", type=positive_float, default=0.05, help="사전 수익률 추정의 불확실성 스케일러 tau (0.01~0.1 권장, 기본: 0.05)")
     parser.add_argument("--risk-aversion", type=positive_float, default=2.5, help="투자자 위험 회피 계수 lambda (1.0 공격적 ~ 5.0 보수적, 기본: 2.5)")
+    parser.add_argument("--prior-weights", nargs="+", default=None, help="커스텀 사전 비중 리스트 (예: BTC/USDT:0.6 ETH/USDT:0.4)")
+    parser.add_argument("--config-file", type=str, default="", help="비중을 불러올 config.json 또는 allocation JSON 파일 경로")
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic sample data")
     args = parser.parse_args()
 
@@ -189,11 +201,30 @@ def main():
     if prices.empty or args.use_synthetic:
         prices = generate_synthetic_crypto_data(periods=500)
 
+    prior_w = None
+    if args.prior_weights:
+        prior_w = {}
+        for item in args.prior_weights:
+            if ":" in item:
+                pair, w_str = item.split(":", 1)
+                try:
+                    prior_w[pair.strip()] = float(w_str)
+                except ValueError:
+                    pass
+    elif args.config_file and Path(args.config_file).is_file():
+        try:
+            import json
+            cfg = json.loads(Path(args.config_file).read_text(encoding="utf-8"))
+            prior_w = cfg.get("pair_weights", cfg.get("weights"))
+        except Exception as e:
+            print(f"[!] Warning: Could not read prior weights from {args.config_file}: {e}")
+
     res = compute_black_litterman_weights(
         prices=prices,
         views=args.views,
         tau=args.tau,
         risk_aversion=args.risk_aversion,
+        prior_weights=prior_w,
     )
 
     print_black_litterman_report(res)
