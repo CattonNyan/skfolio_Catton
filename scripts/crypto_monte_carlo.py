@@ -60,10 +60,24 @@ def simulate_monte_carlo_paths(
     mu = float(np.mean(port_returns))
     sigma = float(np.std(port_returns) + 1e-9)
 
-    # Drift and shock components for GBM
+    # Detect candle frequency if DatetimeIndex to scale parameters to daily horizon
+    bars_per_day = 1.0
+    if isinstance(prices.index, pd.DatetimeIndex) and len(prices.index) > 1:
+        try:
+            diffs = prices.index.to_series().diff().dropna()
+            median_seconds = float(diffs.dt.total_seconds().median())
+            if 0 < median_seconds < 86400:
+                bars_per_day = 86400.0 / median_seconds
+        except Exception:
+            pass
+
+    daily_mu = mu * bars_per_day
+    daily_sigma = sigma * np.sqrt(bars_per_day)
+
+    # Drift and shock components for GBM (daily step)
     dt = 1.0
-    drift = (mu - 0.5 * (sigma**2)) * dt
-    vol = sigma * np.sqrt(dt)
+    drift = (daily_mu - 0.5 * (daily_sigma**2)) * dt
+    vol = daily_sigma * np.sqrt(dt)
 
     np.random.seed(seed)
     # Generate random shocks: shape = (num_simulations, days)
@@ -116,6 +130,10 @@ def simulate_monte_carlo_paths(
         "path_p50": [round(x, 2) for x in p50_path],
         "path_p95": [round(x, 2) for x in p95_path],
     }
+
+
+# Backwards compatibility and dashboard integration alias
+simulate_monte_carlo = simulate_monte_carlo_paths
 
 
 def print_monte_carlo_report(res: dict[str, object]):

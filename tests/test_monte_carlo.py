@@ -52,6 +52,15 @@ class MonteCarloTests(unittest.TestCase):
         self.assertFalse(math.isnan(res["cvar_95_dollar"]))
         self.assertGreaterEqual(res["cvar_95_dollar"], 0.0)
 
+    def test_simulate_monte_carlo_alias_and_intraday(self):
+        from scripts.crypto_monte_carlo import simulate_monte_carlo
+        dates = pd.date_range("2026-01-01", periods=96, freq="15min")
+        prices = pd.DataFrame({"BTC/USDT": [100.0 + i for i in range(96)]}, index=dates)
+        weights = {"BTC/USDT": 1.0}
+        res = simulate_monte_carlo(prices, weights, days=10, num_simulations=50)
+        self.assertIn("expected_final_wealth", res)
+        self.assertEqual(res["days"], 10)
+
 
 if __name__ == "__main__":
     unittest.main()
