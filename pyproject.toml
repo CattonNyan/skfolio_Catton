@@ -162,8 +162,6 @@ convention = "numpy"
 addopts = [
     "--import-mode=importlib",
     "--doctest-modules",
-    "-n=4",
-    "--dist=worksteal",
 ]
 doctest_optionflags = [
     "NORMALIZE_WHITESPACE",
