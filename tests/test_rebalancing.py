@@ -29,8 +29,31 @@ class RebalancingTests(unittest.TestCase):
         self.assertIn("summary", res)
         self.assertIn("Total Return (%)", res["summary"])
         self.assertIn("Max Drawdown (%)", res["summary"])
+        self.assertIn("Sortino Ratio (Ann.)", res["summary"])
+        self.assertIn("Calmar Ratio", res["summary"])
         self.assertIsInstance(res["nav_port"], pd.Series)
         self.assertEqual(len(res["nav_port"]), 119)
+
+    def test_hourly_rebalancing_annualization(self):
+        dates = pd.date_range("2026-01-01", periods=150, freq="1h")
+        prices = pd.DataFrame(
+            {
+                "BTC/USDT": np.linspace(50000, 60000, 150),
+                "ETH/USDT": np.linspace(3000, 3500, 150),
+            },
+            index=dates,
+        )
+        res = simulate_rebalancing(
+            prices=prices,
+            train_bars=50,
+            rebalance_freq_bars=20,
+            fee_rate=0.001,
+            model_choice="Equal Weight",
+        )
+        s = res["summary"]
+        self.assertIn("Sortino Ratio (Ann.)", s)
+        self.assertIn("Calmar Ratio", s)
+        self.assertGreater(s["Total Return (%)"], 0)
 
 
 if __name__ == "__main__":

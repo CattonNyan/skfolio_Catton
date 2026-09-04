@@ -175,10 +175,29 @@ def simulate_rebalancing(
     total_return_eq = (nav_eq_series.iloc[-1] - 1.0) * 100
     total_return_bh = (nav_bh_series.iloc[-1] - 1.0) * 100
 
+    # Detect candle frequency for annualization factor
+    annual_factor = 365.0 * 24.0 * 4.0  # Default 15m
+    if isinstance(test_dates, pd.DatetimeIndex) and len(test_dates) > 1:
+        try:
+            diffs = test_dates.to_series().diff().dropna()
+            median_sec = float(diffs.dt.total_seconds().median())
+            if median_sec > 0:
+                annual_factor = (365.0 * 86400.0) / median_sec
+        except Exception:
+            pass
+
     pct_changes = nav_port_series.pct_change().dropna()
-    mean_ret = pct_changes.mean()
-    vol = pct_changes.std()
-    sharpe = (mean_ret / (vol + 1e-9)) * np.sqrt(365 * 24 * 4) if len(pct_changes) > 0 else 0.0
+    mean_ret = float(pct_changes.mean()) if len(pct_changes) > 0 else 0.0
+    vol = float(pct_changes.std()) if len(pct_changes) > 0 else 0.0
+    sharpe = (mean_ret / (vol + 1e-9)) * np.sqrt(annual_factor) if len(pct_changes) > 0 else 0.0
+
+    # Downside semi-deviation & Sortino Ratio
+    downside = pct_changes[pct_changes < 0]
+    downside_std = float(downside.std()) if len(downside) > 1 else vol
+    sortino = (mean_ret / (downside_std + 1e-9)) * np.sqrt(annual_factor) if len(pct_changes) > 0 else 0.0
+
+    # Calmar Ratio: Return / Max Drawdown
+    calmar = (total_return_port / (abs(port_mdd * 100.0) + 1e-9)) if abs(port_mdd) > 0 else 0.0
 
     avg_turnover = float(np.mean(turnover_history)) if turnover_history else 0.0
 
@@ -187,6 +206,8 @@ def simulate_rebalancing(
         "Total Return (%)": round(total_return_port, 2),
         "Max Drawdown (%)": round(port_mdd * 100, 2),
         "Sharpe Ratio (Ann.)": round(sharpe, 3),
+        "Sortino Ratio (Ann.)": round(sortino, 3),
+        "Calmar Ratio": round(calmar, 3),
         "Average Turnover (%)": round(avg_turnover * 100, 2),
         "Rebalancing Count": len(rebalance_dates),
         "Equal Weight Return (%)": round(total_return_eq, 2),
@@ -216,9 +237,11 @@ def print_backtest_report(summary: dict[str, object]):
     print(f"    {'Equal Weight (Rebalanced)':<26} | {summary['Equal Weight Return (%)']:>13.2f}% | {summary['Equal Weight MDD (%)']:>13.2f}%")
     print(f"    {'Buy & Hold Benchmark':<26} | {summary['Buy & Hold Return (%)']:>13.2f}% | {summary['Buy & Hold MDD (%)']:>13.2f}%")
     print("--------------------------------------------------------------------------------")
-    print(f" - Annualized Sharpe Ratio : {summary['Sharpe Ratio (Ann.)']}")
-    print(f" - Average Turnover Rate   : {summary['Average Turnover (%)']}% per rebalance")
-    print(f" - Total Rebalance Events  : {summary['Rebalancing Count']} times")
+    print(f" - Annualized Sharpe Ratio  : {summary['Sharpe Ratio (Ann.)']}")
+    print(f" - Annualized Sortino Ratio : {summary['Sortino Ratio (Ann.)']}")
+    print(f" - Calmar Ratio (Ret / MDD) : {summary['Calmar Ratio']}")
+    print(f" - Average Turnover Rate    : {summary['Average Turnover (%)']}% per rebalance")
+    print(f" - Total Rebalance Events   : {summary['Rebalancing Count']} times")
     print("================================================================================\n")
 
 
