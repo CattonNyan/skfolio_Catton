@@ -111,7 +111,10 @@ class SkfolioEnhancedAtrStrategy(IStrategy):
     }
 
     def __init__(self, config: dict | None = None):
-        super().__init__(config=config) if hasattr(super(), "__init__") else None
+        if HAS_FREQTRADE:
+            super().__init__(config=config)
+        else:
+            super().__init__()
         self.config = config or {}
         self._pair_risk_limits: dict[str, dict[str, float]] = {}
         self._load_risk_parameters()
