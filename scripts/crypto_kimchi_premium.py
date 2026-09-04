@@ -118,9 +118,13 @@ def print_kimchi_premium_report(
     print("================================================================================\n")
 
 
+from scripts.crypto_portfolio_optimizer import positive_float
+
+
 def main():
     parser = argparse.ArgumentParser(description="Kimchi Premium Arbitrage Analyzer")
-    parser.add_argument("--usdt-krw", type=float, default=None, help="Explicit USD/KRW exchange rate (default: fetch live)")
+    parser.add_argument("--coins", nargs="+", default=None, help="코인 심볼 목록 (예: BTC ETH SOL XRP DOGE)")
+    parser.add_argument("--usdt-krw", type=positive_float, default=None, help="Explicit USD/KRW exchange rate (default: fetch live)")
     parser.add_argument("--export-json", type=str, default="", help="Path to export results JSON")
     args = parser.parse_args()
 
@@ -131,6 +135,8 @@ def main():
         rate, rate_source = fetch_live_usd_krw_rate()
     print(f"[*] Applied Exchange Rate: {rate:,.2f} KRW/USD (Source: {rate_source})")
 
+    pairs = [c.strip().upper() for c in args.coins] if args.coins else ["BTC", "ETH", "SOL", "XRP"]
+
     # Default representative crypto prices if live API is unavailable
     sample_upbit = {"BTC": 136500000.0, "ETH": 4750000.0, "SOL": 298000.0, "XRP": 1150.0}
     sample_binance = {"BTC": 98000.0, "ETH": 3450.0, "SOL": 215.0, "XRP": 0.83}
@@ -140,7 +146,6 @@ def main():
         binance = ccxt.binance({"enableRateLimit": True})
         upbit = ccxt.upbit({"enableRateLimit": True})
 
-        pairs = ["BTC", "ETH", "SOL", "XRP"]
         for p in pairs:
             try:
                 b_ticker = binance.fetch_ticker(f"{p}/USDT")

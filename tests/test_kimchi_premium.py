@@ -35,6 +35,14 @@ class KimchiPremiumTests(unittest.TestCase):
         self.assertGreater(rate, 500.0)
         self.assertIsInstance(source, str)
 
+    def test_multi_coins_arbitrage_computation(self):
+        upbit = {"BTC": 105000.0, "DOGE": 210.0}
+        binance = {"BTC": 100.0, "DOGE": 0.20}
+        res = compute_kimchi_premium(upbit, binance, usdt_krw_rate=1000.0)
+        self.assertIn("BTC", res)
+        self.assertIn("DOGE", res)
+        self.assertEqual(res["DOGE"]["premium_pct"], 5.0)
+
 
 if __name__ == "__main__":
     unittest.main()
