@@ -49,6 +49,15 @@ class MacroRegimeTests(unittest.TestCase):
         self.assertIn("BTC/USDT", clean_pairs)
         self.assertIn("ETH/USDT", clean_pairs)
 
+    def test_calculate_macro_regime_weights_helper(self):
+        from scripts.crypto_macro_regime import calculate_macro_regime_weights
+
+        base_w = {"BTC/USDT": 0.6, "ETH/USDT": 0.4}
+        adj = calculate_macro_regime_weights(base_w, fear_and_greed_value=85)
+        self.assertIn("USDT (Cash)", adj)
+        self.assertEqual(adj["USDT (Cash)"], 0.40)
+        self.assertAlmostEqual(sum(adj.values()), 1.0, places=3)
+
 
 if __name__ == "__main__":
     unittest.main()

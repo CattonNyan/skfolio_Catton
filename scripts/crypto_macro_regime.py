@@ -137,6 +137,20 @@ def filter_crypto_weights_for_freqtrade(
     return clean_pairs, cash_ratio
 
 
+def calculate_macro_regime_weights(
+    base_weights: dict[str, float],
+    fear_and_greed_value: int = 50,
+) -> dict[str, float]:
+    """
+    Convenience helper for UI/Dashboard to return adjusted weights dictionary directly.
+    """
+    res = adjust_cash_allocation_by_regime(
+        base_weights=base_weights,
+        fng_value=fear_and_greed_value,
+    )
+    return res["adjusted_weights"]
+
+
 def print_macro_regime_report(res: dict[str, object]):
     """Print clean terminal report of regime cash allocation."""
     print("================================================================================")
@@ -165,6 +179,7 @@ def main():
     parser = argparse.ArgumentParser(description="Crypto Macro Regime & Dynamic Cash Allocator")
     parser.add_argument("--fng", type=int, default=None, help="Explicit Fear & Greed index (0-100, default: fetch live)")
     parser.add_argument("--wallet-size", type=float, default=10000.0, help="Total wallet value in USDT")
+    parser.add_argument("--config-file", type=str, default="", help="Path to allocation or config JSON to read weights from")
     parser.add_argument("--export-json", type=str, default="", help="Path to export results JSON")
     args = parser.parse_args()
 
@@ -175,6 +190,13 @@ def main():
         print(f"[*] Fetched Live Alternative.me Index: {fng_val}/100 ({label})")
 
     base_weights = {"BTC/USDT": 0.50, "ETH/USDT": 0.30, "SOL/USDT": 0.20}
+    if args.config_file and Path(args.config_file).is_file():
+        try:
+            data = json.loads(Path(args.config_file).read_text(encoding="utf-8"))
+            base_weights = data.get("pair_weights", data.get("weights", base_weights))
+        except Exception as e:
+            print(f"[!] Warning: Could not load {args.config_file}: {e}")
+
     res = adjust_cash_allocation_by_regime(
         base_weights=base_weights,
         fng_value=fng_val,
