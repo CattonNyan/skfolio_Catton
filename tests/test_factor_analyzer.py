@@ -43,6 +43,15 @@ class FactorAnalyzerTests(unittest.TestCase):
         self.assertEqual(list(filtered_df.columns), top_assets)
         self.assertEqual(len(filtered_df), len(prices))
 
+    def test_invalid_top_n_rejected(self):
+        prices = generate_synthetic_crypto_data(periods=30)
+
+        for top_n in (0, -1, 1.5, True, len(prices.columns) + 1):
+            with self.subTest(top_n=top_n), self.assertRaises(ValueError):
+                select_smart_beta_universe(
+                    prices, top_n=top_n, lookback_bars=20
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -111,6 +111,12 @@ def select_smart_beta_universe(
     """
     Select top N assets using multi-factor ranking and slice price DataFrame.
     """
+    if isinstance(top_n, bool) or not isinstance(top_n, int) or top_n <= 0:
+        raise ValueError("Top N must be a strictly positive integer.")
+    if top_n > len(prices.columns):
+        raise ValueError(
+            f"Top N ({top_n}) cannot exceed the number of assets ({len(prices.columns)})."
+        )
     factors = compute_crypto_factors(prices, lookback_bars=lookback_bars)
     selected_assets = list(factors.index[:top_n])
     filtered_prices = prices[selected_assets]
