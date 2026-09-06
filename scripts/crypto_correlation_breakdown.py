@@ -45,6 +45,12 @@ def detect_correlation_breakdown(
     - rolling_window: Number of bars for rolling window correlation
     - z_threshold: Z-score threshold to flag anomalous correlation breakdowns
     """
+    if (
+        isinstance(rolling_window, bool)
+        or not isinstance(rolling_window, int)
+        or rolling_window < 2
+    ):
+        raise ValueError("Rolling window must be an integer of at least 2.")
     if len(prices) < rolling_window + 5:
         raise ValueError(
             f"Prices length ({len(prices)}) is too short for rolling window ({rolling_window})."
