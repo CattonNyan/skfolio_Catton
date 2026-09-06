@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -57,8 +58,8 @@ def compute_kimchi_premium(
     - binance_prices: Mapping of coin symbol to USDT price, e.g. {"BTC": 97000.0}
     - usdt_krw_rate: USD/KRW exchange rate (default: 1350.0)
     """
-    if usdt_krw_rate <= 0:
-        raise ValueError("Exchange rate must be strictly positive.")
+    if not math.isfinite(usdt_krw_rate) or usdt_krw_rate <= 0:
+        raise ValueError("Exchange rate must be finite and strictly positive.")
 
     results: dict[str, dict[str, float | str]] = {}
 
@@ -68,8 +69,10 @@ def compute_kimchi_premium(
         p_upbit = upbit_prices[sym]
         p_binance = binance_prices[sym]
 
-        if p_binance <= 0:
-            continue
+        if not math.isfinite(p_upbit) or p_upbit <= 0:
+            raise ValueError(f"Upbit price for {sym} must be finite and positive.")
+        if not math.isfinite(p_binance) or p_binance <= 0:
+            raise ValueError(f"Binance price for {sym} must be finite and positive.")
 
         fair_krw = p_binance * usdt_krw_rate
         premium_pct = ((p_upbit / fair_krw) - 1.0) * 100

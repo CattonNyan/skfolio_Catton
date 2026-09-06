@@ -21,6 +21,15 @@ class KimchiPremiumTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             compute_kimchi_premium({"BTC": 1000.0}, {"BTC": 1.0}, usdt_krw_rate=-100.0)
 
+    def test_invalid_market_prices_rejected(self):
+        invalid_prices = (0.0, -1.0, float("nan"), float("inf"))
+
+        for price in invalid_prices:
+            with self.subTest(exchange="upbit", price=price), self.assertRaises(ValueError):
+                compute_kimchi_premium({"BTC": price}, {"BTC": 100.0})
+            with self.subTest(exchange="binance", price=price), self.assertRaises(ValueError):
+                compute_kimchi_premium({"BTC": 100000.0}, {"BTC": price})
+
     def test_discount_status_labeling(self):
         # Upbit 95,000 KRW vs Fair 100,000 KRW -> -5% Discount
         upbit = {"ETH": 95000.0}
