@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -67,8 +68,8 @@ def evaluate_stress_test(
 
     Returns dict mapping scenario name to performance metrics.
     """
-    if total_wallet <= 0:
-        raise ValueError("total_wallet must be strictly positive.")
+    if not math.isfinite(total_wallet) or total_wallet <= 0:
+        raise ValueError("total_wallet must be finite and strictly positive.")
     if not weights:
         raise ValueError("weights dictionary cannot be empty.")
 

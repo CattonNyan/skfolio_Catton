@@ -74,8 +74,9 @@ class StressTesterTests(unittest.TestCase):
         )
 
     def test_invalid_wallet_rejected(self):
-        with self.assertRaises(ValueError):
-            evaluate_stress_test({"BTC/USDT": 1.0}, total_wallet=-1000.0)
+        for wallet in (-1000.0, 0.0, float("nan"), float("inf")):
+            with self.subTest(wallet=wallet), self.assertRaises(ValueError):
+                evaluate_stress_test({"BTC/USDT": 1.0}, total_wallet=wallet)
 
 
 if __name__ == "__main__":
