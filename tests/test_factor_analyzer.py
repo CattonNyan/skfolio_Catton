@@ -28,6 +28,13 @@ class FactorAnalyzerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             compute_crypto_factors(prices, lookback_bars=60)
 
+    def test_invalid_lookback_rejected(self):
+        prices = generate_synthetic_crypto_data(periods=30)
+
+        for lookback in (0, 1, -1, 2.5, True):
+            with self.subTest(lookback=lookback), self.assertRaises(ValueError):
+                compute_crypto_factors(prices, lookback_bars=lookback)
+
     def test_select_smart_beta_universe(self):
         prices = generate_synthetic_crypto_data(periods=100)
         top_assets, filtered_df = select_smart_beta_universe(prices, top_n=2, lookback_bars=50)

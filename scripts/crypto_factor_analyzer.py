@@ -40,6 +40,12 @@ def compute_crypto_factors(
 
     Returns DataFrame containing raw factors and composite z-scores.
     """
+    if (
+        isinstance(lookback_bars, bool)
+        or not isinstance(lookback_bars, int)
+        or lookback_bars < 2
+    ):
+        raise ValueError("Lookback bars must be an integer of at least 2.")
     if len(prices) < lookback_bars:
         raise ValueError(f"Prices length ({len(prices)}) is shorter than lookback ({lookback_bars}).")
 
