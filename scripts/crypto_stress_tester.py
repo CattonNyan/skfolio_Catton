@@ -78,10 +78,12 @@ def evaluate_stress_test(
     for k, v in weights.items():
         try:
             w_val = float(v)
-            if w_val > 0:
-                clean_weights[k] = w_val
         except (TypeError, ValueError):
-            pass
+            continue
+        if not math.isfinite(w_val):
+            raise ValueError(f"Weight for {k} must be finite.")
+        if w_val > 0:
+            clean_weights[k] = w_val
     if not clean_weights:
         raise ValueError("No valid positive weights found.")
     total_w = sum(clean_weights.values())

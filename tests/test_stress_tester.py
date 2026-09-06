@@ -78,6 +78,13 @@ class StressTesterTests(unittest.TestCase):
             with self.subTest(wallet=wallet), self.assertRaises(ValueError):
                 evaluate_stress_test({"BTC/USDT": 1.0}, total_wallet=wallet)
 
+    def test_non_finite_weight_rejected(self):
+        for weight in (float("nan"), float("inf"), float("-inf")):
+            with self.subTest(weight=weight), self.assertRaises(ValueError):
+                evaluate_stress_test(
+                    {"BTC/USDT": 1.0, "ETH/USDT": weight}
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
