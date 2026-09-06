@@ -43,6 +43,13 @@ class TaxCalculatorTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             compute_crypto_tax_impact([1000000.0], tax_rate=-0.1)
 
+    def test_invalid_allowance_rejected(self):
+        for allowance in (-1.0, float("nan"), float("inf")):
+            with self.subTest(allowance=allowance), self.assertRaises(ValueError):
+                compute_crypto_tax_impact(
+                    [1000000.0], annual_allowance_krw=allowance
+                )
+
     def test_invalid_capital_rejected(self):
         with self.assertRaises(ValueError):
             compute_crypto_tax_impact([1000000.0], initial_capital_krw=-500.0)
