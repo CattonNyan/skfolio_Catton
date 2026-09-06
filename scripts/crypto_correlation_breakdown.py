@@ -51,6 +51,12 @@ def detect_correlation_breakdown(
         or rolling_window < 2
     ):
         raise ValueError("Rolling window must be an integer of at least 2.")
+    if (
+        isinstance(z_threshold, bool)
+        or not np.isfinite(z_threshold)
+        or z_threshold <= 0
+    ):
+        raise ValueError("Z-score threshold must be a finite positive number.")
     if len(prices) < rolling_window + 5:
         raise ValueError(
             f"Prices length ({len(prices)}) is too short for rolling window ({rolling_window})."

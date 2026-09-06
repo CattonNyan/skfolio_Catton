@@ -35,6 +35,13 @@ class CorrelationBreakdownTests(unittest.TestCase):
             with self.subTest(window=window), self.assertRaises(ValueError):
                 detect_correlation_breakdown(prices, rolling_window=window)
 
+    def test_invalid_threshold_rejected(self):
+        prices = generate_synthetic_crypto_data(periods=30)
+
+        for threshold in (0, -1.0, float("nan"), float("inf"), True):
+            with self.subTest(threshold=threshold), self.assertRaises(ValueError):
+                detect_correlation_breakdown(prices, z_threshold=threshold)
+
     def test_inverse_correlation_detection(self):
         dates = pd.date_range("2026-01-01", periods=60, freq="1D")
         np.random.seed(42)
