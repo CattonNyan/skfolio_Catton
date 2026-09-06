@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 import urllib.request
 from pathlib import Path
@@ -63,6 +64,8 @@ def adjust_cash_allocation_by_regime(
     """
     if fng_value < 0 or fng_value > 100:
         raise ValueError("Fear and Greed index must be between 0 and 100.")
+    if not math.isfinite(total_wallet) or total_wallet <= 0:
+        raise ValueError("Total wallet must be finite and strictly positive.")
 
     # Determine required cash reserve
     if fng_value >= 80:

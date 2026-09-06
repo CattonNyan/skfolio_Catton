@@ -31,6 +31,13 @@ class MacroRegimeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             adjust_cash_allocation_by_regime({"BTC/USDT": 1.0}, fng_value=120)
 
+    def test_invalid_wallet_rejected(self):
+        for wallet in (0.0, -1.0, float("nan"), float("inf")):
+            with self.subTest(wallet=wallet), self.assertRaises(ValueError):
+                adjust_cash_allocation_by_regime(
+                    {"BTC/USDT": 1.0}, fng_value=50, total_wallet=wallet
+                )
+
     def test_fetch_fear_and_greed_returns_valid_tuple(self):
         val, label = fetch_fear_and_greed_index()
         self.assertIsInstance(val, int)
