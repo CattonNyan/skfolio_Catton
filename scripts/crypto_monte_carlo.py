@@ -43,6 +43,14 @@ def simulate_monte_carlo_paths(
 
     Returns summary metrics, percentile cones, and risk distributions.
     """
+    if isinstance(days, bool) or not isinstance(days, int) or days <= 0:
+        raise ValueError("Days must be a strictly positive integer.")
+    if (
+        isinstance(num_simulations, bool)
+        or not isinstance(num_simulations, int)
+        or num_simulations <= 0
+    ):
+        raise ValueError("Number of simulations must be a strictly positive integer.")
     if initial_capital <= 0:
         raise ValueError("Initial capital must be strictly positive.")
 

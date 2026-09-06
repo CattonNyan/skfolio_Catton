@@ -35,6 +35,20 @@ class MonteCarloTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             simulate_monte_carlo_paths(prices, weights, initial_capital=-500.0)
 
+    def test_invalid_simulation_dimensions_rejected(self):
+        prices = generate_synthetic_crypto_data(periods=50)
+        weights = {"BTC/USDT": 1.0}
+
+        for days in (0, -1, 1.5, True):
+            with self.subTest(days=days), self.assertRaises(ValueError):
+                simulate_monte_carlo_paths(prices, weights, days=days)
+
+        for simulations in (0, -1, 1.5, True):
+            with self.subTest(simulations=simulations), self.assertRaises(ValueError):
+                simulate_monte_carlo_paths(
+                    prices, weights, num_simulations=simulations
+                )
+
     def test_no_common_assets_rejected(self):
         prices = generate_synthetic_crypto_data(periods=50)
         weights = {"NON_EXISTENT/COIN": 1.0}
