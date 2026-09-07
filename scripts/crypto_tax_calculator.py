@@ -42,13 +42,17 @@ def compute_crypto_tax_impact(
     - usdt_krw_rate: Exchange rate applied
     - initial_capital_krw: Starting capital for return calculation
     """
-    if not np.isfinite(annual_allowance_krw) or annual_allowance_krw < 0:
+    if isinstance(annual_allowance_krw, bool) or not np.isfinite(annual_allowance_krw) or annual_allowance_krw < 0:
         raise ValueError("Annual allowance must be a finite non-negative amount.")
-    if not np.isfinite(tax_rate) or tax_rate < 0 or tax_rate > 1:
+    if isinstance(tax_rate, bool) or not np.isfinite(tax_rate) or tax_rate < 0 or tax_rate > 1:
         raise ValueError("Tax rate must be between 0.0 and 1.0 (e.g. 0.22).")
-    if initial_capital_krw <= 0:
+    if isinstance(usdt_krw_rate, bool) or not np.isfinite(usdt_krw_rate) or usdt_krw_rate <= 0:
+        raise ValueError("Exchange rate must be a finite strictly positive number.")
+    if isinstance(initial_capital_krw, bool) or not np.isfinite(initial_capital_krw) or initial_capital_krw <= 0:
         raise ValueError("Initial capital must be strictly positive.")
 
+    if any(isinstance(p, bool) for p in realized_profits):
+        raise ValueError("Realized profits must not contain boolean values.")
     profits_arr = np.array(realized_profits, dtype=float)
     if not np.all(np.isfinite(profits_arr)):
         raise ValueError("Realized profits must contain only finite values.")

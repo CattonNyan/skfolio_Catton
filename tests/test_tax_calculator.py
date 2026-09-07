@@ -62,6 +62,24 @@ class TaxCalculatorTests(unittest.TestCase):
             with self.subTest(profit=profit), self.assertRaises(ValueError):
                 compute_crypto_tax_impact([1000000.0, profit])
 
+    def test_bool_parameters_and_fx_rate_rejected(self):
+        for bad_bool in (True, False):
+            with self.subTest(bad_bool=bad_bool):
+                with self.assertRaises(ValueError):
+                    compute_crypto_tax_impact([1000000.0], annual_allowance_krw=bad_bool)
+                with self.assertRaises(ValueError):
+                    compute_crypto_tax_impact([1000000.0], tax_rate=bad_bool)
+                with self.assertRaises(ValueError):
+                    compute_crypto_tax_impact([1000000.0], initial_capital_krw=bad_bool)
+                with self.assertRaises(ValueError):
+                    compute_crypto_tax_impact([1000000.0], usdt_krw_rate=bad_bool)
+                with self.assertRaises(ValueError):
+                    compute_crypto_tax_impact([bad_bool])
+
+        for bad_rate in (-1.0, 0, float("nan"), float("inf")):
+            with self.subTest(bad_rate=bad_rate), self.assertRaises(ValueError):
+                compute_crypto_tax_impact([1000000.0], usdt_krw_rate=bad_rate)
+
 
 if __name__ == "__main__":
     unittest.main()
