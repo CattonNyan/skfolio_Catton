@@ -23,6 +23,11 @@ class CryptoOptimizerTests(unittest.TestCase):
         self.assertIn("ETH/USDT", df.columns)
         self.assertTrue((df["BTC/USDT"] > 0).all())
 
+    def test_synthetic_data_rejects_invalid_periods(self):
+        for periods in (0, 1, -1, 2.5, True):
+            with self.subTest(periods=periods), self.assertRaises(ValueError):
+                generate_synthetic_crypto_data(periods=periods)
+
     def test_find_freqtrade_data_dirs(self):
         dirs = find_freqtrade_data_dirs()
         self.assertIsInstance(dirs, list)

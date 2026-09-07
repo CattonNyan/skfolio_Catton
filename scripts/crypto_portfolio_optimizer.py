@@ -77,6 +77,8 @@ def load_from_feather_dir(data_dir: Path, timeframe: str = "15m") -> pd.DataFram
 
 def generate_synthetic_crypto_data(periods: int = 1000) -> pd.DataFrame:
     """Generate realistic synthetic crypto price movements for standalone testing."""
+    if isinstance(periods, bool) or not isinstance(periods, int) or periods < 2:
+        raise ValueError("Synthetic data periods must be an integer of at least 2.")
     np.random.seed(42)
     dates = pd.date_range(end=pd.Timestamp.now(), periods=periods, freq="15min")
     
