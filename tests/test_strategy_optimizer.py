@@ -65,6 +65,12 @@ class StrategyOptimizerTests(unittest.TestCase):
                     pd.DataFrame(), total_capital=capital
                 )
 
+    def test_unknown_model_rejected(self):
+        with self.assertRaisesRegex(ValueError, "Unsupported allocation model"):
+            optimize_strategy_allocation(
+                pd.DataFrame(), model="Maximum Return"
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
