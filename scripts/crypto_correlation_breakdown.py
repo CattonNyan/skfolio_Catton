@@ -45,6 +45,14 @@ def detect_correlation_breakdown(
     - rolling_window: Number of bars for rolling window correlation
     - z_threshold: Z-score threshold to flag anomalous correlation breakdowns
     """
+    if not isinstance(prices, pd.DataFrame) or prices.shape[1] < 2:
+        raise ValueError("Prices must be a DataFrame with at least two assets.")
+    try:
+        price_values = prices.to_numpy(dtype=float)
+    except (TypeError, ValueError) as error:
+        raise ValueError("Prices must contain only numeric values.") from error
+    if not np.all(np.isfinite(price_values)) or np.any(price_values <= 0):
+        raise ValueError("Prices must contain only finite, strictly positive values.")
     if (
         isinstance(rolling_window, bool)
         or not isinstance(rolling_window, int)
@@ -86,7 +94,11 @@ def detect_correlation_breakdown(
         current_corr = float(rolling_corr.iloc[-1])
         hist_mean = float(rolling_corr.mean())
         hist_std = float(rolling_corr.std() + 1e-9)
-        z_score = float((current_corr - hist_mean) / hist_std)
+        z_score = float((current_corr - hist_mean) / hist_std) if hist_std > 0 else 0.0
+        if not np.isfinite(z_score):
+            z_score = 0.0
+        if not np.isfinite(current_corr):
+            current_corr = 0.0
         delta_corr = float(current_corr - hist_mean)
 
         # Classify state

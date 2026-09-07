@@ -59,6 +59,19 @@ class CorrelationBreakdownTests(unittest.TestCase):
         # High diversification score because of negative correlation
         self.assertGreater(res["INVERSE"]["diversification_score"], 50.0)
 
+    def test_invalid_prices_rejected(self):
+        valid = generate_synthetic_crypto_data(periods=50)
+        invalid_prices = (
+            "not_a_df",
+            valid.iloc[:, :1],
+            pd.DataFrame(),
+            valid.replace(valid.iloc[0, 0], -10.0),
+            pd.DataFrame({"A": ["bad", "str"], "B": [1.0, 2.0]}),
+        )
+        for bad in invalid_prices:
+            with self.subTest(bad=type(bad)), self.assertRaises(ValueError):
+                detect_correlation_breakdown(bad, rolling_window=10)
+
 
 if __name__ == "__main__":
     unittest.main()
