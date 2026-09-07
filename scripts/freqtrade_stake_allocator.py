@@ -72,6 +72,10 @@ class SkfolioStakeAllocator:
         """
         if not math.isfinite(proposed_stake) or proposed_stake <= 0:
             raise ValueError("proposed_stake must be finite and strictly positive.")
+        if total_wallet is not None and (
+            not math.isfinite(total_wallet) or total_wallet <= 0
+        ):
+            raise ValueError("total_wallet must be finite and strictly positive.")
         for name, boundary in (("min_stake", min_stake), ("max_stake", max_stake)):
             if boundary is not None and (
                 not math.isfinite(boundary) or boundary < 0

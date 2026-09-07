@@ -85,6 +85,17 @@ class StakeAllocatorTests(unittest.TestCase):
                     "BTC/USDT", proposed_stake=proposed_stake
                 )
 
+    def test_invalid_total_wallet_rejected(self):
+        allocator = SkfolioStakeAllocator(allocation_file="non_existent_file.json")
+
+        for total_wallet in (0.0, -1.0, float("nan"), float("inf")):
+            with self.subTest(total_wallet=total_wallet), self.assertRaises(ValueError):
+                allocator.get_stake_amount(
+                    "BTC/USDT",
+                    proposed_stake=100.0,
+                    total_wallet=total_wallet,
+                )
+
     def test_synthetic_data_config_is_rejected(self):
         sample = {
             "skfolio_allocation": {"data_source": "synthetic"},
