@@ -36,10 +36,19 @@ class RiskCalculatorTests(unittest.TestCase):
 
     def test_non_positive_risk_parameters_are_rejected(self):
         prices = generate_synthetic_crypto_data(periods=50)
-        with self.assertRaises(ValueError):
-            compute_risk_guidelines(prices, risk_multiplier=0)
-        with self.assertRaises(ValueError):
-            compute_risk_guidelines(prices, risk_reward_ratio=-1)
+        for bad_val in (0, -1, True, False, float("nan"), float("inf")):
+            with self.subTest(bad_multiplier=bad_val), self.assertRaises(ValueError):
+                compute_risk_guidelines(prices, risk_multiplier=bad_val)
+            with self.subTest(bad_ratio=bad_val), self.assertRaises(ValueError):
+                compute_risk_guidelines(prices, risk_reward_ratio=bad_val)
+
+        for bad_weights in ("not_a_dict", [1, 2], {"BTC": -0.5}, {"BTC": True}, {"BTC": float("nan")}):
+            with self.subTest(bad_weights=bad_weights), self.assertRaises(ValueError):
+                compute_risk_guidelines(prices, weights=bad_weights)
+
+        for bad_prices in ("not_a_df", pd.DataFrame(), pd.DataFrame({"A": [-1.0, 2.0]})):
+            with self.subTest(bad_prices=bad_prices), self.assertRaises(ValueError):
+                calculate_volatility_metrics(bad_prices)
 
     def test_export_risk_json(self):
         sample = {

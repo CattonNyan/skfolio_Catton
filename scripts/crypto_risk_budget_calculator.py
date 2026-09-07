@@ -39,22 +39,26 @@ from scripts.crypto_portfolio_optimizer import (
 
 def calculate_volatility_metrics(prices: pd.DataFrame) -> pd.DataFrame:
     """Calculate periodic volatility, annualized volatility, and downside semi-deviation."""
+    if not isinstance(prices, pd.DataFrame) or prices.shape[1] < 1 or len(prices) < 2:
+        raise ValueError("Prices must be a DataFrame with at least one asset and two rows.")
+    try:
+        price_values = prices.to_numpy(dtype=float)
+    except (TypeError, ValueError) as error:
+        raise ValueError("Prices must contain only numeric values.") from error
+    if not np.all(np.isfinite(price_values)) or np.any(price_values <= 0):
+        raise ValueError("Prices must contain only finite, strictly positive values.")
+
     returns = prices.pct_change().dropna()
-    metrics = []
+    periodic_vol = returns.std()
+    neg_returns = returns.where(returns < 0)
+    neg_counts = (returns < 0).sum()
+    semi_dev = neg_returns.std()
+    semi_dev = semi_dev.where(neg_counts > 1, periodic_vol).fillna(periodic_vol)
 
-    for col in returns.columns:
-        ret = returns[col]
-        vol = float(ret.std())
-        # Downside semi-deviation (only negative returns)
-        neg_ret = ret[ret < 0]
-        semi_dev = float(neg_ret.std()) if len(neg_ret) > 1 else vol
-        metrics.append({
-            "asset": col,
-            "periodic_vol": vol,
-            "semi_dev": semi_dev,
-        })
-
-    return pd.DataFrame(metrics).set_index("asset")
+    return pd.DataFrame({
+        "periodic_vol": periodic_vol,
+        "semi_dev": semi_dev,
+    }, index=prices.columns).rename_axis("asset")
 
 
 def compute_risk_guidelines(
@@ -70,10 +74,29 @@ def compute_risk_guidelines(
     - Base Stoploss = -1.0 * (semi_dev * risk_multiplier) (bounded between -2.0% and -15.0%)
     - Base Take-Profit = abs(Stoploss) * risk_reward_ratio
     """
-    if not np.isfinite(risk_multiplier) or risk_multiplier <= 0:
+    if (
+        isinstance(risk_multiplier, bool)
+        or not np.isfinite(risk_multiplier)
+        or risk_multiplier <= 0
+    ):
         raise ValueError("risk_multiplier must be a positive finite number")
-    if not np.isfinite(risk_reward_ratio) or risk_reward_ratio <= 0:
+    if (
+        isinstance(risk_reward_ratio, bool)
+        or not np.isfinite(risk_reward_ratio)
+        or risk_reward_ratio <= 0
+    ):
         raise ValueError("risk_reward_ratio must be a positive finite number")
+    if weights is not None:
+        if not isinstance(weights, dict):
+            raise ValueError("weights must be a dictionary.")
+        for k, v in weights.items():
+            if (
+                isinstance(v, bool)
+                or not isinstance(v, (int, float, np.number))
+                or not np.isfinite(v)
+                or v < 0
+            ):
+                raise ValueError(f"Weight for {k} must be a finite non-negative number.")
 
     vol_df = calculate_volatility_metrics(prices)
     guidelines: dict[str, dict[str, float]] = {}
