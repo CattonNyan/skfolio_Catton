@@ -28,6 +28,14 @@ class BlackLittermanTests(unittest.TestCase):
         self.assertEqual(prior_w, post_w)
         self.assertAlmostEqual(sum(post_w.values()), 1.0, places=4)
 
+    def test_invalid_model_parameters_rejected(self):
+        prices = generate_synthetic_crypto_data(periods=20)
+        for parameter in (0.0, -1.0, float("nan"), float("inf"), True):
+            with self.subTest(tau=parameter), self.assertRaises(ValueError):
+                compute_black_litterman_weights(prices, tau=parameter)
+            with self.subTest(risk_aversion=parameter), self.assertRaises(ValueError):
+                compute_black_litterman_weights(prices, risk_aversion=parameter)
+
     def test_relative_view_shifts_weights(self):
         prices = generate_synthetic_crypto_data(periods=100)
         res = compute_black_litterman_weights(

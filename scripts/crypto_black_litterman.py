@@ -53,6 +53,10 @@ def compute_black_litterman_weights(
         raise ValueError("Prices must contain only numeric values.") from error
     if not np.all(np.isfinite(price_values)) or np.any(price_values <= 0):
         raise ValueError("Prices must contain only finite, strictly positive values.")
+    if isinstance(tau, bool) or not isinstance(tau, (int, float, np.number)) or not np.isfinite(tau) or tau <= 0:
+        raise ValueError("Tau must be a finite, strictly positive number.")
+    if isinstance(risk_aversion, bool) or not isinstance(risk_aversion, (int, float, np.number)) or not np.isfinite(risk_aversion) or risk_aversion <= 0:
+        raise ValueError("Risk aversion must be a finite, strictly positive number.")
 
     returns = prices.pct_change().dropna()
     assets = list(returns.columns)
