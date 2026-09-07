@@ -65,6 +65,19 @@ class MacroRegimeTests(unittest.TestCase):
         self.assertEqual(adj["USDT (Cash)"], 0.40)
         self.assertAlmostEqual(sum(adj.values()), 1.0, places=3)
 
+    def test_invalid_parameters_and_weights_rejected(self):
+        for bad_fng in (True, False, -1, 101, 50.5):
+            with self.subTest(bad_fng=bad_fng), self.assertRaises(ValueError):
+                adjust_cash_allocation_by_regime({"BTC/USDT": 1.0}, fng_value=bad_fng)
+
+        for bad_limit in (0, -1, True, False, 1.5):
+            with self.subTest(bad_limit=bad_limit), self.assertRaises(ValueError):
+                fetch_fear_and_greed_index(limit=bad_limit)
+
+        for bad_weights in ("not_a_dict", [1, 2], {"": 1.0}, {"BTC": -0.5}, {"BTC": True}, {"BTC": float("nan")}):
+            with self.subTest(bad_weights=bad_weights), self.assertRaises(ValueError):
+                adjust_cash_allocation_by_regime(bad_weights, fng_value=50)
+
 
 if __name__ == "__main__":
     unittest.main()

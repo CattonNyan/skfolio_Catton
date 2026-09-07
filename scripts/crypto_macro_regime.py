@@ -35,6 +35,8 @@ def fetch_fear_and_greed_index(limit: int = 1) -> tuple[int, str]:
     Returns tuple of (index_value, sentiment_classification).
     Gracefully falls back to (50, 'Neutral') on network error.
     """
+    if isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0:
+        raise ValueError("Limit must be a strictly positive integer.")
     url = f"https://api.alternative.me/fng/?limit={limit}"
     try:
         req = urllib.request.Request(
@@ -47,7 +49,7 @@ def fetch_fear_and_greed_index(limit: int = 1) -> tuple[int, str]:
             val = int(latest["value"])
             label = latest["value_classification"]
             return val, label
-    except Exception as e:
+    except Exception:
         # Fallback to neutral on network error or offline environment
         return 50, "Neutral"
 
@@ -62,10 +64,27 @@ def adjust_cash_allocation_by_regime(
 
     Allocates dynamic USDT cash buffer and rescales crypto weights.
     """
-    if fng_value < 0 or fng_value > 100:
-        raise ValueError("Fear and Greed index must be between 0 and 100.")
-    if not math.isfinite(total_wallet) or total_wallet <= 0:
+    if isinstance(fng_value, bool) or not isinstance(fng_value, int) or fng_value < 0 or fng_value > 100:
+        raise ValueError("Fear and Greed index must be an integer between 0 and 100.")
+    if (
+        isinstance(total_wallet, bool)
+        or not isinstance(total_wallet, (int, float))
+        or not math.isfinite(total_wallet)
+        or total_wallet <= 0
+    ):
         raise ValueError("Total wallet must be finite and strictly positive.")
+    if not isinstance(base_weights, dict):
+        raise ValueError("Base weights must be a dictionary.")
+    for k, v in base_weights.items():
+        if not isinstance(k, str) or not k.strip():
+            raise ValueError("Asset names must be non-empty strings.")
+        if (
+            isinstance(v, bool)
+            or not isinstance(v, (int, float))
+            or not math.isfinite(v)
+            or v < 0
+        ):
+            raise ValueError(f"Weight for {k} must be a finite, non-negative number.")
 
     # Determine required cash reserve
     if fng_value >= 80:
