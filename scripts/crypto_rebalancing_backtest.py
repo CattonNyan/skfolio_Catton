@@ -71,6 +71,16 @@ def simulate_rebalancing(
     - fee_rate: Transaction fee (e.g., 0.001 = 0.1% per turnover)
     - model_choice: "Risk Parity", "Max Sharpe", "Min Variance", or "Equal Weight"
     """
+    if isinstance(train_bars, bool) or not isinstance(train_bars, int) or train_bars < 2:
+        raise ValueError("Training window must be an integer of at least 2 bars.")
+    if isinstance(rebalance_freq_bars, bool) or not isinstance(rebalance_freq_bars, int) or rebalance_freq_bars <= 0:
+        raise ValueError("Rebalancing frequency must be a strictly positive integer.")
+    if isinstance(fee_rate, bool) or not isinstance(fee_rate, (int, float, np.number)) or not np.isfinite(fee_rate) or not 0 <= fee_rate < 1:
+        raise ValueError("Fee rate must be a finite number between 0 and 1.")
+    supported_models = {"Risk Parity", "Max Sharpe", "Min Variance", "HRP", "Equal Weight"}
+    if model_choice not in supported_models:
+        raise ValueError(f"Unsupported rebalancing model: {model_choice}")
+
     returns = prices.pct_change().dropna()
     assets = list(returns.columns)
     n_bars = len(returns)

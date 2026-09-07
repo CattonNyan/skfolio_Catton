@@ -34,6 +34,22 @@ class RebalancingTests(unittest.TestCase):
         self.assertIsInstance(res["nav_port"], pd.Series)
         self.assertEqual(len(res["nav_port"]), 119)
 
+    def test_invalid_rebalancing_parameters_rejected(self):
+        prices = generate_synthetic_crypto_data(periods=50)
+        invalid_parameters = (
+            {"train_bars": 1},
+            {"train_bars": True},
+            {"rebalance_freq_bars": 0},
+            {"rebalance_freq_bars": 2.5},
+            {"fee_rate": -0.01},
+            {"fee_rate": float("nan")},
+            {"fee_rate": 1.0},
+            {"model_choice": "Unknown"},
+        )
+        for parameters in invalid_parameters:
+            with self.subTest(parameters=parameters), self.assertRaises(ValueError):
+                simulate_rebalancing(prices, **parameters)
+
     def test_hourly_rebalancing_annualization(self):
         dates = pd.date_range("2026-01-01", periods=150, freq="1h")
         prices = pd.DataFrame(
