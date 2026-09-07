@@ -12,6 +12,7 @@ Generates a fully self-contained, offline-viewable HTML quant report containing:
 from __future__ import annotations
 
 import argparse
+import html
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -237,7 +238,22 @@ def generate_html_report(
     data_source: str = "unspecified",
 ) -> Path:
     """Generate and write standalone HTML report."""
-    if not np.isfinite(total_wallet) or total_wallet <= 0:
+    if not isinstance(prices, pd.DataFrame) or prices.shape[1] < 1 or len(prices) < 2:
+        raise ValueError("prices must be a DataFrame with at least one asset and two rows.")
+    try:
+        price_values = prices.to_numpy(dtype=float)
+    except (TypeError, ValueError) as error:
+        raise ValueError("prices must contain only numeric values.") from error
+    if not np.all(np.isfinite(price_values)) or np.any(price_values <= 0):
+        raise ValueError("prices must contain only finite, strictly positive values.")
+    if not isinstance(weights, dict) or not weights:
+        raise ValueError("weights must be a non-empty dictionary.")
+    for k, v in weights.items():
+        if isinstance(v, bool) or not isinstance(v, (int, float, np.number)) or not np.isfinite(v) or v < 0:
+            raise ValueError(f"Weight for {k} must be a finite non-negative number.")
+    if sum(weights.values()) <= 0:
+        raise ValueError("weights must have a positive total.")
+    if isinstance(total_wallet, bool) or not np.isfinite(total_wallet) or total_wallet <= 0:
         raise ValueError("total_wallet must be a positive finite number")
 
     output_path = Path(output_file)
@@ -245,14 +261,14 @@ def generate_html_report(
 
     returns = prices.pct_change().dropna()
     common_assets = [a for a in returns.columns if a in weights]
-    if common_assets:
-        returns = returns[common_assets]
-        weight_series = pd.Series({a: weights[a] for a in common_assets})
-        if weight_series.sum() > 0:
-            weight_series = weight_series / weight_series.sum()
-        port_ret = returns.dot(weight_series)
-    else:
-        port_ret = pd.Series(0.0, index=returns.index)
+    if not common_assets:
+        raise ValueError("None of the weight assets match the price data columns.")
+    returns = returns[common_assets]
+    common_weights = {a: weights[a] for a in common_assets}
+    weight_series = pd.Series(common_weights)
+    if weight_series.sum() > 0:
+        weight_series = weight_series / weight_series.sum()
+    port_ret = returns.dot(weight_series)
 
     mean_ret = float(port_ret.mean() * 100)
     vol = float(port_ret.std() * 100)
@@ -262,8 +278,9 @@ def generate_html_report(
     table_rows = []
     for asset, w in weights.items():
         allocated = w * total_wallet
+        safe_asset = html.escape(str(asset))
         table_rows.append(
-            f"<tr><td><strong>{asset}</strong></td><td>{w*100:.2f}%</td><td>{allocated:,.2f} USDT</td></tr>"
+            f"<tr><td><strong>{safe_asset}</strong></td><td>{w*100:.2f}%</td><td>{allocated:,.2f} USDT</td></tr>"
         )
     table_html = f"""
     <table>
@@ -277,10 +294,14 @@ def generate_html_report(
     cum_chart_html = ""
     heatmap_html = ""
 
+    safe_weights = {html.escape(str(k)): v for k, v in weights.items()}
+    safe_common_weights = {html.escape(str(k)): v for k, v in common_weights.items()}
+    safe_returns = returns.rename(columns=lambda c: html.escape(str(c)))
+
     if HAS_PLOTLY:
-        fig_pie = create_pie_chart(weights)
-        fig_cum = create_cumulative_return_chart(returns, weights)
-        fig_heat = create_correlation_heatmap(returns.corr())
+        fig_pie = create_pie_chart(safe_weights)
+        fig_cum = create_cumulative_return_chart(safe_returns, safe_common_weights)
+        fig_heat = create_correlation_heatmap(safe_returns.corr())
 
         pie_html = fig_pie.to_html(full_html=False, include_plotlyjs="cdn")
         cum_chart_html = fig_cum.to_html(full_html=False, include_plotlyjs=False)
@@ -296,12 +317,12 @@ def generate_html_report(
         "stake_amounts": {k: round(float(v) * total_wallet, 2) for k, v in weights.items()},
     }
     import json
-    json_snippet = json.dumps(snippet_dict, indent=2)
+    json_snippet = html.escape(json.dumps(snippet_dict, indent=2))
 
     full_html = HTML_TEMPLATE.format(
         created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        model_name=model_name,
-        data_source=data_source.upper(),
+        model_name=html.escape(str(model_name)),
+        data_source=html.escape(str(data_source)).upper(),
         sample_count=len(prices),
         mean_return=mean_ret,
         volatility=vol,
