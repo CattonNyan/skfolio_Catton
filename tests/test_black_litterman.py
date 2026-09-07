@@ -62,6 +62,20 @@ class BlackLittermanTests(unittest.TestCase):
         self.assertAlmostEqual(sum(post_w.values()), 1.0, places=4)
         self.assertFalse(res["fallback_to_prior"])
 
+    def test_invalid_views_rejected(self):
+        prices = generate_synthetic_crypto_data(periods=20)
+        invalid_views = (
+            [""],
+            ["BTC/USDT:not-a-number"],
+            ["BTC/USDT:nan"],
+            ["UNKNOWN/USDT:0.1"],
+            ["BTC/USDT>BTC/USDT:0.1"],
+            ["BTC/USDT>ETH/USDT>SOL/USDT:0.1"],
+        )
+        for views in invalid_views:
+            with self.subTest(views=views), self.assertRaises(ValueError):
+                compute_black_litterman_weights(prices, views=views)
+
     def test_extreme_bearish_views_fallback_flag(self):
         prices = generate_synthetic_crypto_data(periods=50)
         # Apply extreme negative view on all assets

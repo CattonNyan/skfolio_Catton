@@ -100,36 +100,38 @@ def compute_black_litterman_weights(
     p_rows = []
     q_vals = []
 
-    for v in views:
-        v = v.strip()
-        if not v:
-            continue
+    for view in views:
+        if not isinstance(view, str) or not view.strip():
+            raise ValueError("Views must be non-empty strings.")
+        view = view.strip()
         try:
-            if ":" in v:
-                expr, val_str = v.split(":")
-                val = float(val_str)
+            if ":" in view:
+                expr, val_str = view.rsplit(":", 1)
+                value = float(val_str)
             else:
-                expr, val = v, 0.05
+                expr, value = view, 0.05
+        except ValueError as error:
+            raise ValueError(f"Invalid view value: {view}") from error
+        if not np.isfinite(value):
+            raise ValueError(f"View value must be finite: {view}")
 
-            p_row = np.zeros(n)
-            if ">" in expr:
-                # Relative view: AssetA > AssetB by val
-                a, b = expr.split(">")
-                a, b = a.strip(), b.strip()
-                if a in assets and b in assets:
-                    p_row[assets.index(a)] = 1.0
-                    p_row[assets.index(b)] = -1.0
-                    p_rows.append(p_row)
-                    q_vals.append(val)
-            else:
-                # Absolute view: AssetA by val
-                a = expr.strip()
-                if a in assets:
-                    p_row[assets.index(a)] = 1.0
-                    p_rows.append(p_row)
-                    q_vals.append(val)
-        except Exception as e:
-            print(f"[!] Warning: Could not parse view '{v}': {e}")
+        p_row = np.zeros(n)
+        if ">" in expr:
+            parts = expr.split(">")
+            if len(parts) != 2:
+                raise ValueError(f"Invalid relative view format: {view}")
+            asset_a, asset_b = (part.strip() for part in parts)
+            if asset_a not in assets or asset_b not in assets or asset_a == asset_b:
+                raise ValueError(f"Relative view contains invalid assets: {view}")
+            p_row[assets.index(asset_a)] = 1.0
+            p_row[assets.index(asset_b)] = -1.0
+        else:
+            asset = expr.strip()
+            if asset not in assets:
+                raise ValueError(f"Absolute view contains an unknown asset: {view}")
+            p_row[assets.index(asset)] = 1.0
+        p_rows.append(p_row)
+        q_vals.append(value)
 
     if not p_rows:
         return {
