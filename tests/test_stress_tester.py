@@ -85,6 +85,19 @@ class StressTesterTests(unittest.TestCase):
                     {"BTC/USDT": 1.0, "ETH/USDT": weight}
                 )
 
+    def test_invalid_custom_shock_and_types(self):
+        for bad_wallet in (True, False):
+            with self.subTest(bad_wallet=bad_wallet), self.assertRaises(ValueError):
+                evaluate_stress_test({"BTC/USDT": 1.0}, total_wallet=bad_wallet)
+
+        for bad_weights in ("not_a_dict", [1, 2], {}):
+            with self.subTest(bad_weights=bad_weights), self.assertRaises(ValueError):
+                evaluate_stress_test(bad_weights)
+
+        for bad_shock in ("not_a_dict", {}, {"": -0.2}, {"BTC": True}, {"BTC": "bad"}, {"BTC": -1.5}):
+            with self.subTest(bad_shock=bad_shock), self.assertRaises(ValueError):
+                evaluate_stress_test({"BTC/USDT": 1.0}, custom_shock=bad_shock)
+
 
 if __name__ == "__main__":
     unittest.main()

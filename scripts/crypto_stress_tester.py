@@ -68,10 +68,10 @@ def evaluate_stress_test(
 
     Returns dict mapping scenario name to performance metrics.
     """
-    if not math.isfinite(total_wallet) or total_wallet <= 0:
+    if isinstance(total_wallet, bool) or not math.isfinite(total_wallet) or total_wallet <= 0:
         raise ValueError("total_wallet must be finite and strictly positive.")
-    if not weights:
-        raise ValueError("weights dictionary cannot be empty.")
+    if not isinstance(weights, dict) or not weights:
+        raise ValueError("weights must be a non-empty dictionary.")
 
     # Validate and normalize weights to guarantee sum == 1.0
     clean_weights = {}
@@ -90,8 +90,19 @@ def evaluate_stress_test(
     norm_weights = {k: v / total_w for k, v in clean_weights.items()}
 
     shocks = dict(HISTORICAL_SHOCKS)
-    if custom_shock:
-        shocks["Custom User Shock"] = custom_shock
+    if custom_shock is not None:
+        if not isinstance(custom_shock, dict) or not custom_shock:
+            raise ValueError("custom_shock must be a non-empty dictionary.")
+        clean_custom = {}
+        for coin, drop in custom_shock.items():
+            if not isinstance(coin, str) or not coin.strip():
+                raise ValueError("custom_shock asset symbols must be non-empty strings.")
+            if isinstance(drop, bool) or not isinstance(drop, (int, float)) or not math.isfinite(drop):
+                raise ValueError(f"custom_shock value for {coin} must be a finite number.")
+            if drop < -1.0:
+                raise ValueError(f"custom_shock drop rate for {coin} cannot exceed -100% (-1.0).")
+            clean_custom[coin.strip().upper()] = float(drop)
+        shocks["Custom User Shock"] = clean_custom
 
     results: dict[str, dict[str, float | str]] = {}
 
