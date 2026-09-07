@@ -60,8 +60,16 @@ def simulate_monte_carlo_paths(
         raise ValueError("No matching assets found between prices and weights.")
 
     # Normalize weights over common assets
-    raw_weights = np.array([weights[a] for a in common_assets])
-    w = raw_weights / raw_weights.sum()
+    try:
+        raw_weights = np.asarray([weights[a] for a in common_assets], dtype=float)
+    except (TypeError, ValueError) as error:
+        raise ValueError("Portfolio weights must be numeric.") from error
+    if not np.all(np.isfinite(raw_weights)):
+        raise ValueError("Portfolio weights must contain only finite values.")
+    weight_sum = float(raw_weights.sum())
+    if weight_sum <= 0:
+        raise ValueError("Portfolio weights must have a positive total.")
+    w = raw_weights / weight_sum
 
     # Portfolio historical daily/bar returns
     port_returns = np.dot(returns[common_assets].values, w)

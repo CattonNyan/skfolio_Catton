@@ -55,6 +55,19 @@ class MonteCarloTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             simulate_monte_carlo_paths(prices, weights)
 
+    def test_invalid_weights_rejected(self):
+        prices = generate_synthetic_crypto_data(periods=50)
+
+        invalid_weights = (
+            {"BTC/USDT": float("nan")},
+            {"BTC/USDT": float("inf")},
+            {"BTC/USDT": 0.0},
+            {"BTC/USDT": "invalid"},
+        )
+        for weights in invalid_weights:
+            with self.subTest(weights=weights), self.assertRaises(ValueError):
+                simulate_monte_carlo_paths(prices, weights)
+
     def test_cvar_never_returns_nan(self):
         # Monotonically increasing prices where loss is virtually 0
         dates = pd.date_range("2026-01-01", periods=100, freq="1D")
