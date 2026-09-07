@@ -200,6 +200,22 @@ class CryptoOptimizerTests(unittest.TestCase):
                         export_csv_allocation({"model": weights}, target_path, "model")
                     )
 
+    def test_export_csv_rejects_invalid_wallet(self):
+        import tempfile
+        from scripts.crypto_portfolio_optimizer import export_csv_allocation
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target_path = Path(tmpdir) / "allocation.csv"
+            results = {"model": {"BTC/USDT": 1.0}}
+            for wallet in (0.0, -1.0, float("nan"), float("inf")):
+                with self.subTest(wallet=wallet):
+                    self.assertFalse(
+                        export_csv_allocation(
+                            results, target_path, "model", total_wallet=wallet
+                        )
+                    )
+            self.assertFalse(target_path.exists())
+
 
     def test_run_optimization_with_constraints(self):
         from scripts.crypto_portfolio_optimizer import HAS_SKFOLIO, run_optimization

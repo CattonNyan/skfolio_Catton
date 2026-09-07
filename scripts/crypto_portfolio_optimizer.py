@@ -412,6 +412,8 @@ def export_csv_allocation(
         return False
     weight_sum = sum(weights.values())
     weights = {asset: weight / weight_sum for asset, weight in weights.items()}
+    if total_wallet is not None and (not math.isfinite(total_wallet) or total_wallet <= 0):
+        return False
     records = []
     for asset, weight in weights.items():
         w_pct = round(weight * 100, 2)
