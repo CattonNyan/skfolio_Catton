@@ -70,15 +70,23 @@ class SkfolioStakeAllocator:
         - min_stake: Exchange minimum allowed order size
         - max_stake: Exchange maximum allowed order size
         """
-        if not math.isfinite(proposed_stake) or proposed_stake <= 0:
+        if not isinstance(pair, str) or not pair.strip():
+            raise ValueError("pair must be a non-empty string.")
+        if isinstance(proposed_stake, bool) or not isinstance(proposed_stake, (int, float)) or not math.isfinite(proposed_stake) or proposed_stake <= 0:
             raise ValueError("proposed_stake must be finite and strictly positive.")
         if total_wallet is not None and (
-            not math.isfinite(total_wallet) or total_wallet <= 0
+            isinstance(total_wallet, bool)
+            or not isinstance(total_wallet, (int, float))
+            or not math.isfinite(total_wallet)
+            or total_wallet <= 0
         ):
             raise ValueError("total_wallet must be finite and strictly positive.")
         for name, boundary in (("min_stake", min_stake), ("max_stake", max_stake)):
             if boundary is not None and (
-                not math.isfinite(boundary) or boundary < 0
+                isinstance(boundary, bool)
+                or not isinstance(boundary, (int, float))
+                or not math.isfinite(boundary)
+                or boundary < 0
             ):
                 raise ValueError(f"{name} must be finite and non-negative.")
         if min_stake is not None and max_stake is not None and min_stake > max_stake:

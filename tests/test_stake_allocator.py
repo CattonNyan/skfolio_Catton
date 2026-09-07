@@ -124,6 +124,23 @@ class StakeAllocatorTests(unittest.TestCase):
 
                     self.assertEqual(stake, 100.0)
 
+    def test_invalid_pair_and_bool_parameters_rejected(self):
+        allocator = SkfolioStakeAllocator(allocation_file="non_existent_file.json")
+        for bad_pair in ("", "   ", 123, None):
+            with self.subTest(bad_pair=bad_pair), self.assertRaises(ValueError):
+                allocator.get_stake_amount(bad_pair, proposed_stake=100.0)
+
+        for bad_bool in (True, False):
+            with self.subTest(bad_bool=bad_bool):
+                with self.assertRaises(ValueError):
+                    allocator.get_stake_amount("BTC/USDT", proposed_stake=bad_bool)
+                with self.assertRaises(ValueError):
+                    allocator.get_stake_amount("BTC/USDT", proposed_stake=100.0, total_wallet=bad_bool)
+                with self.assertRaises(ValueError):
+                    allocator.get_stake_amount("BTC/USDT", proposed_stake=100.0, min_stake=bad_bool)
+                with self.assertRaises(ValueError):
+                    allocator.get_stake_amount("BTC/USDT", proposed_stake=100.0, max_stake=bad_bool)
+
 
 if __name__ == "__main__":
     unittest.main()
