@@ -50,6 +50,8 @@ def compute_crypto_tax_impact(
         raise ValueError("Initial capital must be strictly positive.")
 
     profits_arr = np.array(realized_profits, dtype=float)
+    if not np.all(np.isfinite(profits_arr)):
+        raise ValueError("Realized profits must contain only finite values.")
     gains = float(profits_arr[profits_arr > 0].sum()) if len(profits_arr[profits_arr > 0]) > 0 else 0.0
     losses = float(abs(profits_arr[profits_arr < 0].sum())) if len(profits_arr[profits_arr < 0]) > 0 else 0.0
 

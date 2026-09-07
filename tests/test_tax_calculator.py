@@ -54,6 +54,11 @@ class TaxCalculatorTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             compute_crypto_tax_impact([1000000.0], initial_capital_krw=-500.0)
 
+    def test_non_finite_profit_rejected(self):
+        for profit in (float("nan"), float("inf"), float("-inf")):
+            with self.subTest(profit=profit), self.assertRaises(ValueError):
+                compute_crypto_tax_impact([1000000.0, profit])
+
 
 if __name__ == "__main__":
     unittest.main()
