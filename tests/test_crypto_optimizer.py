@@ -178,6 +178,28 @@ class CryptoOptimizerTests(unittest.TestCase):
             self.assertIn("Asset,Weight_Percent,Weight_Fraction,Allocated_Amount", content)
             self.assertIn("BTC/USDT,60.00%,0.6,600.0", content)
 
+    def test_export_csv_validates_and_normalizes_weights(self):
+        import tempfile
+        from scripts.crypto_portfolio_optimizer import export_csv_allocation
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target_path = Path(tmpdir) / "allocation.csv"
+            self.assertTrue(
+                export_csv_allocation(
+                    {"model": {"BTC/USDT": 3.0, "ETH/USDT": 1.0}},
+                    target_path,
+                    model_name="model",
+                )
+            )
+            content = target_path.read_text(encoding="utf-8-sig")
+            self.assertIn("BTC/USDT,75.00%,0.75", content)
+
+            for weights in ({"BTC/USDT": float("nan")}, {"BTC/USDT": -1.0}):
+                with self.subTest(weights=weights):
+                    self.assertFalse(
+                        export_csv_allocation({"model": weights}, target_path, "model")
+                    )
+
 
     def test_run_optimization_with_constraints(self):
         from scripts.crypto_portfolio_optimizer import HAS_SKFOLIO, run_optimization

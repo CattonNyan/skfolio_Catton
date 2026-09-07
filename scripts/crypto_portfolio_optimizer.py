@@ -399,7 +399,19 @@ def export_csv_allocation(
     if model_name not in results:
         model_name = list(results.keys())[0]
 
-    weights = results[model_name]
+    raw_weights = results[model_name]
+    try:
+        weights = {asset: float(weight) for asset, weight in raw_weights.items()}
+    except (AttributeError, TypeError, ValueError):
+        return False
+    if (
+        not weights
+        or any(not isinstance(asset, str) or not asset.strip() or not math.isfinite(weight) or weight < 0 for asset, weight in weights.items())
+        or sum(weights.values()) <= 0
+    ):
+        return False
+    weight_sum = sum(weights.values())
+    weights = {asset: weight / weight_sum for asset, weight in weights.items()}
     records = []
     for asset, weight in weights.items():
         w_pct = round(weight * 100, 2)
