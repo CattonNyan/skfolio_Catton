@@ -91,6 +91,33 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("ETH", weights)
         self.assertAlmostEqual(sum(weights.values()), 1.0, places=3)
 
+    @unittest.skipUnless(HAS_DASHBOARD_DEPS, "plotly or streamlit not installed")
+    def test_chart_functions_with_empty_and_misaligned_data(self):
+        from app_dashboard import (
+            create_pie_chart,
+            create_correlation_heatmap,
+            create_cumulative_return_chart,
+            create_rebalancing_nav_chart,
+        )
+        # Empty pie chart
+        fig_pie = create_pie_chart({})
+        self.assertIsInstance(fig_pie, go.Figure)
+
+        # Empty heatmap
+        fig_heat = create_correlation_heatmap(pd.DataFrame())
+        self.assertIsInstance(fig_heat, go.Figure)
+
+        # Misaligned weights in cumulative return chart (e.g. weights contains extra or missing assets)
+        dates = pd.date_range("2026-01-01", periods=10, freq="15min")
+        returns = pd.DataFrame({"BTC": [0.01] * 10, "ETH": [0.02] * 10}, index=dates)
+        misaligned_weights = {"BTC": 0.5, "SOL": 0.5}  # SOL not in returns
+        fig_cum = create_cumulative_return_chart(returns, misaligned_weights)
+        self.assertIsInstance(fig_cum, go.Figure)
+
+        # Empty series in rebalancing NAV chart
+        fig_nav = create_rebalancing_nav_chart(pd.Series(dtype=float), pd.Series(dtype=float), pd.Series(dtype=float))
+        self.assertIsInstance(fig_nav, go.Figure)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -83,8 +83,13 @@ def cached_fit_model(returns_df: pd.DataFrame, model_type: str, min_w: float | N
 
 def create_pie_chart(weights: dict[str, float], title: str = "최적 자산 배분 비중") -> go.Figure:
     """Create an interactive Donut chart of asset weights."""
+    if not isinstance(weights, dict) or not weights:
+        fig = go.Figure()
+        fig.update_layout(title=title, template="plotly_dark")
+        return fig
+
     labels = list(weights.keys())
-    values = [round(v * 100, 2) for v in weights.values()]
+    values = [round(float(v) * 100, 2) for v in weights.values()]
 
     fig = go.Figure(
         data=[
@@ -111,6 +116,10 @@ def create_pie_chart(weights: dict[str, float], title: str = "최적 자산 배�
 
 def create_correlation_heatmap(corr_df: pd.DataFrame) -> go.Figure:
     """Create correlation heatmap figure."""
+    if not isinstance(corr_df, pd.DataFrame) or corr_df.empty:
+        fig = go.Figure()
+        fig.update_layout(title="코인 간 상관관계 히트맵 (Correlation)", template="plotly_dark")
+        return fig
     fig = px.imshow(
         corr_df,
         text_auto=".2f",
@@ -131,9 +140,21 @@ def create_correlation_heatmap(corr_df: pd.DataFrame) -> go.Figure:
 
 def create_cumulative_return_chart(returns: pd.DataFrame, weights: dict[str, float]) -> go.Figure:
     """Simulate and plot cumulative wealth curves."""
+    if not isinstance(returns, pd.DataFrame) or returns.empty:
+        fig = go.Figure()
+        fig.update_layout(title="누적 수익률(Cumulative Wealth) 비교 시뮬레이션", template="plotly_dark")
+        return fig
+
     cum_returns = (1 + returns).cumprod()
-    weight_series = pd.Series(weights)
-    portfolio_ret = returns.dot(weight_series)
+    common_assets = [c for c in returns.columns if c in weights]
+    if common_assets:
+        sub_returns = returns[common_assets]
+        w_series = pd.Series({c: weights[c] for c in common_assets}, dtype=float)
+        if w_series.sum() > 0:
+            w_series = w_series / w_series.sum()
+        portfolio_ret = sub_returns.dot(w_series)
+    else:
+        portfolio_ret = pd.Series(0.0, index=returns.index)
     cum_portfolio = (1 + portfolio_ret).cumprod()
 
     fig = go.Figure()
@@ -175,9 +196,17 @@ def create_cumulative_return_chart(returns: pd.DataFrame, weights: dict[str, flo
 def create_rebalancing_nav_chart(nav_port: pd.Series, nav_eq: pd.Series, nav_bh: pd.Series) -> go.Figure:
     """Create comparison line chart for rebalancing backtest."""
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=nav_port.index, y=nav_port.values, mode="lines", name=nav_port.name, line=dict(color="#00C853", width=2.5)))
-    fig.add_trace(go.Scatter(x=nav_eq.index, y=nav_eq.values, mode="lines", name=nav_eq.name, line=dict(color="#2979FF", width=1.5, dash="dot")))
-    fig.add_trace(go.Scatter(x=nav_bh.index, y=nav_bh.values, mode="lines", name=nav_bh.name, line=dict(color="#FF9100", width=1.5, dash="dash")))
+    for s, color, dash in (
+        (nav_port, "#00C853", None),
+        (nav_eq, "#2979FF", "dot"),
+        (nav_bh, "#FF9100", "dash"),
+    ):
+        if isinstance(s, pd.Series) and not s.empty:
+            line_kwargs = dict(color=color, width=2.5 if dash is None else 1.5)
+            if dash:
+                line_kwargs["dash"] = dash
+            fig.add_trace(go.Scatter(x=s.index, y=s.values, mode="lines", name=s.name or "NAV", line=line_kwargs))
+
     fig.update_layout(
         title="주기적 리밸런싱 포트폴리오 자산 가치(NAV) 추이",
         xaxis_title="일시",
