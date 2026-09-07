@@ -58,6 +58,13 @@ class StrategyOptimizerTests(unittest.TestCase):
         self.assertIn("Strategy_A", res["weights"])
         self.assertEqual(res["weights"]["Strategy_A"], 0.5)
 
+    def test_invalid_total_capital_rejected(self):
+        for capital in (0.0, -1.0, float("nan"), float("inf")):
+            with self.subTest(capital=capital), self.assertRaises(ValueError):
+                optimize_strategy_allocation(
+                    pd.DataFrame(), total_capital=capital
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

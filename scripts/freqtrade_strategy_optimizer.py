@@ -62,6 +62,8 @@ def optimize_strategy_allocation(
     """
     Compute optimal capital allocation weights across trading strategies.
     """
+    if not np.isfinite(total_capital) or total_capital <= 0:
+        raise ValueError("Total capital must be finite and strictly positive.")
     if daily_profits.empty or len(daily_profits.columns) < 2:
         # Fallback to equal weight
         cols = list(daily_profits.columns) if not daily_profits.empty else ["Strategy_A", "Strategy_B"]
