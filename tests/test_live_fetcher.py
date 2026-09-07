@@ -38,6 +38,24 @@ class LiveFetcherTests(unittest.TestCase):
         self.assertEqual(list(prices.columns), ["BTC/USDT", "ETH/USDT"])
         self.assertEqual(len(prices), 5)
 
+    def test_invalid_parameters_rejected(self):
+        from scripts.fetch_live_crypto import fetch_ohlcv_ccxt
+        for bad_tf in ("invalid", "15x", "m15", "", None):
+            with self.subTest(bad_tf=bad_tf), self.assertRaises(ValueError):
+                save_market_data({}, Path("."), timeframe=bad_tf)
+            with self.subTest(bad_tf=bad_tf), self.assertRaises(ValueError):
+                fetch_ohlcv_ccxt(timeframe=bad_tf)
+
+        for bad_limit in (0, -1, True, False, 1.5):
+            with self.subTest(bad_limit=bad_limit), self.assertRaises(ValueError):
+                fetch_ohlcv_ccxt(limit=bad_limit)
+
+        for bad_dict in ("not_a_dict", [1, 2], None):
+            with self.subTest(bad_dict=bad_dict), self.assertRaises(ValueError):
+                data_dict_to_prices(bad_dict)
+            with self.subTest(bad_dict=bad_dict), self.assertRaises(ValueError):
+                save_market_data(bad_dict, Path("."))
+
 
 if __name__ == "__main__":
     unittest.main()

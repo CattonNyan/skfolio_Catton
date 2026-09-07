@@ -9,6 +9,7 @@ Saves output as clean CSV and/or Freqtrade feather format.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -31,9 +32,11 @@ except ImportError:
 
 def data_dict_to_prices(data_dict: dict[str, pd.DataFrame]) -> pd.DataFrame:
     """Convert ccxt OHLCV dict to a combined Close price DataFrame indexed by date."""
+    if not isinstance(data_dict, dict):
+        raise ValueError("data_dict must be a dictionary.")
     close_series: dict[str, pd.Series] = {}
     for symbol, df in data_dict.items():
-        if "date" in df.columns and "close" in df.columns:
+        if isinstance(df, pd.DataFrame) and "date" in df.columns and "close" in df.columns:
             s = df.set_index("date")["close"]
             close_series[symbol] = s[~s.index.duplicated(keep="last")]
     if not close_series:
@@ -49,6 +52,10 @@ def fetch_ohlcv_ccxt(
     limit: int = 500,
 ) -> dict[str, pd.DataFrame]:
     """Fetch OHLCV data using ccxt public endpoints."""
+    if not isinstance(timeframe, str) or re.fullmatch(r"[1-9]\d*[smhdwM]", timeframe) is None:
+        raise ValueError("Timeframe must use a positive number followed by s, m, h, d, w, or M.")
+    if isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0:
+        raise ValueError("limit must be a strictly positive integer.")
     if not HAS_CCXT:
         print("[!] ccxt is not installed. Please run: pip install ccxt")
         return {}
@@ -88,6 +95,10 @@ def save_market_data(
     timeframe: str = "1h",
 ) -> list[Path]:
     """Save fetched data into CSV and Feather files."""
+    if not isinstance(data_dict, dict):
+        raise ValueError("data_dict must be a dictionary.")
+    if not isinstance(timeframe, str) or re.fullmatch(r"[1-9]\d*[smhdwM]", timeframe) is None:
+        raise ValueError("Timeframe must use a positive number followed by s, m, h, d, w, or M.")
     output_dir.mkdir(parents=True, exist_ok=True)
     saved_paths: list[Path] = []
 
