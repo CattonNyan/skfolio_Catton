@@ -76,7 +76,12 @@ class SkfolioStakeAllocator:
 
         # 1. Prefer explicit absolute stake amount if defined
         if pair in self._cached_stakes:
-            target_stake = float(self._cached_stakes[pair])
+            try:
+                configured_stake = float(self._cached_stakes[pair])
+            except (TypeError, ValueError):
+                configured_stake = 0.0
+            if math.isfinite(configured_stake) and configured_stake > 0:
+                target_stake = configured_stake
         # 2. Or apply weight to total available wallet balance
         elif pair in self._cached_weights and total_wallet is not None and total_wallet > 0:
             weight = float(self._cached_weights[pair])

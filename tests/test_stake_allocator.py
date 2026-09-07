@@ -75,6 +75,21 @@ class StakeAllocatorTests(unittest.TestCase):
             stake = allocator.get_stake_amount("BTC/USDT", proposed_stake=100.0)
             self.assertEqual(stake, 100.0)  # Synthetic ignored, fallback to proposed
 
+    def test_invalid_explicit_stake_falls_back_to_proposed(self):
+        for configured_stake in (-10.0, 0.0, float("inf"), "invalid"):
+            with self.subTest(configured_stake=configured_stake):
+                sample = {"pair_stake_amounts": {"BTC/USDT": configured_stake}}
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    path = Path(tmpdir) / "config.json"
+                    path.write_text(json.dumps(sample), encoding="utf-8")
+                    allocator = SkfolioStakeAllocator(allocation_file=path)
+
+                    stake = allocator.get_stake_amount(
+                        "BTC/USDT", proposed_stake=100.0
+                    )
+
+                    self.assertEqual(stake, 100.0)
+
 
 if __name__ == "__main__":
     unittest.main()
