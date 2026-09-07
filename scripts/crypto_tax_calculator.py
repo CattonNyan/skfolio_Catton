@@ -44,7 +44,7 @@ def compute_crypto_tax_impact(
     """
     if not np.isfinite(annual_allowance_krw) or annual_allowance_krw < 0:
         raise ValueError("Annual allowance must be a finite non-negative amount.")
-    if tax_rate < 0 or tax_rate > 1:
+    if not np.isfinite(tax_rate) or tax_rate < 0 or tax_rate > 1:
         raise ValueError("Tax rate must be between 0.0 and 1.0 (e.g. 0.22).")
     if initial_capital_krw <= 0:
         raise ValueError("Initial capital must be strictly positive.")
