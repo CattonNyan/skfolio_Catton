@@ -14,6 +14,7 @@ import argparse
 import json
 import math
 import os
+import re
 import sys
 import tempfile
 from datetime import datetime, timezone
@@ -54,6 +55,8 @@ def find_freqtrade_data_dirs() -> list[Path]:
 
 def load_from_feather_dir(data_dir: Path, timeframe: str = "15m") -> pd.DataFrame:
     """Load feather files for a specific timeframe and build a combined Close price DataFrame."""
+    if not isinstance(timeframe, str) or re.fullmatch(r"[1-9]\d*[smhdwM]", timeframe) is None:
+        raise ValueError("Timeframe must use a positive number followed by s, m, h, d, w, or M.")
     feather_files = sorted(data_dir.glob(f"*-{timeframe}.feather"))
 
     prices_dict: dict[str, pd.Series] = {}

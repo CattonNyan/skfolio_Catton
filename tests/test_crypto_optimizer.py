@@ -58,6 +58,14 @@ class CryptoOptimizerTests(unittest.TestCase):
             self.assertEqual(list(loaded.columns), ["BTC/USDT"])
             self.assertEqual(len(loaded), 3)
 
+    def test_loader_rejects_invalid_timeframe(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for timeframe in ("", "*", "15minutes", "0m", None):
+                with self.subTest(timeframe=timeframe), self.assertRaises(ValueError):
+                    load_from_feather_dir(Path(tmpdir), timeframe=timeframe)
+
     def test_synthetic_data_requires_explicit_opt_in(self):
         prices, source = load_market_data(use_synthetic=True, synthetic_periods=25)
         self.assertEqual(source, "synthetic")
