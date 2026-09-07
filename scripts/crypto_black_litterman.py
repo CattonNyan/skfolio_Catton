@@ -21,8 +21,10 @@ import numpy as np
 import pandas as pd
 
 from scripts.crypto_portfolio_optimizer import (
+    MarketDataUnavailableError,
     find_freqtrade_data_dirs,
     generate_synthetic_crypto_data,
+    load_market_data,
     load_from_feather_dir,
     positive_float,
 )
@@ -201,6 +203,28 @@ def print_black_litterman_report(res: dict[str, object]):
     print("================================================================================\n")
 
 
+def parse_cli_prior_weights(raw_items: list[str]) -> dict[str, float]:
+    """Parse key:value strings from CLI into an asset prior weights dictionary."""
+    if not isinstance(raw_items, list) or not raw_items:
+        raise ValueError("prior_weights must be a non-empty list of 'SYMBOL:WEIGHT' strings.")
+    weights: dict[str, float] = {}
+    for item in raw_items:
+        if not isinstance(item, str) or ":" not in item:
+            raise ValueError(f"Prior weight must be in 'SYMBOL:WEIGHT' format, got: {item}")
+        pair, w_str = item.split(":", 1)
+        pair = pair.strip()
+        if not pair:
+            raise ValueError(f"Asset symbol cannot be empty in: {item}")
+        try:
+            val = float(w_str)
+        except ValueError as err:
+            raise ValueError(f"Invalid numeric weight in: {item}") from err
+        if not np.isfinite(val) or val < 0:
+            raise ValueError(f"Weight must be finite and non-negative in: {item}")
+        weights[pair] = val
+    return weights
+
+
 def main():
     parser = argparse.ArgumentParser(description="Crypto Black-Litterman Optimization Engine")
     parser.add_argument("--data-dir", type=str, default="", help="Directory containing Freqtrade feather files")
@@ -213,29 +237,22 @@ def main():
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic sample data")
     args = parser.parse_args()
 
-    prices = pd.DataFrame()
-    if not args.use_synthetic:
-        candidate_dirs = find_freqtrade_data_dirs()
-        for d in candidate_dirs:
-            if d.is_dir():
-                prices = load_from_feather_dir(d, timeframe=args.timeframe)
-                if not prices.empty:
-                    print(f"[*] Loaded data from {d} ({len(prices)} bars)")
-                    break
-
-    if prices.empty or args.use_synthetic:
-        prices = generate_synthetic_crypto_data(periods=500)
+    try:
+        prices, data_source = load_market_data(
+            data_dir=args.data_dir or None,
+            timeframe=args.timeframe,
+            use_synthetic=args.use_synthetic,
+            synthetic_periods=500,
+        )
+    except MarketDataUnavailableError as error:
+        parser.error(str(error))
 
     prior_w = None
     if args.prior_weights:
-        prior_w = {}
-        for item in args.prior_weights:
-            if ":" in item:
-                pair, w_str = item.split(":", 1)
-                try:
-                    prior_w[pair.strip()] = float(w_str)
-                except ValueError:
-                    pass
+        try:
+            prior_w = parse_cli_prior_weights(args.prior_weights)
+        except ValueError as err:
+            parser.error(str(err))
     elif args.config_file and Path(args.config_file).is_file():
         try:
             import json

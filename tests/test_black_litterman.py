@@ -107,6 +107,15 @@ class BlackLittermanTests(unittest.TestCase):
             with self.subTest(prior=prior), self.assertRaises(ValueError):
                 compute_black_litterman_weights(prices, prior_weights=prior)
 
+    def test_parse_cli_prior_weights(self):
+        from scripts.crypto_black_litterman import parse_cli_prior_weights
+        parsed = parse_cli_prior_weights(["BTC/USDT:0.6", "ETH/USDT:0.4"])
+        self.assertEqual(parsed, {"BTC/USDT": 0.6, "ETH/USDT": 0.4})
+
+        for bad in ([], "not_a_list", ["NO_COLON"], ["BTC:bad"], ["BTC:-0.1"], [":0.5"]):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                parse_cli_prior_weights(bad)
+
 
 if __name__ == "__main__":
     unittest.main()
