@@ -62,7 +62,9 @@ def optimize_strategy_allocation(
     """
     Compute optimal capital allocation weights across trading strategies.
     """
-    if not np.isfinite(total_capital) or total_capital <= 0:
+    if not isinstance(daily_profits, pd.DataFrame):
+        raise ValueError("daily_profits must be a pandas DataFrame.")
+    if isinstance(total_capital, bool) or not np.isfinite(total_capital) or total_capital <= 0:
         raise ValueError("Total capital must be finite and strictly positive.")
     if model not in {"Risk Parity", "Min Variance"}:
         raise ValueError(f"Unsupported allocation model: {model}")
@@ -84,13 +86,23 @@ def optimize_strategy_allocation(
         # Analytical minimum variance weights: (Sigma^-1 * 1) / (1^T * Sigma^-1 * 1)
         sigma_inv = np.linalg.pinv(cov.values)
         ones = np.ones(len(cols))
-        raw_w = sigma_inv @ ones / (ones.T @ sigma_inv @ ones)
+        denom = float(ones.T @ sigma_inv @ ones)
+        if not np.isfinite(denom) or denom <= 0:
+            raw_w = np.ones(len(cols)) / len(cols)
+        else:
+            raw_w = sigma_inv @ ones / denom
         w_arr = np.clip(raw_w, 0.05, 0.95)
-        w_arr = w_arr / w_arr.sum()
+        if not np.all(np.isfinite(w_arr)) or w_arr.sum() <= 0:
+            w_arr = np.ones(len(cols)) / len(cols)
+        else:
+            w_arr = w_arr / w_arr.sum()
     else:
         # Inverse Volatility / Risk Parity heuristic
         inv_vols = 1.0 / (vols.values + 1e-9)
-        w_arr = inv_vols / inv_vols.sum()
+        if not np.all(np.isfinite(inv_vols)) or inv_vols.sum() <= 0:
+            w_arr = np.ones(len(cols)) / len(cols)
+        else:
+            w_arr = inv_vols / inv_vols.sum()
 
     weights = dict(zip(cols, [round(float(x), 4) for x in w_arr]))
     capital = {c: round(weights[c] * total_capital, 2) for c in cols}

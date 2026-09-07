@@ -71,6 +71,21 @@ class StrategyOptimizerTests(unittest.TestCase):
                 pd.DataFrame(), model="Maximum Return"
             )
 
+    def test_min_variance_and_invalid_inputs(self):
+        dates = pd.date_range("2026-01-01", periods=10, freq="1D")
+        daily = pd.DataFrame({"A": [1.0] * 10, "B": [2.0] * 10}, index=dates)
+        res = optimize_strategy_allocation(daily, total_capital=5000.0, model="Min Variance")
+        self.assertIn("A", res["weights"])
+        self.assertAlmostEqual(sum(res["weights"].values()), 1.0, places=3)
+
+        for bad_cap in (True, False):
+            with self.subTest(bad_cap=bad_cap), self.assertRaises(ValueError):
+                optimize_strategy_allocation(daily, total_capital=bad_cap)
+
+        for bad_df in ("not_a_df", [1, 2], None):
+            with self.subTest(bad_df=bad_df), self.assertRaises(ValueError):
+                optimize_strategy_allocation(bad_df)
+
 
 if __name__ == "__main__":
     unittest.main()
