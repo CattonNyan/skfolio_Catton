@@ -52,6 +52,18 @@ class FactorAnalyzerTests(unittest.TestCase):
                     prices, top_n=top_n, lookback_bars=20
                 )
 
+    def test_invalid_prices_rejected(self):
+        valid = generate_synthetic_crypto_data(periods=50)
+        invalid_cases = (
+            "not_a_df",
+            pd.DataFrame(),
+            valid.replace(valid.iloc[0, 0], -10.0),
+            pd.DataFrame({"A": ["bad", "str"], "B": [1.0, 2.0]}),
+        )
+        for bad in invalid_cases:
+            with self.subTest(bad=type(bad)), self.assertRaises(ValueError):
+                compute_crypto_factors(bad, lookback_bars=20)
+
 
 if __name__ == "__main__":
     unittest.main()

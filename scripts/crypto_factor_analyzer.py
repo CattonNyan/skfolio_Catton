@@ -40,6 +40,14 @@ def compute_crypto_factors(
 
     Returns DataFrame containing raw factors and composite z-scores.
     """
+    if not isinstance(prices, pd.DataFrame) or prices.shape[1] < 1 or len(prices) < 2:
+        raise ValueError("Prices must be a DataFrame with at least one asset and two rows.")
+    try:
+        price_values = prices.to_numpy(dtype=float)
+    except (TypeError, ValueError) as error:
+        raise ValueError("Prices must contain only numeric values.") from error
+    if not np.all(np.isfinite(price_values)) or np.any(price_values <= 0):
+        raise ValueError("Prices must contain only finite, strictly positive values.")
     if (
         isinstance(lookback_bars, bool)
         or not isinstance(lookback_bars, int)
@@ -52,34 +60,21 @@ def compute_crypto_factors(
     recent_prices = prices.iloc[-lookback_bars:]
     returns = recent_prices.pct_change().dropna()
 
-    records = []
-    for asset in prices.columns:
-        p_series = recent_prices[asset]
-        r_series = returns[asset]
+    fast_win = min(20, len(recent_prices))
+    slow_win = min(60, len(recent_prices))
+    momentum = (recent_prices.iloc[-1] / recent_prices.iloc[0]) - 1.0
+    vol = returns.std() + 1e-9
+    low_vol = 1.0 / vol
+    sma_fast = recent_prices.iloc[-fast_win:].mean()
+    sma_slow = recent_prices.iloc[-slow_win:].mean()
+    trend_ratio = sma_fast / (sma_slow + 1e-9)
 
-        # 1. Momentum Factor: cumulative return
-        momentum = float((p_series.iloc[-1] / p_series.iloc[0]) - 1.0)
-
-        # 2. Low Volatility Factor: inverse standard deviation
-        vol = float(r_series.std() + 1e-9)
-        low_vol = float(1.0 / vol)
-
-        # 3. Trend Strength Factor: Fast SMA(20) / Slow SMA(min(60, lookback))
-        fast_win = min(20, len(p_series))
-        slow_win = min(60, len(p_series))
-        sma_fast = float(p_series.iloc[-fast_win:].mean())
-        sma_slow = float(p_series.iloc[-slow_win:].mean())
-        trend_ratio = float(sma_fast / (sma_slow + 1e-9))
-
-        records.append({
-            "asset": asset,
-            "momentum": momentum,
-            "volatility": vol,
-            "low_volatility": low_vol,
-            "trend_strength": trend_ratio,
-        })
-
-    df = pd.DataFrame(records).set_index("asset")
+    df = pd.DataFrame({
+        "momentum": momentum,
+        "volatility": vol,
+        "low_volatility": low_vol,
+        "trend_strength": trend_ratio,
+    }, index=prices.columns).rename_axis("asset")
 
     # Compute Z-Scores across assets
     def zscore(series: pd.Series) -> pd.Series:
