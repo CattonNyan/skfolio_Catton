@@ -70,6 +70,14 @@ class SkfolioStakeAllocator:
         - min_stake: Exchange minimum allowed order size
         - max_stake: Exchange maximum allowed order size
         """
+        for name, boundary in (("min_stake", min_stake), ("max_stake", max_stake)):
+            if boundary is not None and (
+                not math.isfinite(boundary) or boundary < 0
+            ):
+                raise ValueError(f"{name} must be finite and non-negative.")
+        if min_stake is not None and max_stake is not None and min_stake > max_stake:
+            raise ValueError("min_stake cannot exceed max_stake.")
+
         self._load_allocation()
 
         target_stake = proposed_stake

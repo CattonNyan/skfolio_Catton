@@ -62,6 +62,20 @@ class StakeAllocatorTests(unittest.TestCase):
             self.assertEqual(stake_btc, 20.0)  # Capped by min_stake
             self.assertEqual(stake_eth, 2000.0)  # Capped by max_stake
 
+    def test_invalid_stake_boundaries_rejected(self):
+        allocator = SkfolioStakeAllocator(allocation_file="non_existent_file.json")
+
+        invalid_bounds = (
+            {"min_stake": -1.0},
+            {"max_stake": float("inf")},
+            {"min_stake": 200.0, "max_stake": 100.0},
+        )
+        for bounds in invalid_bounds:
+            with self.subTest(bounds=bounds), self.assertRaises(ValueError):
+                allocator.get_stake_amount(
+                    "BTC/USDT", proposed_stake=100.0, **bounds
+                )
+
     def test_synthetic_data_config_is_rejected(self):
         sample = {
             "skfolio_allocation": {"data_source": "synthetic"},
