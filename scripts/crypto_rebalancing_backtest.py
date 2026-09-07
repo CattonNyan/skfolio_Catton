@@ -71,6 +71,14 @@ def simulate_rebalancing(
     - fee_rate: Transaction fee (e.g., 0.001 = 0.1% per turnover)
     - model_choice: "Risk Parity", "Max Sharpe", "Min Variance", or "Equal Weight"
     """
+    if not isinstance(prices, pd.DataFrame) or prices.shape[1] < 2 or len(prices) < 2:
+        raise ValueError("Rebalancing requires at least two assets and two price rows.")
+    try:
+        price_values = prices.to_numpy(dtype=float)
+    except (TypeError, ValueError) as error:
+        raise ValueError("Rebalancing prices must contain only numeric values.") from error
+    if not np.all(np.isfinite(price_values)) or np.any(price_values <= 0):
+        raise ValueError("Rebalancing prices must contain only finite, strictly positive values.")
     if isinstance(train_bars, bool) or not isinstance(train_bars, int) or train_bars < 2:
         raise ValueError("Training window must be an integer of at least 2 bars.")
     if isinstance(rebalance_freq_bars, bool) or not isinstance(rebalance_freq_bars, int) or rebalance_freq_bars <= 0:

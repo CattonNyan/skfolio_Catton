@@ -71,6 +71,20 @@ class RebalancingTests(unittest.TestCase):
         self.assertIn("Calmar Ratio", s)
         self.assertGreater(s["Total Return (%)"], 0)
 
+    def test_invalid_prices_rejected(self):
+        valid = generate_synthetic_crypto_data(periods=50)
+        invalid_cases = (
+            "not_a_df",
+            valid.iloc[:, :1],  # 1 asset only
+            pd.DataFrame(),     # empty df
+            valid.replace(valid.iloc[0, 0], -10.0),  # negative price
+            valid.replace(valid.iloc[0, 0], float("nan")),  # nan price
+            pd.DataFrame({"A": ["bad", "str"], "B": [1.0, 2.0]}),  # non-numeric
+        )
+        for bad_prices in invalid_cases:
+            with self.subTest(bad_prices=type(bad_prices)), self.assertRaises(ValueError):
+                simulate_rebalancing(bad_prices)
+
 
 if __name__ == "__main__":
     unittest.main()
