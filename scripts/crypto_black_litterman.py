@@ -66,12 +66,22 @@ def compute_black_litterman_weights(
     sigma = returns.cov().values
 
     # 1. Market Prior (Equal weight benchmark if custom prior not supplied)
-    if prior_weights:
-        w_prior = np.array([float(prior_weights.get(a, 0.0)) for a in assets], dtype=float)
-        if w_prior.sum() > 0:
-            w_prior = w_prior / w_prior.sum()
-        else:
-            w_prior = np.ones(n) / n
+    if prior_weights is not None:
+        if not isinstance(prior_weights, dict) or not prior_weights:
+            raise ValueError("Prior weights must be a non-empty asset-to-weight mapping.")
+        try:
+            parsed_prior = {asset: float(weight) for asset, weight in prior_weights.items()}
+        except (TypeError, ValueError) as error:
+            raise ValueError("Prior weights must contain numeric values.") from error
+        unknown_assets = set(parsed_prior).difference(assets)
+        if unknown_assets:
+            raise ValueError(f"Prior weights contain unknown assets: {sorted(unknown_assets)}")
+        if any(not isinstance(asset, str) or not np.isfinite(weight) or weight < 0 for asset, weight in parsed_prior.items()):
+            raise ValueError("Prior weights must be finite and non-negative.")
+        w_prior = np.array([parsed_prior.get(asset, 0.0) for asset in assets], dtype=float)
+        if w_prior.sum() <= 0:
+            raise ValueError("Prior weights must have a positive total.")
+        w_prior = w_prior / w_prior.sum()
     else:
         w_prior = np.ones(n) / n
 

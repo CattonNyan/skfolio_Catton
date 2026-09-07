@@ -80,6 +80,19 @@ class BlackLittermanTests(unittest.TestCase):
         self.assertAlmostEqual(prior_w["ETH/USDT"], 0.30, places=3)
         self.assertEqual(res["prior_weights"], res["posterior_weights"])
 
+    def test_invalid_prior_weights_rejected(self):
+        prices = generate_synthetic_crypto_data(periods=20)
+        invalid_priors = (
+            {},
+            {"BTC/USDT": -1.0},
+            {"BTC/USDT": float("nan")},
+            {"BTC/USDT": 0.0},
+            {"UNKNOWN/USDT": 1.0},
+        )
+        for prior in invalid_priors:
+            with self.subTest(prior=prior), self.assertRaises(ValueError):
+                compute_black_litterman_weights(prices, prior_weights=prior)
+
 
 if __name__ == "__main__":
     unittest.main()
