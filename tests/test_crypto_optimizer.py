@@ -245,6 +245,20 @@ class CryptoOptimizerTests(unittest.TestCase):
         self.assertEqual(min_w, max_w)
         self.assertAlmostEqual(min_w, 0.3333, places=3)
 
+    def test_run_optimization_invalid_prices_rejected(self):
+        from scripts.crypto_portfolio_optimizer import run_optimization
+        valid = generate_synthetic_crypto_data(periods=50)
+        invalid_cases = (
+            "not_a_df",
+            valid.iloc[:, :1],
+            pd.DataFrame(),
+            valid.replace(valid.iloc[0, 0], -10.0),
+            pd.DataFrame({"A": ["bad", "str"], "B": [1.0, 2.0]}),
+        )
+        for bad in invalid_cases:
+            with self.subTest(bad=type(bad)), self.assertRaises(ValueError):
+                run_optimization(bad)
+
 
 if __name__ == "__main__":
     unittest.main()

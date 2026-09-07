@@ -184,6 +184,15 @@ def run_optimization(
     max_weight: float | None = None,
 ) -> dict[str, dict[str, float]]:
     """Run multiple skfolio optimization models with optional weight bounds and return comparative results."""
+    if not isinstance(prices, pd.DataFrame) or prices.shape[1] < 2 or len(prices) < 2:
+        raise ValueError("Optimization requires at least two assets and two price rows.")
+    try:
+        price_values = prices.to_numpy(dtype=float)
+    except (TypeError, ValueError) as error:
+        raise ValueError("Prices must contain only numeric values.") from error
+    if not np.all(np.isfinite(price_values)) or np.any(price_values <= 0):
+        raise ValueError("Prices must contain only finite, strictly positive values.")
+
     if not HAS_SKFOLIO:
         print("[!] Error: skfolio is not installed in the current environment.")
         print("    Please run setup.ps1 or pip install -r requirements-local.txt")
