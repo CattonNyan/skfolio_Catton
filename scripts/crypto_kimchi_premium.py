@@ -31,6 +31,13 @@ def fetch_live_usd_krw_rate(timeout: float = 3.0) -> tuple[float, str]:
     Returns tuple (rate, source_description).
     Falls back safely to (1350.0, 'Default Fallback') on network error.
     """
+    if (
+        isinstance(timeout, bool)
+        or not isinstance(timeout, (int, float))
+        or not math.isfinite(timeout)
+        or timeout <= 0
+    ):
+        raise ValueError("Timeout must be a finite, strictly positive number.")
     url = "https://open.er-api.com/v6/latest/USD"
     try:
         req = urllib.request.Request(
@@ -58,20 +65,29 @@ def compute_kimchi_premium(
     - binance_prices: Mapping of coin symbol to USDT price, e.g. {"BTC": 97000.0}
     - usdt_krw_rate: USD/KRW exchange rate (default: 1350.0)
     """
-    if not math.isfinite(usdt_krw_rate) or usdt_krw_rate <= 0:
+    if not isinstance(upbit_prices, dict) or not isinstance(binance_prices, dict):
+        raise ValueError("Price inputs must be dictionaries.")
+    if (
+        isinstance(usdt_krw_rate, bool)
+        or not isinstance(usdt_krw_rate, (int, float))
+        or not math.isfinite(usdt_krw_rate)
+        or usdt_krw_rate <= 0
+    ):
         raise ValueError("Exchange rate must be finite and strictly positive.")
 
-    results: dict[str, dict[str, float | str]] = {}
-
     common_symbols = sorted(set(upbit_prices.keys()) & set(binance_prices.keys()))
+    if not common_symbols:
+        raise ValueError("No common crypto assets found between Upbit and Binance.")
+
+    results: dict[str, dict[str, float | str]] = {}
 
     for sym in common_symbols:
         p_upbit = upbit_prices[sym]
         p_binance = binance_prices[sym]
 
-        if not math.isfinite(p_upbit) or p_upbit <= 0:
+        if isinstance(p_upbit, bool) or not isinstance(p_upbit, (int, float)) or not math.isfinite(p_upbit) or p_upbit <= 0:
             raise ValueError(f"Upbit price for {sym} must be finite and positive.")
-        if not math.isfinite(p_binance) or p_binance <= 0:
+        if isinstance(p_binance, bool) or not isinstance(p_binance, (int, float)) or not math.isfinite(p_binance) or p_binance <= 0:
             raise ValueError(f"Binance price for {sym} must be finite and positive.")
 
         fair_krw = p_binance * usdt_krw_rate

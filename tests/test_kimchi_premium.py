@@ -52,6 +52,27 @@ class KimchiPremiumTests(unittest.TestCase):
         self.assertIn("DOGE", res)
         self.assertEqual(res["DOGE"]["premium_pct"], 5.0)
 
+    def test_invalid_timeout_and_dict_types_rejected(self):
+        from scripts.crypto_kimchi_premium import fetch_live_usd_krw_rate
+        for bad_t in (-1.0, 0, True, False, float("nan"), "3"):
+            with self.subTest(bad_t=bad_t), self.assertRaises(ValueError):
+                fetch_live_usd_krw_rate(timeout=bad_t)
+
+        for bad_input in ("not_a_dict", [1, 2], None):
+            with self.subTest(bad_input=bad_input), self.assertRaises(ValueError):
+                compute_kimchi_premium(bad_input, {"BTC": 100.0})
+            with self.subTest(bad_input=bad_input), self.assertRaises(ValueError):
+                compute_kimchi_premium({"BTC": 100000.0}, bad_input)
+
+    def test_no_common_symbols_and_bool_prices_rejected(self):
+        with self.assertRaises(ValueError):
+            compute_kimchi_premium({"BTC": 100000.0}, {"ETH": 3000.0})
+
+        with self.assertRaises(ValueError):
+            compute_kimchi_premium({"BTC": True}, {"BTC": 100.0})
+        with self.assertRaises(ValueError):
+            compute_kimchi_premium({"BTC": 100000.0}, {"BTC": False})
+
 
 if __name__ == "__main__":
     unittest.main()
