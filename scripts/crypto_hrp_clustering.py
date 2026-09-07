@@ -48,6 +48,15 @@ def compute_correlation_matrix(returns: pd.DataFrame) -> pd.DataFrame:
 
 def run_hrp_analysis(prices: pd.DataFrame) -> dict[str, dict[str, float]]:
     """Run HRP and HERC models and print correlation & clustering analysis."""
+    if not isinstance(prices, pd.DataFrame) or prices.shape[1] < 2 or len(prices) < 3:
+        raise ValueError("HRP analysis requires at least two assets and three price rows.")
+    try:
+        price_values = prices.to_numpy(dtype=float)
+    except (TypeError, ValueError) as error:
+        raise ValueError("HRP prices must contain only numeric values.") from error
+    if not np.all(np.isfinite(price_values)) or np.any(price_values <= 0):
+        raise ValueError("HRP prices must contain only finite, strictly positive values.")
+
     if not HAS_SKFOLIO_HRP:
         print("[!] Error: Hierarchical clustering modules not available in current environment.")
         return {}
