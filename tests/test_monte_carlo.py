@@ -32,8 +32,19 @@ class MonteCarloTests(unittest.TestCase):
     def test_invalid_capital_rejected(self):
         prices = generate_synthetic_crypto_data(periods=50)
         weights = {"BTC/USDT": 1.0}
-        with self.assertRaises(ValueError):
-            simulate_monte_carlo_paths(prices, weights, initial_capital=-500.0)
+        for bad_cap in (-500.0, 0, True, False, float("nan"), float("inf"), "invalid"):
+            with self.subTest(bad_cap=bad_cap), self.assertRaises(ValueError):
+                simulate_monte_carlo_paths(prices, weights, initial_capital=bad_cap)
+
+    def test_invalid_seed_and_prices_rejected(self):
+        prices = generate_synthetic_crypto_data(periods=50)
+        weights = {"BTC/USDT": 1.0}
+        for bad_seed in (True, False, 1.5, "42"):
+            with self.subTest(bad_seed=bad_seed), self.assertRaises(ValueError):
+                simulate_monte_carlo_paths(prices, weights, seed=bad_seed)
+        for bad_prices in ("not_a_df", None, [1, 2, 3]):
+            with self.subTest(bad_prices=bad_prices), self.assertRaises(ValueError):
+                simulate_monte_carlo_paths(bad_prices, weights)
 
     def test_invalid_simulation_dimensions_rejected(self):
         prices = generate_synthetic_crypto_data(periods=50)

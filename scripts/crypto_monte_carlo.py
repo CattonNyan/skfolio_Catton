@@ -43,6 +43,8 @@ def simulate_monte_carlo_paths(
 
     Returns summary metrics, percentile cones, and risk distributions.
     """
+    if not isinstance(prices, pd.DataFrame):
+        raise ValueError("Prices must be a pandas DataFrame.")
     if isinstance(days, bool) or not isinstance(days, int) or days <= 0:
         raise ValueError("Days must be a strictly positive integer.")
     if (
@@ -51,8 +53,15 @@ def simulate_monte_carlo_paths(
         or num_simulations <= 0
     ):
         raise ValueError("Number of simulations must be a strictly positive integer.")
-    if initial_capital <= 0:
-        raise ValueError("Initial capital must be strictly positive.")
+    if (
+        isinstance(initial_capital, bool)
+        or not isinstance(initial_capital, (int, float, np.number))
+        or not np.isfinite(initial_capital)
+        or initial_capital <= 0
+    ):
+        raise ValueError("Initial capital must be a strictly positive finite number.")
+    if isinstance(seed, bool) or not isinstance(seed, (int, np.integer)):
+        raise ValueError("Seed must be an integer.")
 
     returns = prices.pct_change().dropna()
     if returns.empty:
@@ -102,11 +111,10 @@ def simulate_monte_carlo_paths(
     random_shocks = np.random.normal(0, 1, size=(num_simulations, days))
     step_returns = np.exp(drift + vol * random_shocks)
 
-    # Cumulative wealth paths starting from initial_capital
-    paths = np.zeros((num_simulations, days + 1))
+    # Cumulative wealth paths starting from initial_capital (vectorized)
+    paths = np.empty((num_simulations, days + 1), dtype=float)
     paths[:, 0] = initial_capital
-    for t in range(1, days + 1):
-        paths[:, t] = paths[:, t - 1] * step_returns[:, t - 1]
+    paths[:, 1:] = initial_capital * np.cumprod(step_returns, axis=1)
 
     # Final wealth distribution at day T
     final_wealth = paths[:, -1]
