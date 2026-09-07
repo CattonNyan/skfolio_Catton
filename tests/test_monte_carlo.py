@@ -68,6 +68,12 @@ class MonteCarloTests(unittest.TestCase):
             with self.subTest(weights=weights), self.assertRaises(ValueError):
                 simulate_monte_carlo_paths(prices, weights)
 
+    def test_insufficient_price_history_rejected(self):
+        prices = pd.DataFrame({"BTC/USDT": [100.0]})
+
+        with self.assertRaisesRegex(ValueError, "enough complete rows"):
+            simulate_monte_carlo_paths(prices, {"BTC/USDT": 1.0})
+
     def test_cvar_never_returns_nan(self):
         # Monotonically increasing prices where loss is virtually 0
         dates = pd.date_range("2026-01-01", periods=100, freq="1D")

@@ -55,6 +55,8 @@ def simulate_monte_carlo_paths(
         raise ValueError("Initial capital must be strictly positive.")
 
     returns = prices.pct_change().dropna()
+    if returns.empty:
+        raise ValueError("Prices must contain enough complete rows to calculate returns.")
     common_assets = [a for a in weights if a in returns.columns]
     if not common_assets:
         raise ValueError("No matching assets found between prices and weights.")
