@@ -45,6 +45,15 @@ def compute_black_litterman_weights(
     - risk_aversion: Risk aversion parameter lambda (default: 2.5)
     - prior_weights: Optional benchmark / market equilibrium weights (default: equal weights)
     """
+    if not isinstance(prices, pd.DataFrame) or prices.shape[1] == 0 or len(prices) < 2:
+        raise ValueError("Prices must contain at least one asset and two rows.")
+    try:
+        price_values = prices.to_numpy(dtype=float)
+    except (TypeError, ValueError) as error:
+        raise ValueError("Prices must contain only numeric values.") from error
+    if not np.all(np.isfinite(price_values)) or np.any(price_values <= 0):
+        raise ValueError("Prices must contain only finite, strictly positive values.")
+
     returns = prices.pct_change().dropna()
     assets = list(returns.columns)
     n = len(assets)

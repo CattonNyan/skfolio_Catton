@@ -9,6 +9,17 @@ from scripts.crypto_black_litterman import compute_black_litterman_weights
 
 
 class BlackLittermanTests(unittest.TestCase):
+    def test_invalid_price_history_rejected(self):
+        invalid_prices = (
+            pd.DataFrame(),
+            pd.DataFrame({"BTC/USDT": [100.0]}),
+            pd.DataFrame({"BTC/USDT": [100.0, float("nan")]}),
+            pd.DataFrame({"BTC/USDT": [100.0, 0.0]}),
+        )
+        for prices in invalid_prices:
+            with self.subTest(prices=prices), self.assertRaises(ValueError):
+                compute_black_litterman_weights(prices)
+
     def test_black_litterman_without_views(self):
         prices = generate_synthetic_crypto_data(periods=100)
         res = compute_black_litterman_weights(prices, views=[])
