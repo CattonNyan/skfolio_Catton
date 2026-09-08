@@ -16,7 +16,7 @@ matplotlib>=3.8.0
 
 # Data Fetching & Crypto Connectors
 ccxt>=4.0.0
-pyarrow>=14.0.0
+pyarrow>=25.0.1
 fastparquet>=2023.10.0
 
 # Utilities
