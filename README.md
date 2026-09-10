@@ -48,6 +48,10 @@
   - [18. Freqtrade 완전체 실전 전략 샘플](#18-freqtrade-완전체-실전-전략-샘플-strategiesskfolioenhancedatrstrategypy)
   - [19. 상관계수 붕괴 & 디커플링 감지기](#19-상관계수-붕괴--디커플링decoupling-감지기)
   - [20. 가상자산 세후 순수익률 & 세금 시뮬레이터](#20-가상자산-세후-순수익률--세금-시뮬레이터)
+  - [21. 업비트 원화(KRW) 마켓 전용 캔들 수집기](#21-업비트-원화krw-마켓-전용-캔들-수집기)
+  - [22. 한국 거래소 수수료 및 포트폴리오 수익률 잠식 계산기](#22-한국-거래소-수수료-및-포트폴리오-수익률-잠식-계산기)
+  - [23. 김치 프리미엄 기반 동적 자산배분 레짐 시그널러](#23-김치-프리미엄-기반-동적-자산배분-레짐-시그널러)
+  - [24. 한국 특금법 트래블룰 준수 & 100만원 안전 분할 전송 어드바이저](#24-한국-특금법-트래블룰-준수--100만원-안전-분할-전송-어드바이저)
 - [📁 프로젝트 구조](#-프로젝트-구조)
 - [🧪 단위 테스트 및 CI/CD](#-단위-테스트-및-cicd)
 - [📜 라이선스 및 크레딧](#-라이선스-및-크레딧)
@@ -382,6 +386,42 @@ python scripts/crypto_correlation_breakdown.py --window 30 --threshold 1.8
 python scripts/crypto_tax_calculator.py --profit 12000000 --capital 50000000
 ```
 
+### 21. 업비트 원화(KRW) 마켓 전용 캔들 수집기
+
+업비트 공개 REST API를 통해 API 키 없이도 KRW 마켓의 OHLCV 캔들 및 실시간 시세를 직접 수집하고, `skfolio` 포트폴리오 최적화에 즉시 투입 가능한 DatetimeIndex 피벗 DataFrame을 생성합니다:
+
+```powershell
+# 업비트 KRW 마켓 일봉 100개 수집 및 CSV 내보내기
+python scripts/fetch_upbit_crypto.py --markets KRW-BTC KRW-ETH KRW-SOL KRW-XRP --count 100 --output-csv data/live/upbit_prices.csv
+```
+
+### 22. 한국 거래소 수수료 및 포트폴리오 수익률 잠식 계산기
+
+업비트(0.05%), 빗썸(0.04% 쿠폰 / 0.25%), 코인원(0.20%), 코빗 등 국내 주요 거래소의 수수료 체계와 원화 출금 수수료(건당 1,000원), 연간 포트폴리오 회전율(Turnover)을 반영하여 실질 연간 수수료 잠식률(Fee Drag %)과 손익분기 최소 요구수익률을 산출합니다:
+
+```powershell
+# 업비트 KRW 마켓 기준 5,000만원 자본금, 연간 회전율 6배수 수수료 시뮬레이션
+python scripts/crypto_krw_fee_calculator.py --exchange upbit --capital 50000000 --turnover 6.0
+```
+
+### 23. 김치 프리미엄 기반 동적 자산배분 레짐 시그널러
+
+실시간 김치 프리미엄 수준을 바탕으로 시장의 과열/할인 레짐(EXTREME_OVERHEATED, MODERATE_OVERHEATED, FAIR_EQUILIBRIUM, NEGATIVE_DISCOUNT)을 진단하고, 포트폴리오의 안전자산(KRW 현금)과 위험자산(크립토) 비중을 동적으로 리스케일링합니다:
+
+```powershell
+# 김치 프리미엄 실시간 또는 지정값(+6.5%) 기준 전술적 자산배분 실행
+python scripts/crypto_kimchi_regime.py --premium 6.5 --export-json reports/kimchi_regime.json
+```
+
+### 24. 한국 특금법 트래블룰 준수 & 100만원 안전 분할 전송 어드바이저
+
+대한민국 특정 금융거래정보법(특금법)에 따른 100만원 이상 가상자산 전송 시의 VASP 트래블룰 규제 적용 여부를 판별하고, 미지원 해외 거래소나 개인 지갑 송금 시 입출금 정지를 방지하기 위한 1회 안전 전송선(KRW 950,000 안전 버퍼) 기준 최적 분할 전송 횟수와 수수료 누적액을 계산합니다:
+
+```powershell
+# 3,000 XRP 전송 시 100만원 임계점 대비 안전 분할 전송 계획 도출
+python scripts/crypto_travel_rule_advisor.py --coin XRP --amount 3000 --price-krw 1900
+```
+
 ---
 
 ## 📁 프로젝트 구조
@@ -404,6 +444,10 @@ skfolio_Catton/
 │   ├── crypto_black_litterman.py      # 블랙-리터만 베이지안 포트폴리오 최적화기
 │   ├── crypto_stress_tester.py        # 역사적 블랙스완 스트레스 테스터
 │   ├── crypto_kimchi_premium.py       # 김치 프리미엄 & 환율 차익 분석기
+│   ├── crypto_kimchi_regime.py        # 김치 프리미엄 기반 동적 자산배분 레짐 시그널러
+│   ├── crypto_krw_fee_calculator.py   # 한국 거래소 수수료 및 Fee Drag 시뮬레이터
+│   ├── crypto_travel_rule_advisor.py  # 한국 특금법 트래블룰 준수 안전 분할 전송기
+│   ├── fetch_upbit_crypto.py          # 업비트 원화(KRW) 마켓 전용 캔들 수집기
 │   ├── freqtrade_strategy_optimizer.py # 멀티 전략 간 자금 배분 최적화기
 │   ├── crypto_monte_carlo.py          # 몬테카를로 미래 자산 경로 및 VaR 시뮬레이터
 │   ├── crypto_macro_regime.py         # 공포·탐욕 지수 기반 동적 현금 비중 조절기
@@ -416,8 +460,12 @@ skfolio_Catton/
 ├── strategies/                        # Freqtrade 실전 전략 모음
 │   └── SkfolioEnhancedAtrStrategy.py  # skfolio 동적 비중/리스크 완전 연동 실전 전략
 ├── src/skfolio/                       # skfolio 핵심 최적화 알고리즘 엔진
-├── tests/                             # 단위 테스트 모음 (총 80개 테스트)
+├── tests/                             # 단위 테스트 모음
 │   ├── test_crypto_suite.py           # 통합 테스트 스위트 러너 (Python 3.10~3.14 호환)
+│   ├── test_upbit_fetcher.py          # 업비트 캔들 수집기 검증
+│   ├── test_krw_fee_calculator.py     # 한국 거래소 수수료 계산기 검증
+│   ├── test_kimchi_regime.py          # 김치 프리미엄 레짐 시그널러 검증
+│   ├── test_travel_rule_advisor.py    # 트래블룰 안전 분할 전송기 검증
 │   ├── test_crypto_optimizer.py
 │   ├── test_hrp_clustering.py
 │   ├── test_live_fetcher.py
