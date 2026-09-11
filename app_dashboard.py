@@ -39,6 +39,7 @@ from scripts.crypto_krw_fee_calculator import (
     get_korean_exchange_preset,
 )
 from scripts.crypto_tax_calculator import compute_crypto_tax_impact
+from scripts.crypto_travel_rule_advisor import calculate_travel_rule_plan
 
 # Optional skfolio optimization imports
 try:
@@ -434,7 +435,7 @@ def main():
         weights_dict = (inv_vols / inv_vols.sum()).to_dict()
 
     # 4. Tab Interface
-    tab_opt, tab_rebalance, tab_mc, tab_stress, tab_macro, tab_kimchi, tab_tax, tab_krw_fee = st.tabs([
+    tab_opt, tab_rebalance, tab_mc, tab_stress, tab_macro, tab_kimchi, tab_tax, tab_krw_fee, tab_travel = st.tabs([
         "📊 포트폴리오 최적화 & 자산배분",
         "🔄 주기적 리밸런싱 백테스트",
         "🎲 몬테카를로 미래 시뮬레이션",
@@ -443,6 +444,7 @@ def main():
         "⚡ 김치 프리미엄 차익거래",
         "💰 세후 순수익률 & 세금 시뮬레이터",
         "💸 국내 거래소 수수료 & Fee Drag",
+        "🛡️ 특금법 트래블룰 안전 분할 전송",
     ])
 
     with tab_opt:
@@ -819,7 +821,93 @@ def main():
         except Exception as ex:
             st.error(f"수수료 잠식률 시뮬레이터 오류: {ex}")
 
+    with tab_travel:
+        st.subheader("🛡️ 특금법 100만 원 트래블룰 안전 분할 전송 어드바이저")
+        st.caption("대한민국 특정금융정보법(100만 원 이상 출금 시 VASP 간 트래블룰 정보 교환 의무)에 맞춰, 미연동 해외거래소 및 개인 콜드월렛 전송 시 입출금 정지나 동결 리스크를 방지하는 최적 분할 전송 계획을 수립합니다.")
+        try:
+            coin_presets = {
+                "XRP (리플)": {"symbol": "XRP", "price": 1150.0, "amount": 2500.0, "fee": 1.0},
+                "TRX (트론)": {"symbol": "TRX", "price": 280.0, "fee": 1.0, "amount": 10000.0},
+                "SOL (솔라나)": {"symbol": "SOL", "price": 298000.0, "fee": 0.01, "amount": 10.0},
+                "BTC (비트코인)": {"symbol": "BTC", "price": 136500000.0, "fee": 0.0005, "amount": 0.03},
+                "ETH (이더리움)": {"symbol": "ETH", "price": 4750000.0, "fee": 0.005, "amount": 0.8},
+                "USDT (테더)": {"symbol": "USDT", "price": 1380.0, "fee": 1.0, "amount": 2000.0},
+            }
+
+            tc1, tc2, tc3, tc4 = st.columns(4)
+            with tc1:
+                selected_coin_name = st.selectbox("전송 코인", list(coin_presets.keys()), index=0)
+                preset_data = coin_presets[selected_coin_name]
+            with tc2:
+                target_amount = st.number_input(
+                    f"총 전송 희망 수량 ({preset_data['symbol']})",
+                    value=float(preset_data["amount"]),
+                    step=1.0 if preset_data["price"] < 10000 else 0.01,
+                    format="%.4f" if preset_data["price"] >= 10000 else "%.1f",
+                )
+            with tc3:
+                coin_price = st.number_input(
+                    "현재 코인 단가 (KRW)",
+                    value=float(preset_data["price"]),
+                    step=10.0 if preset_data["price"] < 10000 else 10000.0,
+                    format="%.0f",
+                )
+            with tc4:
+                net_fee = st.number_input(
+                    f"건당 출금 수수료 ({preset_data['symbol']})",
+                    value=float(preset_data["fee"]),
+                    step=0.1 if preset_data["price"] < 10000 else 0.0001,
+                    format="%.4f",
+                )
+
+            safe_buf = st.slider(
+                "변동성 대비 회당 안전 한도 (KRW, 법정 기준 100만 원 미만)",
+                min_value=800000,
+                max_value=980000,
+                value=950000,
+                step=10000,
+                help="코인 가격의 실시간 급등락으로 전송 도중 원화 환산 100만 원을 초과하여 입금이 묶이는 사고를 방지하기 위한 안전 마진입니다.",
+            )
+
+            plan_res = calculate_travel_rule_plan(
+                coin_symbol=preset_data["symbol"],
+                target_amount=float(target_amount),
+                coin_price_krw=float(coin_price),
+                safe_buffer_krw=float(safe_buf),
+                network_fee_coins=float(net_fee),
+            )
+
+            if plan_res["requires_travel_rule"]:
+                st.warning(f"⚠️ 총 전송액이 ₩{plan_res['total_value_krw']:,.0f}으로 법정 트래블룰 기준(100만 원)을 초과합니다. VASP 연동 거래소가 아니거나 개인 지갑 전송 시 분할 전송이 권장됩니다.")
+            else:
+                st.success(f"✅ 총 전송액이 ₩{plan_res['total_value_krw']:,.0f}으로 100만 원 미만입니다. 간이 출금이 적용되어 안전하게 즉시 전송 가능합니다.")
+
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("총 전송 원화 환산액", f"₩{plan_res['total_value_krw']:,.0f}")
+            m2.metric("권장 분할 전송 횟수", f"{plan_res['recommended_batches']} 회")
+            m3.metric("1회당 안전 전송 수량", f"{plan_res['per_batch_coins']:.4f} {preset_data['symbol']}")
+            m4.metric("총 네트워크 수수료", f"₩{plan_res['total_network_fee_krw']:,.0f} ({plan_res['total_network_fee_coins']:.4f} {preset_data['symbol']})")
+
+            st.markdown("---")
+            st.subheader("📋 권장 단계별 안전 전송 스케줄")
+
+            batches = plan_res["recommended_batches"]
+            schedule_data = []
+            for b in range(1, batches + 1):
+                schedule_data.append({
+                    "전송 회차": f"{b} / {batches} 회차",
+                    "전송 수량": f"{plan_res['per_batch_coins']:.4f} {preset_data['symbol']}",
+                    "회차별 원화가": f"₩{plan_res['per_batch_krw']:,.0f}",
+                    "권장 대기 시간": "이전 회차 입금 완전 확인 후 최소 10~15분 대기" if b > 1 else "첫 회 소액 테스트 권장",
+                    "상태": "안전 (Safety Buffer 이내)",
+                })
+            st.dataframe(pd.DataFrame(schedule_data), use_container_width=True, hide_index=True)
+            st.info(f"💡 컴플라이언스 가이드: {plan_res['compliance_advice']}")
+        except Exception as ex:
+            st.error(f"트래블룰 어드바이저 오류: {ex}")
+
 
 if __name__ == "__main__":
     main()
+
 
