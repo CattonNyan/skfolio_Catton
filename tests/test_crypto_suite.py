@@ -24,6 +24,10 @@ from tests.test_factor_analyzer import FactorAnalyzerTests
 from tests.test_enhanced_strategy import EnhancedStrategyTests
 from tests.test_correlation_breakdown import CorrelationBreakdownTests
 from tests.test_tax_calculator import TaxCalculatorTests
+from tests.test_upbit_fetcher import UpbitFetcherTests
+from tests.test_krw_fee_calculator import KrwFeeCalculatorTests
+from tests.test_kimchi_regime import KimchiRegimeTests
+from tests.test_travel_rule_advisor import TravelRuleAdvisorTests
 
 
 def suite():
@@ -48,6 +52,10 @@ def suite():
     s.addTests(loader.loadTestsFromTestCase(EnhancedStrategyTests))
     s.addTests(loader.loadTestsFromTestCase(CorrelationBreakdownTests))
     s.addTests(loader.loadTestsFromTestCase(TaxCalculatorTests))
+    s.addTests(loader.loadTestsFromTestCase(UpbitFetcherTests))
+    s.addTests(loader.loadTestsFromTestCase(KrwFeeCalculatorTests))
+    s.addTests(loader.loadTestsFromTestCase(KimchiRegimeTests))
+    s.addTests(loader.loadTestsFromTestCase(TravelRuleAdvisorTests))
     return s
 
 
