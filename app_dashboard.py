@@ -32,6 +32,7 @@ from scripts.crypto_monte_carlo import simulate_monte_carlo
 from scripts.crypto_stress_tester import evaluate_stress_test
 from scripts.crypto_macro_regime import calculate_macro_regime_weights, fetch_fear_and_greed_index
 from scripts.crypto_kimchi_premium import compute_kimchi_premium, fetch_live_usd_krw_rate
+from scripts.crypto_kimchi_regime import adjust_portfolio_weights_by_kimchi, classify_kimchi_regime
 from scripts.crypto_tax_calculator import compute_crypto_tax_impact
 
 # Optional skfolio optimization imports
@@ -684,6 +685,26 @@ def main():
                 for k, v in kp_res.items()
             ])
             st.dataframe(kp_df, use_container_width=True, hide_index=True)
+
+            # Kimchi Premium Regime Tactical Allocation
+            st.markdown("---")
+            st.subheader("🎯 김치 프리미엄 기반 동적 자산배분 레짐")
+            btc_prem = float(kp_res.get("BTC", {}).get("premium_pct", 3.0))
+            regime_res = classify_kimchi_regime(btc_prem)
+
+            k1, k2, k3 = st.columns(3)
+            k1.metric("김프 시장 레짐", str(regime_res["regime"]))
+            k2.metric("권장 크립토 비중", f"{float(regime_res['target_crypto_ratio'])*100:.1f}%")
+            k3.metric("권장 안전자산(현금) 비중", f"{float(regime_res['target_cash_ratio'])*100:.1f}%")
+            st.info(f"💡 전술 행동 지침: {regime_res['tactical_action']}")
+
+            kimchi_weights = adjust_portfolio_weights_by_kimchi(weights_dict, premium_pct=btc_prem, cash_asset="KRW (Cash)")
+            kimchi_df = pd.DataFrame({
+                "자산 / 현금 버퍼": list(kimchi_weights.keys()),
+                "전술적 배분 비중": [f"{w*100:.2f}%" for w in kimchi_weights.values()],
+                "배분 금액": [f"${w * wallet_size:,.2f}" for w in kimchi_weights.values()],
+            })
+            st.dataframe(kimchi_df, use_container_width=True, hide_index=True)
         except Exception as ex:
             st.error(f"김치 프리미엄 분석 오류: {ex}")
 
