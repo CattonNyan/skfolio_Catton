@@ -33,6 +33,11 @@ from scripts.crypto_stress_tester import evaluate_stress_test
 from scripts.crypto_macro_regime import calculate_macro_regime_weights, fetch_fear_and_greed_index
 from scripts.crypto_kimchi_premium import compute_kimchi_premium, fetch_live_usd_krw_rate
 from scripts.crypto_kimchi_regime import adjust_portfolio_weights_by_kimchi, classify_kimchi_regime
+from scripts.crypto_krw_fee_calculator import (
+    KOREAN_EXCHANGE_PRESETS,
+    compute_krw_fee_drag,
+    get_korean_exchange_preset,
+)
 from scripts.crypto_tax_calculator import compute_crypto_tax_impact
 
 # Optional skfolio optimization imports
@@ -429,7 +434,7 @@ def main():
         weights_dict = (inv_vols / inv_vols.sum()).to_dict()
 
     # 4. Tab Interface
-    tab_opt, tab_rebalance, tab_mc, tab_stress, tab_macro, tab_kimchi, tab_tax = st.tabs([
+    tab_opt, tab_rebalance, tab_mc, tab_stress, tab_macro, tab_kimchi, tab_tax, tab_krw_fee = st.tabs([
         "📊 포트폴리오 최적화 & 자산배분",
         "🔄 주기적 리밸런싱 백테스트",
         "🎲 몬테카를로 미래 시뮬레이션",
@@ -437,6 +442,7 @@ def main():
         "😨 공포·탐욕 매크로 현금 조절",
         "⚡ 김치 프리미엄 차익거래",
         "💰 세후 순수익률 & 세금 시뮬레이터",
+        "💸 국내 거래소 수수료 & Fee Drag",
     ])
 
     with tab_opt:
@@ -735,6 +741,85 @@ def main():
         except Exception as ex:
             st.error(f"세금 시뮬레이터 오류: {ex}")
 
+    with tab_krw_fee:
+        st.subheader("💸 국내 가상자산 거래소 수수료 & 포트폴리오 잠식률(Fee Drag)")
+        st.caption("업비트, 빗썸, 코인원, 코빗 등 국내 원화마켓 수수료율과 리밸런싱 회전율에 따른 연간 수익률 갉아먹힘(Fee Drag)을 정밀 산출합니다.")
+        try:
+            fc1, fc2, fc3 = st.columns(3)
+            with fc1:
+                selected_exchange_key = st.selectbox(
+                    "기준 국내 거래소",
+                    options=list(KOREAN_EXCHANGE_PRESETS.keys()),
+                    index=0,
+                    format_func=lambda k: str(KOREAN_EXCHANGE_PRESETS[k]["name"]),
+                )
+                preset = get_korean_exchange_preset(selected_exchange_key)
+            with fc2:
+                annual_turnover = st.slider(
+                    "연간 포트폴리오 회전율 (Turnover)",
+                    min_value=0.5,
+                    max_value=24.0,
+                    value=4.0,
+                    step=0.5,
+                    help="연간 총 매매대금 / 포트폴리오 원금. (예: 분기별 100% 교체 시 4.0, 월 1회 리밸런싱 시 12.0)",
+                )
+            with fc3:
+                maker_pct = st.slider(
+                    "지정가(Maker) 체결 비율 (%)",
+                    min_value=0,
+                    max_value=100,
+                    value=50,
+                    step=5,
+                )
+
+            current_portfolio_krw = float(wallet_size * 1350.0)
+            maker_fee_val = float(preset["maker_fee"])
+            taker_fee_val = float(preset["taker_fee"])
+            maker_ratio_val = float(maker_pct) / 100.0
+
+            fee_res = compute_krw_fee_drag(
+                portfolio_value_krw=current_portfolio_krw,
+                annual_turnover=float(annual_turnover),
+                maker_fee=maker_fee_val,
+                taker_fee=taker_fee_val,
+                maker_ratio=maker_ratio_val,
+                annual_withdrawals=12,
+                withdrawal_fee_krw=float(preset["withdrawal_fee_krw"]),
+            )
+
+            f1, f2, f3, f4 = st.columns(4)
+            f1.metric("연간 총 거래대금", f"₩{fee_res['annual_trade_volume_krw']:,.0f}")
+            f2.metric("연간 총 지출 수수료", f"₩{fee_res['total_annual_fees_krw']:,.0f}")
+            f3.metric("포트폴리오 잠식률 (Fee Drag)", f"-{fee_res['fee_drag_pct']:.4f}%p")
+            f4.metric("유효 거래비용 (Effective)", f"{fee_res['effective_cost_bps']:.2f} bps")
+
+            st.markdown("---")
+            st.subheader("📊 5대 국내 원화거래소 수수료 잠식률 비교 (동일 회전율 기준)")
+
+            comparison_rows = []
+            for ex_key, ex_info in KOREAN_EXCHANGE_PRESETS.items():
+                res_comp = compute_krw_fee_drag(
+                    portfolio_value_krw=current_portfolio_krw,
+                    annual_turnover=float(annual_turnover),
+                    maker_fee=float(ex_info["maker_fee"]),
+                    taker_fee=float(ex_info["taker_fee"]),
+                    maker_ratio=maker_ratio_val,
+                    annual_withdrawals=12,
+                    withdrawal_fee_krw=float(ex_info["withdrawal_fee_krw"]),
+                )
+                comparison_rows.append({
+                    "거래소": ex_info["name"],
+                    "기본 수수료율": f"{float(ex_info['taker_fee'])*100:.2f}%",
+                    "연간 지출 수수료": f"₩{res_comp['total_annual_fees_krw']:,.0f}",
+                    "Fee Drag": f"-{res_comp['fee_drag_pct']:.4f}%p",
+                    "손익분기 초과수익률": f"{res_comp['breakeven_gross_hurdle_pct']:.4f}%",
+                })
+
+            st.dataframe(pd.DataFrame(comparison_rows), use_container_width=True, hide_index=True)
+        except Exception as ex:
+            st.error(f"수수료 잠식률 시뮬레이터 오류: {ex}")
+
 
 if __name__ == "__main__":
     main()
+
