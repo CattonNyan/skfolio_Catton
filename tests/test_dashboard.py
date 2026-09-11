@@ -118,6 +118,64 @@ class DashboardTests(unittest.TestCase):
         fig_nav = create_rebalancing_nav_chart(pd.Series(dtype=float), pd.Series(dtype=float), pd.Series(dtype=float))
         self.assertIsInstance(fig_nav, go.Figure)
 
+    @unittest.skipUnless(HAS_DASHBOARD_DEPS, "plotly or streamlit not installed")
+    def test_cached_load_upbit_data(self):
+        from app_dashboard import cached_load_upbit_data
+        markets = ("KRW-BTC", "KRW-ETH")
+        prices = cached_load_upbit_data(markets, count=15, timeframe="days")
+        self.assertIsInstance(prices, pd.DataFrame)
+        self.assertFalse(prices.empty)
+        self.assertIn("KRW-BTC", prices.columns)
+        self.assertIn("KRW-ETH", prices.columns)
+        self.assertGreaterEqual(len(prices), 5)
+
+    @unittest.skipUnless(HAS_DASHBOARD_DEPS, "plotly or streamlit not installed")
+    def test_dashboard_krw_fee_drag_integration(self):
+        from scripts.crypto_krw_fee_calculator import (
+            KOREAN_EXCHANGE_PRESETS,
+            compute_krw_fee_drag,
+            get_korean_exchange_preset,
+        )
+        for ex_key in KOREAN_EXCHANGE_PRESETS:
+            preset = get_korean_exchange_preset(ex_key)
+            self.assertIn("maker_fee", preset)
+            self.assertIn("taker_fee", preset)
+            res = compute_krw_fee_drag(
+                portfolio_value_krw=13500000.0,
+                annual_turnover=4.0,
+                maker_fee=float(preset["maker_fee"]),
+                taker_fee=float(preset["taker_fee"]),
+                maker_ratio=0.5,
+            )
+            self.assertGreater(res["annual_trade_volume_krw"], 0)
+            self.assertGreater(res["total_annual_fees_krw"], 0)
+            self.assertGreaterEqual(res["fee_drag_pct"], 0)
+
+    @unittest.skipUnless(HAS_DASHBOARD_DEPS, "plotly or streamlit not installed")
+    def test_dashboard_travel_rule_integration(self):
+        from scripts.crypto_travel_rule_advisor import calculate_travel_rule_plan
+        # Sub-1M KRW transfer
+        sub_res = calculate_travel_rule_plan("XRP", target_amount=500.0, coin_price_krw=1150.0)
+        self.assertFalse(sub_res["requires_travel_rule"])
+        self.assertEqual(sub_res["recommended_batches"], 1)
+
+        # Over-1M KRW transfer
+        over_res = calculate_travel_rule_plan("XRP", target_amount=5000.0, coin_price_krw=1150.0)
+        self.assertTrue(over_res["requires_travel_rule"])
+        self.assertGreater(over_res["recommended_batches"], 1)
+        self.assertLessEqual(over_res["per_batch_krw"], 950000.0 + 1e-5)
+
+    @unittest.skipUnless(HAS_DASHBOARD_DEPS, "plotly or streamlit not installed")
+    def test_dashboard_kimchi_regime_integration(self):
+        from scripts.crypto_kimchi_regime import adjust_portfolio_weights_by_kimchi, classify_kimchi_regime
+        regime = classify_kimchi_regime(6.5)
+        self.assertEqual(regime["regime"], "EXTREME_OVERHEATED")
+        base_weights = {"BTC": 0.5, "ETH": 0.5}
+        adj_weights = adjust_portfolio_weights_by_kimchi(base_weights, premium_pct=6.5, cash_asset="KRW (Cash)")
+        self.assertIn("KRW (Cash)", adj_weights)
+        self.assertAlmostEqual(adj_weights["KRW (Cash)"], 0.60, places=2)
+
 
 if __name__ == "__main__":
     unittest.main()
+
