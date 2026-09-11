@@ -2,6 +2,28 @@
 
 <!-- version list -->
 
+## v1.1.0 (2026-09-11)
+
+### Features
+
+- **dashboard**: Add Korean crypto quant tool suite into interactive Streamlit dashboard
+  - Support Upbit KRW live market as real-time portfolio optimization data source
+  - Add Kimchi Premium tactical asset allocation regime tab
+  - Add 5-exchange Korean fee and rebalancing Fee Drag compounding simulator tab
+  - Add Korea Travel Rule compliance and safe split transfer advisor tab (KRW 950,000 safety buffer)
+- **tools**: Add standalone CLI utilities for Korean crypto ecosystem
+  - `fetch_upbit_crypto.py`: Upbit public REST API ticker and OHLCV candle fetcher
+  - `crypto_krw_fee_calculator.py`: Korean exchange maker/taker fee drag and break-even calculator
+  - `crypto_kimchi_regime.py`: Kimchi premium regime classifier and tactical cash rebalancer
+  - `crypto_travel_rule_advisor.py`: Statutory 1,000,000 KRW Travel Rule batch scheduler
+  - `verify_environment.py`: Register Korean quant modules in environment verification routine
+
+### Testing
+
+- **suite**: Register all Korean quant modules into main integrated test suite (`tests/test_crypto_suite.py`)
+- **dashboard**: Add comprehensive integration tests for Upbit cached loader, fee calculator, travel rule advisor, and kimchi premium regime in `tests/test_dashboard.py`
+
+
 ## v1.0.4 (2026-08-31)
 
 ### Bug Fixes
