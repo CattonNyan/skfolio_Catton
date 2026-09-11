@@ -40,6 +40,7 @@ from scripts.crypto_krw_fee_calculator import (
 )
 from scripts.crypto_tax_calculator import compute_crypto_tax_impact
 from scripts.crypto_travel_rule_advisor import calculate_travel_rule_plan
+from scripts.fetch_upbit_crypto import fetch_upbit_historical_prices
 
 # Optional skfolio optimization imports
 try:
@@ -60,6 +61,12 @@ except ImportError:
 def cached_load_market_data(timeframe: str, use_synthetic: bool):
     """Cached market data loader to avoid repeated disk reads."""
     return load_market_data(timeframe=timeframe, use_synthetic=use_synthetic)
+
+
+@st.cache_data(show_spinner=False, ttl=180)
+def cached_load_upbit_data(markets: tuple[str, ...], count: int = 180, timeframe: str = "days") -> pd.DataFrame:
+    """Cached Upbit real-time price fetcher for live KRW market optimization."""
+    return fetch_upbit_historical_prices(list(markets), count=count, timeframe=timeframe)
 
 
 @st.cache_data(show_spinner=False)
@@ -368,11 +375,24 @@ def main():
 
         data_source = st.selectbox(
             "데이터 소스 선택",
-            options=["Freqtrade 로컬 데이터", "합성 시뮬레이션 데이터"],
+            options=["Freqtrade 로컬 데이터", "업비트(Upbit) KRW 실시간 마켓", "합성 시뮬레이션 데이터"],
             index=0,
         )
 
-        timeframe = st.selectbox("타임프레임 (캔들 주기)", options=["15m", "5m", "1h"], index=0)
+        if data_source == "업비트(Upbit) KRW 실시간 마켓":
+            upbit_markets = st.multiselect(
+                "분석 대상 업비트 KRW 마켓",
+                options=["KRW-BTC", "KRW-ETH", "KRW-SOL", "KRW-XRP", "KRW-ADA", "KRW-DOGE", "KRW-AVAX", "KRW-DOT"],
+                default=["KRW-BTC", "KRW-ETH", "KRW-SOL", "KRW-XRP"],
+            )
+            upbit_timeframe = st.selectbox(
+                "업비트 캔들 주기",
+                options=["일봉 (1일)", "4시간봉 (240분)", "1시간봉 (60분)"],
+                index=0,
+            )
+            timeframe = "1d"
+        else:
+            timeframe = st.selectbox("타임프레임 (캔들 주기)", options=["15m", "5m", "1h"], index=0)
 
         model_type = st.selectbox(
             "최적화 알고리즘",
@@ -408,15 +428,28 @@ def main():
         )
 
     # 2. Data Loading
-    is_synthetic = data_source == "합성 시뮬레이션 데이터"
-    try:
-        prices, provenance = cached_load_market_data(
-            timeframe=timeframe,
-            use_synthetic=is_synthetic,
-        )
-    except MarketDataUnavailableError as error:
-        st.error(str(error))
-        st.stop()
+    if data_source == "업비트(Upbit) KRW 실시간 마켓":
+        if not upbit_markets or len(upbit_markets) < 2:
+            st.warning("포트폴리오 최적화를 위해 최소 2개 이상의 업비트 마켓을 선택해주세요.")
+            st.stop()
+        tf_code = "days" if "일봉" in upbit_timeframe else ("minutes/240" if "4시간봉" in upbit_timeframe else "minutes/60")
+        try:
+            with st.spinner("업비트(Upbit) 공개 API로부터 실시간 가격 캔들을 수신 중..."):
+                prices = cached_load_upbit_data(tuple(upbit_markets), count=180, timeframe=tf_code)
+                provenance = f"업비트(Upbit) KRW 마켓 실시간 데이터 ({', '.join(upbit_markets)})"
+        except Exception as ex:
+            st.error(f"업비트 데이터 수신 실패: {ex}")
+            st.stop()
+    else:
+        is_synthetic = data_source == "합성 시뮬레이션 데이터"
+        try:
+            prices, provenance = cached_load_market_data(
+                timeframe=timeframe,
+                use_synthetic=is_synthetic,
+            )
+        except MarketDataUnavailableError as error:
+            st.error(str(error))
+            st.stop()
 
     returns = prices_to_returns(prices)
     assets = list(returns.columns)
