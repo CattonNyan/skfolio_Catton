@@ -32,6 +32,18 @@ class KimchiRegimeTests(unittest.TestCase):
         self.assertEqual(res_disc["regime"], KimchiRegime.NEGATIVE_DISCOUNT)
         self.assertEqual(res_disc["target_crypto_ratio"], 0.95)
 
+    def test_custom_moderate_threshold(self):
+        # Custom moderate threshold at 2.0 with overheated at 4.0
+        res = classify_kimchi_regime(2.5, overheated_threshold=4.0, discount_threshold=0.0, moderate_threshold=2.0)
+        self.assertEqual(res["regime"], KimchiRegime.MODERATE_OVERHEATED)
+        self.assertEqual(res["moderate_threshold"], 2.0)
+
+        # Invalid moderate threshold (out of bounds)
+        with self.assertRaises(ValueError):
+            classify_kimchi_regime(2.5, overheated_threshold=4.0, discount_threshold=0.0, moderate_threshold=4.5)
+        with self.assertRaises(ValueError):
+            classify_kimchi_regime(2.5, overheated_threshold=4.0, discount_threshold=0.0, moderate_threshold=-1.0)
+
     def test_adjust_portfolio_weights_by_kimchi_sums_to_one(self):
         base_weights = {
             "KRW-BTC": 0.50,

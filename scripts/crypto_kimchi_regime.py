@@ -36,6 +36,7 @@ def classify_kimchi_regime(
     premium_pct: float,
     overheated_threshold: float = 5.0,
     discount_threshold: float = 0.0,
+    moderate_threshold: float | None = None,
 ) -> dict[str, object]:
     """
     Classify current market state based on Kimchi Premium level.
@@ -44,6 +45,7 @@ def classify_kimchi_regime(
     - premium_pct: Current Kimchi Premium percentage (e.g. 4.2 for +4.2%)
     - overheated_threshold: Threshold above which market is considered overheated
     - discount_threshold: Threshold below which market is at a discount (negative premium)
+    - moderate_threshold: Intermediate threshold for moderate overheating (default: 3.0 or 60% of span)
     """
     if isinstance(premium_pct, bool) or not isinstance(premium_pct, (int, float)) or not math.isfinite(premium_pct):
         raise ValueError("Premium percentage must be a finite number.")
@@ -54,12 +56,24 @@ def classify_kimchi_regime(
     if overheated_threshold <= discount_threshold:
         raise ValueError("Overheated threshold must be strictly greater than discount threshold.")
 
+    if moderate_threshold is None:
+        if overheated_threshold == 5.0 and discount_threshold == 0.0:
+            mod_t = 3.0
+        else:
+            mod_t = discount_threshold + (overheated_threshold - discount_threshold) * 0.6
+    else:
+        if isinstance(moderate_threshold, bool) or not isinstance(moderate_threshold, (int, float)) or not math.isfinite(moderate_threshold):
+            raise ValueError("Moderate threshold must be a finite number.")
+        if not (discount_threshold < moderate_threshold < overheated_threshold):
+            raise ValueError("Moderate threshold must lie strictly between discount and overheated thresholds.")
+        mod_t = float(moderate_threshold)
+
     if premium_pct >= overheated_threshold:
         regime = KimchiRegime.EXTREME_OVERHEATED
         target_crypto_ratio = 0.40
         target_cash_ratio = 0.60
         action = "Heavy Profit Taking / Move to Cash or Stablecoins (High Dumping Risk)"
-    elif premium_pct >= 3.0:
+    elif premium_pct >= mod_t:
         regime = KimchiRegime.MODERATE_OVERHEATED
         target_crypto_ratio = 0.70
         target_cash_ratio = 0.30
@@ -78,6 +92,8 @@ def classify_kimchi_regime(
     return {
         "premium_pct": round(premium_pct, 2),
         "regime": regime,
+        "moderate_threshold": round(mod_t, 2),
+        "overheated_threshold": round(overheated_threshold, 2),
         "target_crypto_ratio": target_crypto_ratio,
         "target_cash_ratio": target_cash_ratio,
         "tactical_action": action,
