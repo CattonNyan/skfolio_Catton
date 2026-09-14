@@ -19,6 +19,7 @@ class FactorAnalyzerTests(unittest.TestCase):
         self.assertFalse(df.empty)
         self.assertIn("momentum", df.columns)
         self.assertIn("volatility", df.columns)
+        self.assertIn("sortino_ratio", df.columns)
         self.assertIn("composite_score", df.columns)
         # Should contain all assets
         self.assertEqual(len(df), len(prices.columns))

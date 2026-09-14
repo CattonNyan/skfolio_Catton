@@ -69,11 +69,16 @@ def compute_crypto_factors(
     sma_slow = recent_prices.iloc[-slow_win:].mean()
     trend_ratio = sma_fast / (sma_slow + 1e-9)
 
+    neg_returns = returns.where(returns < 0)
+    downside_dev = neg_returns.std().fillna(vol) + 1e-9
+    sortino_ratio = returns.mean() / downside_dev
+
     df = pd.DataFrame({
         "momentum": momentum,
         "volatility": vol,
         "low_volatility": low_vol,
         "trend_strength": trend_ratio,
+        "sortino_ratio": sortino_ratio,
     }, index=prices.columns).rename_axis("asset")
 
     # Compute Z-Scores across assets
@@ -86,12 +91,14 @@ def compute_crypto_factors(
     df["z_momentum"] = zscore(df["momentum"])
     df["z_low_vol"] = zscore(df["low_volatility"])
     df["z_trend"] = zscore(df["trend_strength"])
+    df["z_sortino"] = zscore(df["sortino_ratio"])
 
-    # Composite Smart Beta Score: 40% Momentum + 30% Low Vol + 30% Trend
+    # Composite Smart Beta Score: 30% Momentum + 25% Low Vol + 25% Trend + 20% Sortino
     df["composite_score"] = (
-        0.40 * df["z_momentum"] +
-        0.30 * df["z_low_vol"] +
-        0.30 * df["z_trend"]
+        0.30 * df["z_momentum"] +
+        0.25 * df["z_low_vol"] +
+        0.25 * df["z_trend"] +
+        0.20 * df["z_sortino"]
     )
 
     df = df.sort_values(by="composite_score", ascending=False)
