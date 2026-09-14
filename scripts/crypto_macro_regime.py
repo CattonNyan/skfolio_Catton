@@ -54,6 +54,48 @@ def fetch_fear_and_greed_index(limit: int = 1) -> tuple[int, str]:
         return 50, "Neutral"
 
 
+def fetch_fear_and_greed_history(limit: int = 30, timeout: float = 5.0) -> pd.DataFrame:
+    """
+    Fetch historical series of Crypto Fear & Greed Index from Alternative.me public API.
+
+    Returns DataFrame indexed by date with columns: ['date', 'value', 'classification'].
+    Falls back to a synthetic neutral/fear series on network error.
+    """
+    if isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0:
+        raise ValueError("Limit must be a strictly positive integer.")
+    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or timeout <= 0:
+        raise ValueError("Timeout must be a finite, strictly positive number.")
+
+    url = f"https://api.alternative.me/fng/?limit={limit}"
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw_data = json.loads(resp.read().decode("utf-8"))
+            items = raw_data.get("data", [])
+            if items:
+                records = []
+                for entry in items:
+                    ts = pd.to_datetime(int(entry["timestamp"]), unit="s")
+                    records.append({
+                        "date": ts,
+                        "value": int(entry["value"]),
+                        "classification": str(entry["value_classification"]),
+                    })
+                df = pd.DataFrame(records).sort_values("date").reset_index(drop=True)
+                return df
+    except Exception:
+        pass
+
+    # Fallback synthetic historical series
+    dates = pd.date_range(end=pd.Timestamp.now(), periods=limit, freq="D")
+    return pd.DataFrame({
+        "date": dates,
+        "value": [50] * limit,
+        "classification": ["Neutral"] * limit,
+    })
+
+
 def adjust_cash_allocation_by_regime(
     base_weights: dict[str, float],
     fng_value: int,

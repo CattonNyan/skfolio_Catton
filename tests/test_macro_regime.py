@@ -3,11 +3,23 @@
 import unittest
 from scripts.crypto_macro_regime import (
     adjust_cash_allocation_by_regime,
+    fetch_fear_and_greed_history,
     fetch_fear_and_greed_index,
 )
 
 
 class MacroRegimeTests(unittest.TestCase):
+    def test_fetch_fear_and_greed_history(self):
+        df = fetch_fear_and_greed_history(limit=5, timeout=2.0)
+        self.assertEqual(len(df), 5)
+        self.assertIn("date", df.columns)
+        self.assertIn("value", df.columns)
+        self.assertIn("classification", df.columns)
+        with self.assertRaises(ValueError):
+            fetch_fear_and_greed_history(limit=0)
+        with self.assertRaises(ValueError):
+            fetch_fear_and_greed_history(limit=5, timeout=-1.0)
+
     def test_extreme_greed_allocates_high_cash(self):
         base_w = {"BTC/USDT": 0.5, "ETH/USDT": 0.5}
         res = adjust_cash_allocation_by_regime(base_w, fng_value=85, total_wallet=10000.0)
