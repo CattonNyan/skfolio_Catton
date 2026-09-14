@@ -5,6 +5,7 @@ from __future__ import annotations
 import unittest
 from scripts.crypto_krw_fee_calculator import (
     KOREAN_EXCHANGE_PRESETS,
+    compare_exchange_fee_drag,
     compute_krw_fee_drag,
     get_korean_exchange_preset,
 )
@@ -12,12 +13,21 @@ from scripts.crypto_krw_fee_calculator import (
 
 class KrwFeeCalculatorTests(unittest.TestCase):
     def test_get_korean_exchange_preset(self):
-        for name in ["upbit", "bithumb_coupon", "bithumb_standard", "coinone", "korbit"]:
+        for name in ["upbit", "bithumb_coupon", "bithumb_standard", "coinone", "korbit", "gopax"]:
             preset = get_korean_exchange_preset(name)
             self.assertIn("maker_fee", preset)
             self.assertIn("taker_fee", preset)
             self.assertIn("withdrawal_fee_krw", preset)
             self.assertGreater(preset["maker_fee"], 0)
+
+    def test_compare_exchange_fee_drag(self):
+        df = compare_exchange_fee_drag(portfolio_value_krw=20_000_000.0, annual_turnover=3.0)
+        self.assertEqual(len(df), len(KOREAN_EXCHANGE_PRESETS))
+        self.assertIn("gopax", df["key"].values)
+        self.assertIn("upbit", df["key"].values)
+        self.assertTrue((df["total_annual_fees_krw"] > 0).all())
+        # Check ascending sort
+        self.assertTrue(df["total_annual_fees_krw"].is_monotonic_increasing)
 
         # Invalid exchange name
         with self.assertRaises(ValueError):

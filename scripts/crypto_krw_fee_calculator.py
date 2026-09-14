@@ -21,6 +21,7 @@ for p in [root_dir, src_dir]:
         sys.path.insert(0, p)
 
 import numpy as np
+import pandas as pd
 
 
 KOREAN_EXCHANGE_PRESETS: dict[str, dict[str, float | str]] = {
@@ -52,6 +53,12 @@ KOREAN_EXCHANGE_PRESETS: dict[str, dict[str, float | str]] = {
         "name": "Korbit (KRW Market)",
         "maker_fee": 0.0005,  # 0.05%
         "taker_fee": 0.0005,  # 0.05%
+        "withdrawal_fee_krw": 1000.0,
+    },
+    "gopax": {
+        "name": "GOPAX (KRW Market)",
+        "maker_fee": 0.0020,  # 0.20%
+        "taker_fee": 0.0020,  # 0.20%
         "withdrawal_fee_krw": 1000.0,
     },
 }
@@ -132,6 +139,40 @@ def compute_krw_fee_drag(
         "effective_cost_bps": round(effective_bps, 2),
         "breakeven_gross_hurdle_pct": round(fee_drag_pct, 4),
     }
+
+
+def compare_exchange_fee_drag(
+    portfolio_value_krw: float,
+    annual_turnover: float = 4.0,
+    maker_ratio: float = 0.5,
+    annual_withdrawals: int = 12,
+) -> pd.DataFrame:
+    """
+    Compare annual fee drag across all supported South Korean exchanges.
+
+    Returns DataFrame sorted by total fee in ascending order.
+    """
+    rows = []
+    for key, preset in KOREAN_EXCHANGE_PRESETS.items():
+        res = compute_krw_fee_drag(
+            portfolio_value_krw=portfolio_value_krw,
+            annual_turnover=annual_turnover,
+            maker_fee=float(preset["maker_fee"]),
+            taker_fee=float(preset["taker_fee"]),
+            maker_ratio=maker_ratio,
+            annual_withdrawals=annual_withdrawals,
+            withdrawal_fee_krw=float(preset["withdrawal_fee_krw"]),
+        )
+        rows.append({
+            "key": key,
+            "exchange": preset["name"],
+            "weighted_fee_rate_pct": res["weighted_fee_rate_pct"],
+            "annual_trading_fees_krw": res["annual_trading_fees_krw"],
+            "annual_withdrawal_fees_krw": res["annual_withdrawal_fees_krw"],
+            "total_annual_fees_krw": res["total_annual_fees_krw"],
+            "fee_drag_pct": res["fee_drag_pct"],
+        })
+    return pd.DataFrame(rows).sort_values("total_annual_fees_krw").reset_index(drop=True)
 
 
 def print_krw_fee_report(res: dict[str, object], exchange_name: str = "Custom"):
