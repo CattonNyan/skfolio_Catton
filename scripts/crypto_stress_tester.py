@@ -55,6 +55,20 @@ HISTORICAL_SHOCKS: dict[str, dict[str, float]] = {
         "XRP": -0.42,
         "DEFAULT": -0.37,
     },
+    "2024 August Yen Carry Trade Unwind": {
+        "BTC": -0.18,
+        "ETH": -0.25,
+        "SOL": -0.28,
+        "XRP": -0.20,
+        "DEFAULT": -0.24,
+    },
+    "2023 March SVB USDC Depeg Crisis": {
+        "BTC": -0.10,
+        "ETH": -0.12,
+        "SOL": -0.15,
+        "XRP": -0.08,
+        "DEFAULT": -0.12,
+    },
 }
 
 

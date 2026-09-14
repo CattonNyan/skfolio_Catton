@@ -14,6 +14,8 @@ class StressTesterTests(unittest.TestCase):
         self.assertIn("2022 May Luna/UST Collapse", results)
         self.assertIn("2022 Nov FTX Insolvency", results)
         self.assertIn("2021 May China Mining Ban", results)
+        self.assertIn("2024 August Yen Carry Trade Unwind", results)
+        self.assertIn("2023 March SVB USDC Depeg Crisis", results)
 
         for name, metrics in results.items():
             self.assertLess(metrics["portfolio_loss_pct"], 0)
