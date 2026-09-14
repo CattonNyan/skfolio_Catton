@@ -10,6 +10,7 @@ try:
         create_pie_chart,
         create_correlation_heatmap,
         create_cumulative_return_chart,
+        create_factor_bar_chart,
     )
     HAS_DASHBOARD_DEPS = True
 except ImportError:
@@ -174,6 +175,18 @@ class DashboardTests(unittest.TestCase):
         adj_weights = adjust_portfolio_weights_by_kimchi(base_weights, premium_pct=6.5, cash_asset="KRW (Cash)")
         self.assertIn("KRW (Cash)", adj_weights)
         self.assertAlmostEqual(adj_weights["KRW (Cash)"], 0.60, places=2)
+
+    @unittest.skipUnless(HAS_DASHBOARD_DEPS, "plotly or streamlit not installed")
+    def test_create_factor_bar_chart(self):
+        df = pd.DataFrame({
+            "composite_score": [1.5, -0.8],
+        }, index=["BTC", "ETH"])
+        fig = create_factor_bar_chart(df)
+        self.assertIsInstance(fig, go.Figure)
+        self.assertEqual(len(fig.data), 1)
+
+        empty_fig = create_factor_bar_chart(pd.DataFrame())
+        self.assertIsInstance(empty_fig, go.Figure)
 
 
 if __name__ == "__main__":

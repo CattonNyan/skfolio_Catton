@@ -41,6 +41,7 @@ from scripts.crypto_krw_fee_calculator import (
 from scripts.crypto_tax_calculator import compute_crypto_tax_impact
 from scripts.crypto_travel_rule_advisor import calculate_travel_rule_plan
 from scripts.fetch_upbit_crypto import fetch_upbit_historical_prices
+from scripts.crypto_factor_analyzer import compute_crypto_factors
 
 # Optional skfolio optimization imports
 try:
@@ -359,6 +360,32 @@ def create_monte_carlo_cone_chart(mc_res: dict[str, object]) -> go.Figure:
     return fig
 
 
+def create_factor_bar_chart(factors_df: pd.DataFrame) -> go.Figure:
+    """Create horizontal bar chart of composite factor z-scores across assets."""
+    if not isinstance(factors_df, pd.DataFrame) or factors_df.empty:
+        fig = go.Figure()
+        fig.update_layout(title="스마트 베타 팩터 스코어", template="plotly_dark")
+        return fig
+    sorted_df = factors_df.sort_values("composite_score", ascending=True)
+    fig = px.bar(
+        sorted_df,
+        x="composite_score",
+        y=sorted_df.index,
+        orientation="h",
+        color="composite_score",
+        color_continuous_scale="Viridis",
+        title="자산별 스마트 베타 종합 팩터 점수 (Composite Z-Score)",
+        labels={"composite_score": "종합 팩터 점수 (Z-Score)", "asset": "가상자산"},
+    )
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=20, r=20, t=40, b=20),
+    )
+    return fig
+
+
 def main():
     st.set_page_config(
         page_title="skfolio Crypto Dashboard",
@@ -468,7 +495,7 @@ def main():
         weights_dict = (inv_vols / inv_vols.sum()).to_dict()
 
     # 4. Tab Interface
-    tab_opt, tab_rebalance, tab_mc, tab_stress, tab_macro, tab_kimchi, tab_tax, tab_krw_fee, tab_travel = st.tabs([
+    tab_opt, tab_rebalance, tab_mc, tab_stress, tab_macro, tab_kimchi, tab_tax, tab_krw_fee, tab_travel, tab_factor = st.tabs([
         "📊 포트폴리오 최적화 & 자산배분",
         "🔄 주기적 리밸런싱 백테스트",
         "🎲 몬테카를로 미래 시뮬레이션",
@@ -478,6 +505,7 @@ def main():
         "💰 세후 순수익률 & 세금 시뮬레이터",
         "💸 국내 거래소 수수료 & Fee Drag",
         "🛡️ 특금법 트래블룰 안전 분할 전송",
+        "🎯 퀀트 멀티팩터 & 스마트 베타",
     ])
 
     with tab_opt:
@@ -940,6 +968,49 @@ def main():
             st.info(f"💡 컴플라이언스 가이드: {plan_res['compliance_advice']}")
         except Exception as ex:
             st.error(f"트래블룰 어드바이저 오류: {ex}")
+
+    with tab_factor:
+        st.subheader("🎯 퀀트 멀티팩터 & 스마트 베타 (Smart Beta Screener)")
+        st.caption("모멘텀, 저변동성, 추세 강도, 소르티노(하방 위험) 4대 퀀트 팩터를 결합하여 최적 자산군을 스크리닝합니다.")
+
+        max_lookback = max(30, min(180, len(prices)))
+        min_lookback = min(30, max_lookback)
+        factor_lookback = st.slider(
+            "팩터 산출 룩백 기간 (Lookback Bars)",
+            min_value=min_lookback,
+            max_value=max_lookback,
+            value=min(60, max_lookback),
+            step=10,
+        )
+
+        if st.button("🚀 멀티팩터 스마트 베타 분석 실행", key="btn_run_factors"):
+            try:
+                with st.spinner("멀티팩터 점수 산출 중..."):
+                    factors_df = compute_crypto_factors(prices=prices, lookback_bars=factor_lookback)
+
+                    col_fb1, col_fb2 = st.columns([3, 2])
+                    with col_fb1:
+                        fig_factor = create_factor_bar_chart(factors_df)
+                        st.plotly_chart(fig_factor, use_container_width=True)
+
+                    with col_fb2:
+                        st.subheader("🏆 스마트 베타 팩터 순위표")
+                        display_df = pd.DataFrame({
+                            "자산": list(factors_df.index),
+                            "종합 점수": [f"{v:+.2f}" for v in factors_df["composite_score"]],
+                            "모멘텀(Z)": [f"{v:+.2f}" for v in factors_df["z_momentum"]],
+                            "저변동성(Z)": [f"{v:+.2f}" for v in factors_df["z_low_vol"]],
+                            "추세(Z)": [f"{v:+.2f}" for v in factors_df["z_trend"]],
+                            "소르티노(Z)": [f"{v:+.2f}" for v in factors_df["z_sortino"]],
+                        })
+                        st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+                    st.markdown("---")
+                    top_coin = factors_df.index[0]
+                    top_score = factors_df["composite_score"].iloc[0]
+                    st.success(f"🌟 현재 스마트 베타 최고 순위 자산: **{top_coin}** (종합 Z-Score: {top_score:+.2f})")
+            except Exception as ex:
+                st.error(f"팩터 분석 오류: {ex}")
 
 
 if __name__ == "__main__":
