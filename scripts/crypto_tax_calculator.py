@@ -87,6 +87,39 @@ def compute_crypto_tax_impact(
     }
 
 
+def calculate_tax_loss_harvesting_target(
+    current_net_realized_profit_krw: float,
+    annual_allowance_krw: float = 2500000.0,
+    tax_rate: float = 0.22,
+) -> dict[str, object]:
+    """
+    Calculate required loss realization to completely offset crypto tax liability (Tax-Loss Harvesting).
+
+    Parameters:
+    - current_net_realized_profit_krw: Net realized profit accumulated year-to-date in KRW
+    - annual_allowance_krw: Basic statutory tax exemption (default: 2,500,000 KRW)
+    - tax_rate: Effective tax rate (default: 0.22)
+    """
+    if isinstance(current_net_realized_profit_krw, bool) or not np.isfinite(current_net_realized_profit_krw):
+        raise ValueError("Current profit must be a finite number.")
+    if isinstance(annual_allowance_krw, bool) or not np.isfinite(annual_allowance_krw) or annual_allowance_krw < 0:
+        raise ValueError("Annual allowance must be a non-negative finite number.")
+    if isinstance(tax_rate, bool) or not np.isfinite(tax_rate) or tax_rate < 0 or tax_rate > 1:
+        raise ValueError("Tax rate must be between 0.0 and 1.0.")
+
+    excess_profit = max(0.0, current_net_realized_profit_krw - annual_allowance_krw)
+    potential_tax_saved = excess_profit * tax_rate
+
+    return {
+        "current_net_profit_krw": round(current_net_realized_profit_krw, 2),
+        "annual_allowance_krw": round(annual_allowance_krw, 2),
+        "taxable_excess_krw": round(excess_profit, 2),
+        "recommended_loss_harvest_krw": round(excess_profit, 2),
+        "potential_tax_savings_krw": round(potential_tax_saved, 2),
+        "needs_harvesting": excess_profit > 0,
+    }
+
+
 def print_tax_report(res: dict[str, object]):
     """Print terminal report of capital gains tax simulation."""
     print("================================================================================")

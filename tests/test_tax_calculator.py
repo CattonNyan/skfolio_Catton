@@ -1,10 +1,32 @@
 """Tests for Crypto Capital Gains Tax Simulator module."""
 
 import unittest
-from scripts.crypto_tax_calculator import compute_crypto_tax_impact
+from scripts.crypto_tax_calculator import (
+    calculate_tax_loss_harvesting_target,
+    compute_crypto_tax_impact,
+)
 
 
 class TaxCalculatorTests(unittest.TestCase):
+    def test_tax_loss_harvesting_target_calculation(self):
+        # 10M net profit > 2.5M allowance -> need 7.5M loss harvest
+        res = calculate_tax_loss_harvesting_target(10000000.0, annual_allowance_krw=2500000.0, tax_rate=0.22)
+        self.assertTrue(res["needs_harvesting"])
+        self.assertEqual(res["taxable_excess_krw"], 7500000.0)
+        self.assertEqual(res["recommended_loss_harvest_krw"], 7500000.0)
+        self.assertEqual(res["potential_tax_savings_krw"], 7500000.0 * 0.22)
+
+        # Under allowance -> 0 loss harvest needed
+        res_under = calculate_tax_loss_harvesting_target(2000000.0, annual_allowance_krw=2500000.0)
+        self.assertFalse(res_under["needs_harvesting"])
+        self.assertEqual(res_under["recommended_loss_harvest_krw"], 0.0)
+
+        # Invalid arguments
+        with self.assertRaises(ValueError):
+            calculate_tax_loss_harvesting_target(True)  # type: ignore
+        with self.assertRaises(ValueError):
+            calculate_tax_loss_harvesting_target(5000000.0, tax_rate=1.5)
+
     def test_compute_crypto_tax_basic(self):
         # Gains: 10M, Losses: 2M -> Net: 8M
         # Allowance: 2.5M -> Taxable Base: 5.5M
