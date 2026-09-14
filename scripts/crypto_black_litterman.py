@@ -127,6 +127,16 @@ def compute_black_litterman_weights(
                 raise ValueError(f"Relative view contains invalid assets: {view}")
             p_row[assets.index(asset_a)] = 1.0
             p_row[assets.index(asset_b)] = -1.0
+        elif "<" in expr:
+            parts = expr.split("<")
+            if len(parts) != 2:
+                raise ValueError(f"Invalid relative view format: {view}")
+            asset_a, asset_b = (part.strip() for part in parts)
+            if asset_a not in assets or asset_b not in assets or asset_a == asset_b:
+                raise ValueError(f"Relative view contains invalid assets: {view}")
+            # A < B by Q is equivalent to B - A = Q
+            p_row[assets.index(asset_b)] = 1.0
+            p_row[assets.index(asset_a)] = -1.0
         else:
             asset = expr.strip()
             if asset not in assets:

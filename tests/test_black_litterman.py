@@ -50,6 +50,17 @@ class BlackLittermanTests(unittest.TestCase):
         # BTC weight should be higher than ETH weight due to the bullish relative view
         self.assertGreater(post_w["BTC/USDT"], post_w["ETH/USDT"])
 
+    def test_underperform_relative_view_shifts_weights(self):
+        prices = generate_synthetic_crypto_data(periods=100)
+        # ETH < BTC by 0.05 is equivalent to BTC > ETH by 0.05
+        res = compute_black_litterman_weights(
+            prices=prices,
+            views=["ETH/USDT<BTC/USDT:0.05"],
+            tau=0.05,
+        )
+        post_w = res["posterior_weights"]
+        self.assertGreater(post_w["BTC/USDT"], post_w["ETH/USDT"])
+
     def test_absolute_view_execution(self):
         prices = generate_synthetic_crypto_data(periods=100)
         res = compute_black_litterman_weights(
