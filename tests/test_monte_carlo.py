@@ -23,6 +23,9 @@ class MonteCarloTests(unittest.TestCase):
         self.assertEqual(res["num_simulations"], 200)
         self.assertEqual(res["initial_capital"], 10000.0)
         self.assertGreater(res["median_final_wealth"], 0)
+        self.assertIn("expected_return_pct", res)
+        self.assertIn("profit_to_loss_ratio", res)
+        self.assertGreaterEqual(res["profit_to_loss_ratio"], 0)
         self.assertLessEqual(res["worst_case_5pct"], res["best_case_95pct"])
 
         # Check path progression

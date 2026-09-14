@@ -106,9 +106,9 @@ def simulate_monte_carlo_paths(
     drift = (daily_mu - 0.5 * (daily_sigma**2)) * dt
     vol = daily_sigma * np.sqrt(dt)
 
-    np.random.seed(seed)
+    rng = np.random.default_rng(seed)
     # Generate random shocks: shape = (num_simulations, days)
-    random_shocks = np.random.normal(0, 1, size=(num_simulations, days))
+    random_shocks = rng.standard_normal(size=(num_simulations, days))
     step_returns = np.exp(drift + vol * random_shocks)
 
     # Cumulative wealth paths starting from initial_capital (vectorized)
@@ -134,6 +134,11 @@ def simulate_monte_carlo_paths(
     prob_severe_loss = float(np.mean(final_wealth < initial_capital * 0.70) * 100)
     prob_doubling = float(np.mean(final_wealth >= initial_capital * 2.0) * 100)
 
+    gains = net_profits[net_profits > 0]
+    losses_abs = np.abs(net_profits[net_profits < 0])
+    plr = round(float(np.sum(gains) / (np.sum(losses_abs) + 1e-9)), 2) if len(losses_abs) > 0 else 999.0
+    expected_ret_pct = round(float((np.mean(final_wealth) / initial_capital - 1.0) * 100), 2)
+
     p05_path = np.percentile(paths, 5, axis=0).tolist()
     p50_path = np.percentile(paths, 50, axis=0).tolist()
     p95_path = np.percentile(paths, 95, axis=0).tolist()
@@ -143,7 +148,9 @@ def simulate_monte_carlo_paths(
         "num_simulations": num_simulations,
         "initial_capital": initial_capital,
         "expected_final_wealth": round(float(np.mean(final_wealth)), 2),
+        "expected_return_pct": expected_ret_pct,
         "median_final_wealth": round(float(np.median(final_wealth)), 2),
+        "profit_to_loss_ratio": plr,
         "worst_case_5pct": round(float(np.percentile(final_wealth, 5)), 2),
         "best_case_95pct": round(float(np.percentile(final_wealth, 95)), 2),
         "var_95_dollar": round(max(0.0, var_95), 2),
