@@ -7,12 +7,34 @@ import pandas as pd
 from scripts.fetch_upbit_crypto import (
     fetch_upbit_candles,
     fetch_upbit_historical_prices,
+    fetch_upbit_market_list,
     fetch_upbit_ticker,
+    normalize_upbit_symbol,
     validate_upbit_market_code,
 )
 
 
 class UpbitFetcherTests(unittest.TestCase):
+    def test_normalize_upbit_symbol(self):
+        self.assertEqual(normalize_upbit_symbol("btc"), "KRW-BTC")
+        self.assertEqual(normalize_upbit_symbol("KRW-ETH"), "KRW-ETH")
+        self.assertEqual(normalize_upbit_symbol("sol/krw"), "KRW-SOL")
+        self.assertEqual(normalize_upbit_symbol("xrp_krw"), "KRW-XRP")
+        with self.assertRaises(ValueError):
+            normalize_upbit_symbol("")
+        with self.assertRaises(ValueError):
+            normalize_upbit_symbol(None)  # type: ignore
+
+    def test_fetch_upbit_market_list(self):
+        markets = fetch_upbit_market_list(quote_currency="KRW", timeout=2.0)
+        self.assertIsInstance(markets, list)
+        self.assertGreater(len(markets), 0)
+        self.assertTrue(all(m.startswith("KRW-") for m in markets))
+        with self.assertRaises(ValueError):
+            fetch_upbit_market_list("")
+        with self.assertRaises(ValueError):
+            fetch_upbit_market_list(timeout=-1.0)
+
     def test_validate_upbit_market_code(self):
         self.assertEqual(validate_upbit_market_code("krw-btc"), "KRW-BTC")
         self.assertEqual(validate_upbit_market_code("KRW-ETH"), "KRW-ETH")

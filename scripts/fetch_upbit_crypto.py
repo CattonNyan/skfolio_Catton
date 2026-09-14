@@ -29,6 +29,71 @@ import pandas as pd
 
 VALID_TIMEFRAMES = {"days", "minutes/60", "minutes/240", "weeks"}
 
+DEFAULT_KRW_MARKETS = [
+    "KRW-BTC",
+    "KRW-ETH",
+    "KRW-SOL",
+    "KRW-XRP",
+    "KRW-ADA",
+    "KRW-DOGE",
+    "KRW-AVAX",
+    "KRW-DOT",
+    "KRW-LINK",
+    "KRW-MATIC",
+]
+
+
+def normalize_upbit_symbol(symbol: str, quote: str = "KRW") -> str:
+    """Normalize user or API input symbol to canonical Upbit format (e.g. 'BTC' -> 'KRW-BTC')."""
+    if not isinstance(symbol, str):
+        raise ValueError("Symbol must be a string.")
+    cleaned = symbol.strip().upper().replace("/", "-").replace("_", "-")
+    if not cleaned:
+        raise ValueError("Symbol cannot be empty.")
+    quote = quote.strip().upper()
+    if "-" in cleaned:
+        parts = cleaned.split("-")
+        if len(parts) == 2:
+            if parts[0] == quote:
+                return f"{quote}-{parts[1]}"
+            elif parts[1] == quote:
+                return f"{quote}-{parts[0]}"
+            return f"{parts[0]}-{parts[1]}"
+    return f"{quote}-{cleaned}"
+
+
+def fetch_upbit_market_list(quote_currency: str = "KRW", timeout: float = 3.0) -> list[str]:
+    """
+    Fetch all actively traded markets from Upbit's public market list API.
+
+    Parameters:
+    - quote_currency: Target quote currency (default 'KRW', can also be 'USDT' or 'BTC')
+    - timeout: HTTP request timeout in seconds
+
+    Returns:
+    - List of market symbol strings (e.g. ['KRW-BTC', 'KRW-ETH', ...])
+    """
+    if not isinstance(quote_currency, str) or not quote_currency.strip():
+        raise ValueError("quote_currency must be a non-empty string.")
+    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or timeout <= 0:
+        raise ValueError("Timeout must be a finite, strictly positive number.")
+
+    prefix = f"{quote_currency.strip().upper()}-"
+    url = "https://api.upbit.com/v1/market/all?isDetails=false"
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            markets = [item["market"] for item in data if isinstance(item, dict) and item.get("market", "").startswith(prefix)]
+            if markets:
+                return markets
+    except Exception:
+        pass
+    if quote_currency.strip().upper() == "KRW":
+        return list(DEFAULT_KRW_MARKETS)
+    return [f"{quote_currency.strip().upper()}-BTC", f"{quote_currency.strip().upper()}-ETH"]
+
 
 def validate_upbit_market_code(market: str) -> str:
     """Validate Upbit market symbol (e.g., 'KRW-BTC')."""
