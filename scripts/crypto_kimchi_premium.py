@@ -52,6 +52,22 @@ def fetch_live_usd_krw_rate(timeout: float = 3.0) -> tuple[float, str]:
         return 1350.0, "Default Fallback (Use --usdt-krw to override)"
 
 
+def normalize_crypto_symbol(sym: str) -> str:
+    """Normalize exchange-specific symbol (e.g. 'KRW-BTC', 'BTC/USDT') to base ticker ('BTC')."""
+    if not isinstance(sym, str):
+        raise ValueError("Symbol must be a string.")
+    s = sym.strip().upper()
+    for prefix in ["KRW-", "USDT-", "BTC-"]:
+        if s.startswith(prefix):
+            s = s[len(prefix):]
+            break
+    for suffix in ["/USDT", "-USDT", "/KRW", "-KRW", "/BTC", "-BTC", "_USDT", "_KRW"]:
+        if s.endswith(suffix):
+            s = s[:-len(suffix)]
+            break
+    return s.strip()
+
+
 def compute_kimchi_premium(
     upbit_prices: dict[str, float],
     binance_prices: dict[str, float],
@@ -61,8 +77,8 @@ def compute_kimchi_premium(
     Compute Kimchi Premium for intersecting assets between Upbit and Binance.
 
     Parameters:
-    - upbit_prices: Mapping of coin symbol to KRW price, e.g. {"BTC": 135000000.0}
-    - binance_prices: Mapping of coin symbol to USDT price, e.g. {"BTC": 97000.0}
+    - upbit_prices: Mapping of coin symbol to KRW price, e.g. {"BTC": 135000000.0} or {"KRW-BTC": ...}
+    - binance_prices: Mapping of coin symbol to USDT price, e.g. {"BTC": 97000.0} or {"BTC/USDT": ...}
     - usdt_krw_rate: USD/KRW exchange rate (default: 1350.0)
     """
     if not isinstance(upbit_prices, dict) or not isinstance(binance_prices, dict):
@@ -75,15 +91,30 @@ def compute_kimchi_premium(
     ):
         raise ValueError("Exchange rate must be finite and strictly positive.")
 
-    common_symbols = sorted(set(upbit_prices.keys()) & set(binance_prices.keys()))
+    # Normalize keys to base crypto tickers
+    norm_upbit: dict[str, float] = {}
+    for k, v in upbit_prices.items():
+        if not isinstance(k, str) or not k.strip():
+            raise ValueError("Price dictionary keys must be non-empty strings.")
+        norm_sym = normalize_crypto_symbol(k)
+        norm_upbit[norm_sym] = v
+
+    norm_binance: dict[str, float] = {}
+    for k, v in binance_prices.items():
+        if not isinstance(k, str) or not k.strip():
+            raise ValueError("Price dictionary keys must be non-empty strings.")
+        norm_sym = normalize_crypto_symbol(k)
+        norm_binance[norm_sym] = v
+
+    common_symbols = sorted(set(norm_upbit.keys()) & set(norm_binance.keys()))
     if not common_symbols:
         raise ValueError("No common crypto assets found between Upbit and Binance.")
 
     results: dict[str, dict[str, float | str]] = {}
 
     for sym in common_symbols:
-        p_upbit = upbit_prices[sym]
-        p_binance = binance_prices[sym]
+        p_upbit = norm_upbit[sym]
+        p_binance = norm_binance[sym]
 
         if isinstance(p_upbit, bool) or not isinstance(p_upbit, (int, float)) or not math.isfinite(p_upbit) or p_upbit <= 0:
             raise ValueError(f"Upbit price for {sym} must be finite and positive.")

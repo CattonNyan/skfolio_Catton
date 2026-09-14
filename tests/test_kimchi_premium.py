@@ -1,10 +1,30 @@
 """Tests for Kimchi Premium analyzer module."""
 
 import unittest
-from scripts.crypto_kimchi_premium import compute_kimchi_premium
+from scripts.crypto_kimchi_premium import (
+    compute_kimchi_premium,
+    normalize_crypto_symbol,
+)
 
 
 class KimchiPremiumTests(unittest.TestCase):
+    def test_normalize_crypto_symbol(self):
+        self.assertEqual(normalize_crypto_symbol("KRW-BTC"), "BTC")
+        self.assertEqual(normalize_crypto_symbol("BTC/USDT"), "BTC")
+        self.assertEqual(normalize_crypto_symbol("ETH-USDT"), "ETH")
+        self.assertEqual(normalize_crypto_symbol("SOL"), "SOL")
+        with self.assertRaises(ValueError):
+            normalize_crypto_symbol(123)  # type: ignore
+
+    def test_cross_exchange_symbol_format_matching(self):
+        upbit = {"KRW-BTC": 105000.0, "KRW-ETH": 52000.0}
+        binance = {"BTC/USDT": 100.0, "ETH/USDT": 50.0}
+        res = compute_kimchi_premium(upbit, binance, usdt_krw_rate=1000.0)
+        self.assertIn("BTC", res)
+        self.assertIn("ETH", res)
+        self.assertEqual(res["BTC"]["premium_pct"], 5.0)
+        self.assertEqual(res["ETH"]["premium_pct"], 4.0)
+
     def test_compute_kimchi_premium_exact(self):
         # 100 USDT * 1,000 KRW/USDT = 100,000 Fair KRW
         # Upbit price = 105,000 KRW -> Premium = +5.0%
