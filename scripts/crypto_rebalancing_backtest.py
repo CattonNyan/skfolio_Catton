@@ -85,7 +85,7 @@ def simulate_rebalancing(
         raise ValueError("Rebalancing frequency must be a strictly positive integer.")
     if isinstance(fee_rate, bool) or not isinstance(fee_rate, (int, float, np.number)) or not np.isfinite(fee_rate) or not 0 <= fee_rate < 1:
         raise ValueError("Fee rate must be a finite number between 0 and 1.")
-    supported_models = {"Risk Parity", "Max Sharpe", "Min Variance", "HRP", "Equal Weight"}
+    supported_models = {"Risk Parity", "Max Sharpe", "Min Variance", "Min Semi-Variance", "HRP", "Equal Weight"}
     if model_choice not in supported_models:
         raise ValueError(f"Unsupported rebalancing model: {model_choice}")
 
@@ -136,6 +136,11 @@ def simulate_rebalancing(
                         m = MeanVariance(
                             objective_function=ObjectiveFunction.MINIMIZE_RISK,
                             risk_measure=RiskMeasure.VARIANCE,
+                        )
+                    elif model_choice == "Min Semi-Variance":
+                        m = MeanVariance(
+                            objective_function=ObjectiveFunction.MINIMIZE_RISK,
+                            risk_measure=RiskMeasure.SEMI_VARIANCE,
                         )
                     elif model_choice == "HRP":
                         m = HierarchicalRiskParity(risk_measure=RiskMeasure.VARIANCE)

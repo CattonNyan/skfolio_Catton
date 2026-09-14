@@ -34,6 +34,19 @@ class RebalancingTests(unittest.TestCase):
         self.assertIsInstance(res["nav_port"], pd.Series)
         self.assertEqual(len(res["nav_port"]), 119)
 
+    def test_min_semi_variance_rebalancing(self):
+        prices = generate_synthetic_crypto_data(periods=150)
+        res = simulate_rebalancing(
+            prices=prices,
+            train_bars=60,
+            rebalance_freq_bars=15,
+            fee_rate=0.001,
+            model_choice="Min Semi-Variance",
+        )
+        self.assertIn("summary", res)
+        self.assertEqual(res["summary"]["Model"], "Min Semi-Variance")
+        self.assertGreater(len(res["nav_port"]), 0)
+
     def test_invalid_rebalancing_parameters_rejected(self):
         prices = generate_synthetic_crypto_data(periods=50)
         invalid_parameters = (

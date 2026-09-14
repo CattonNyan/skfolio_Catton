@@ -606,6 +606,8 @@ def main():
                         clean_model = "Risk Parity"
                     elif "Max Sharpe" in model_type:
                         clean_model = "Max Sharpe"
+                    elif "Min Semi-Variance" in model_type:
+                        clean_model = "Min Semi-Variance"
                     elif "Min Variance" in model_type:
                         clean_model = "Min Variance"
                     elif "HRP" in model_type:
