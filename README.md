@@ -487,7 +487,11 @@ skfolio_Catton/
 │   ├── test_factor_analyzer.py
 │   ├── test_enhanced_strategy.py
 │   ├── test_correlation_breakdown.py
-│   └── test_tax_calculator.py
+│   ├── test_tax_calculator.py
+│   ├── test_upbit_fetcher.py
+│   ├── test_krw_fee_calculator.py
+│   ├── test_kimchi_regime.py
+│   └── test_travel_rule_advisor.py
 ├── requirements-local.txt             # 로컬 개발 및 퀀트 연구용 패키지 목록
 ├── setup.ps1                          # Windows PowerShell 원클릭 설치 스크립트
 ├── app_dashboard.py                   # Streamlit 인터랙티브 웹 대시보드 (다크 테마 & 캐싱)
@@ -505,13 +509,7 @@ skfolio_Catton/
 python tests/test_crypto_suite.py
 ```
 ```text
-test_export_freqtrade_allocation ... ok
-test_find_freqtrade_data_dirs ... ok
-test_synthetic_data_generation ... ok
-test_correlation_matrix_computation ... ok
-test_save_market_data ... ok
-
-Ran 5 tests in 0.026s -> OK
+Ran 169 tests in 3.688s -> OK
 ```
 
 코드가 `main` 브랜치에 푸시될 때마다 **GitHub Actions**가 클라우드에서 위 테스트를 자동으로 수행하여 코드 무결성을 보장합니다.

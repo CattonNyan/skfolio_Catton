@@ -44,6 +44,8 @@ def verify():
         ("scripts.crypto_travel_rule_advisor", "Travel Rule Advisor"),
         ("scripts.crypto_kimchi_premium", "Kimchi Premium Analyzer"),
         ("scripts.crypto_tax_calculator", "Crypto Tax Calculator"),
+        ("scripts.crypto_factor_analyzer", "Multi-Factor Screener"),
+        ("scripts.crypto_black_litterman", "Black-Litterman Engine"),
     ]
     for module_name, display_name in korean_tools:
         try:

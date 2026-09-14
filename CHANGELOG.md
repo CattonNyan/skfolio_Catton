@@ -2,6 +2,31 @@
 
 <!-- version list -->
 
+## v1.2.0 (2026-09-14)
+
+### Features
+
+- **dashboard**: Add dedicated Quant Multi-Factor & Smart Beta Screener tab (`app_dashboard.py`)
+  - Horizontal composite z-score bar chart and ranking table for candidate assets
+  - Integrated support for Min Semi-Variance downside risk model in rolling rebalancing backtest
+- **upbit**: Dynamic KRW market listing (`fetch_upbit_market_list`) and symbol normalizer (`normalize_upbit_symbol`)
+- **fee-drag**: Add GOPAX exchange preset and side-by-side Korean exchange fee comparison (`compare_exchange_fee_drag`)
+- **travel-rule**: Add coin remittance network fee presets (XRP, TRX, SOL, BTC, ETH, USDT, DOGE, ADA) and auto-preset fee lookup
+- **kimchi-premium**: Multi-exchange symbol normalizer (`normalize_crypto_symbol`) supporting `KRW-BTC`, `BTC/USDT`, `BTC-USDT`
+- **kimchi-regime**: Configurable intermediate `moderate_threshold` parameter with dynamic threshold calculation
+- **tax**: Tax-loss harvesting target calculator (`calculate_tax_loss_harvesting_target`) for year-end crypto tax optimization
+- **stress**: Add 2024 August Yen Carry Trade Unwind and 2023 March SVB USDC Depeg historical shock scenarios
+- **monte-carlo**: Thread-safe modern NumPy RNG (`default_rng`), expected return %, and profit-to-loss ratio metric
+- **black-litterman**: Support underperform `<` relative view syntax (`ETH/USDT<BTC/USDT:0.04`)
+- **rebalance**: Add Min Semi-Variance downside risk model to `simulate_rebalancing`
+- **factor**: Add Sortino ratio / downside risk factor to `compute_crypto_factors`
+- **macro**: Historical Fear & Greed sentiment series fetcher (`fetch_fear_and_greed_history`)
+
+### Testing & Verification
+
+- Expanded test suite to 169 unit tests passing across all crypto quant modules
+- Updated `verify_environment.py` with multi-factor screener and Black-Litterman engine verification
+
 ## v1.1.0 (2026-09-11)
 
 ### Features
