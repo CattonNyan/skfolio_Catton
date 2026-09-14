@@ -4,11 +4,30 @@ from __future__ import annotations
 
 import unittest
 from scripts.crypto_travel_rule_advisor import (
+    COMMON_REMITTANCE_FEE_PRESETS,
     calculate_travel_rule_plan,
+    get_coin_transfer_preset,
 )
 
 
 class TravelRuleAdvisorTests(unittest.TestCase):
+    def test_get_coin_transfer_preset(self):
+        self.assertEqual(get_coin_transfer_preset("XRP"), 1.0)
+        self.assertEqual(get_coin_transfer_preset("KRW-SOL"), 0.01)
+        self.assertEqual(get_coin_transfer_preset("TRX/USDT"), 1.0)
+        self.assertEqual(get_coin_transfer_preset("UNKNOWN"), 0.0)
+        with self.assertRaises(ValueError):
+            get_coin_transfer_preset(123)  # type: ignore
+
+    def test_auto_preset_fee_application(self):
+        res = calculate_travel_rule_plan(
+            coin_symbol="XRP",
+            target_amount=400.0,
+            coin_price_krw=2000.0,
+            auto_preset_fee=True,
+        )
+        self.assertEqual(res["total_network_fee_coins"], 1.0)
+
     def test_under_threshold_single_transfer(self):
         # 400 XRP * 2,000 KRW = 800,000 KRW (< 1,000,000 KRW)
         res = calculate_travel_rule_plan(

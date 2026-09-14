@@ -27,6 +27,25 @@ import numpy as np
 TRAVEL_RULE_STATUTORY_LIMIT_KRW = 1000000.0  # 1,000,000 KRW
 DEFAULT_SAFE_BUFFER_KRW = 950000.0            # 950,000 KRW (5% safety buffer)
 
+COMMON_REMITTANCE_FEE_PRESETS: dict[str, float] = {
+    "XRP": 1.0,        # Ripple standard withdrawal fee (1 XRP)
+    "TRX": 1.0,        # Tron standard fee (1 TRX)
+    "SOL": 0.01,       # Solana network withdrawal fee (~0.01 SOL)
+    "BTC": 0.0005,     # Bitcoin native withdrawal fee
+    "ETH": 0.005,      # Ethereum ERC20 gas fee
+    "USDT": 1.0,       # Tether TRC20 fee (1 USDT)
+    "DOGE": 1.0,       # Dogecoin withdrawal fee
+    "ADA": 1.0,        # Cardano withdrawal fee
+}
+
+
+def get_coin_transfer_preset(coin_symbol: str) -> float:
+    """Retrieve standard Korean exchange withdrawal network fee for a remittance coin."""
+    if not isinstance(coin_symbol, str):
+        raise ValueError("Coin symbol must be a string.")
+    sym = coin_symbol.strip().upper().replace("KRW-", "").replace("/USDT", "").replace("-USDT", "")
+    return COMMON_REMITTANCE_FEE_PRESETS.get(sym, 0.0)
+
 
 def calculate_travel_rule_plan(
     coin_symbol: str,
@@ -35,6 +54,7 @@ def calculate_travel_rule_plan(
     threshold_krw: float = TRAVEL_RULE_STATUTORY_LIMIT_KRW,
     safe_buffer_krw: float = DEFAULT_SAFE_BUFFER_KRW,
     network_fee_coins: float = 0.0,
+    auto_preset_fee: bool = False,
 ) -> dict[str, object]:
     """
     Calculate Travel Rule applicability and batch transfer recommendations.
@@ -46,10 +66,14 @@ def calculate_travel_rule_plan(
     - threshold_krw: Legal reporting threshold (default: 1,000,000 KRW)
     - safe_buffer_krw: Conservative batch threshold to avoid market volatility breach
     - network_fee_coins: Withdrawal fee charged per transaction by the originating exchange
+    - auto_preset_fee: If True and network_fee_coins is 0, auto-fill from standard Korean presets
     """
     if not isinstance(coin_symbol, str) or not coin_symbol.strip():
         raise ValueError("Coin symbol must be a non-empty string.")
     coin_symbol = coin_symbol.strip().upper()
+
+    if isinstance(auto_preset_fee, bool) and auto_preset_fee and network_fee_coins == 0.0:
+        network_fee_coins = get_coin_transfer_preset(coin_symbol)
 
     if isinstance(target_amount, bool) or not isinstance(target_amount, (int, float)) or not math.isfinite(target_amount) or target_amount <= 0:
         raise ValueError("Target transfer amount must be a strictly positive finite number.")
