@@ -31,14 +31,30 @@ from scripts.crypto_portfolio_optimizer import (
 )
 
 
+DEFAULT_FACTOR_WEIGHTS: dict[str, float] = {
+    "momentum": 0.30,
+    "low_volatility": 0.25,
+    "trend_strength": 0.25,
+    "sortino_ratio": 0.20,
+}
+
+_FACTOR_KEY_TO_Z: dict[str, str] = {
+    "momentum": "z_momentum",
+    "low_volatility": "z_low_vol",
+    "trend_strength": "z_trend",
+    "sortino_ratio": "z_sortino",
+}
+
+
 def compute_crypto_factors(
     prices: pd.DataFrame,
     lookback_bars: int = 60,
+    factor_weights: dict[str, float] | None = None,
 ) -> pd.DataFrame:
     """
-    Compute Momentum, Low Volatility, and Trend Strength factors per asset.
+    Compute Momentum, Low Volatility, Trend Strength, and Downside Sortino factors per asset.
 
-    Returns DataFrame containing raw factors and composite z-scores.
+    Returns DataFrame containing raw factors, z-scores, and weighted composite score.
     """
     if not isinstance(prices, pd.DataFrame) or prices.shape[1] < 1 or len(prices) < 2:
         raise ValueError("Prices must be a DataFrame with at least one asset and two rows.")
@@ -56,6 +72,24 @@ def compute_crypto_factors(
         raise ValueError("Lookback bars must be an integer of at least 2.")
     if len(prices) < lookback_bars:
         raise ValueError(f"Prices length ({len(prices)}) is shorter than lookback ({lookback_bars}).")
+
+    # Validate and normalize factor weights
+    active_weights = dict(DEFAULT_FACTOR_WEIGHTS)
+    if factor_weights is not None:
+        if not isinstance(factor_weights, dict) or not factor_weights:
+            raise ValueError("Factor weights must be a non-empty dictionary.")
+        unknown_keys = set(factor_weights.keys()) - set(_FACTOR_KEY_TO_Z.keys())
+        if unknown_keys:
+            raise ValueError(f"Unknown factor weight keys: {unknown_keys}. Allowed: {list(_FACTOR_KEY_TO_Z.keys())}")
+        clean_w = {}
+        for k, v in factor_weights.items():
+            if isinstance(v, bool) or not isinstance(v, (int, float, np.number)) or not np.isfinite(v) or v < 0:
+                raise ValueError(f"Factor weight for '{k}' must be a finite non-negative number.")
+            clean_w[k] = float(v)
+        total_w = sum(clean_w.values())
+        if total_w <= 0:
+            raise ValueError("Sum of factor weights must be strictly positive.")
+        active_weights = {k: v / total_w for k, v in clean_w.items()}
 
     recent_prices = prices.iloc[-lookback_bars:]
     returns = recent_prices.pct_change().dropna()
@@ -93,16 +127,64 @@ def compute_crypto_factors(
     df["z_trend"] = zscore(df["trend_strength"])
     df["z_sortino"] = zscore(df["sortino_ratio"])
 
-    # Composite Smart Beta Score: 30% Momentum + 25% Low Vol + 25% Trend + 20% Sortino
-    df["composite_score"] = (
-        0.30 * df["z_momentum"] +
-        0.25 * df["z_low_vol"] +
-        0.25 * df["z_trend"] +
-        0.20 * df["z_sortino"]
-    )
+    # Composite Smart Beta Score using active weights
+    comp = pd.Series(0.0, index=df.index)
+    for factor_key, weight in active_weights.items():
+        z_col = _FACTOR_KEY_TO_Z[factor_key]
+        comp += weight * df[z_col]
+    df["composite_score"] = comp
 
     df = df.sort_values(by="composite_score", ascending=False)
     return df
+
+
+def generate_factor_tilted_weights(
+    factors_df: pd.DataFrame,
+    top_n: int = 3,
+    weighting: str = "score_weighted",
+) -> dict[str, float]:
+    """
+    Generate portfolio allocation weights tilted towards top-ranked Smart Beta assets.
+
+    Parameters:
+    - factors_df: DataFrame output of compute_crypto_factors
+    - top_n: Number of highest-ranked assets to include
+    - weighting: 'equal' or 'score_weighted' (score-proportional)
+    """
+    if not isinstance(factors_df, pd.DataFrame) or "composite_score" not in factors_df.columns:
+        raise ValueError("factors_df must be a DataFrame containing 'composite_score'.")
+    if isinstance(top_n, bool) or not isinstance(top_n, int) or top_n <= 0:
+        raise ValueError("top_n must be a strictly positive integer.")
+    if top_n > len(factors_df):
+        raise ValueError(f"top_n ({top_n}) cannot exceed available assets ({len(factors_df)}).")
+    if weighting not in {"equal", "score_weighted"}:
+        raise ValueError("weighting must be either 'equal' or 'score_weighted'.")
+
+    top_subset = factors_df.iloc[:top_n]
+    all_assets = list(factors_df.index)
+    weights = {a: 0.0 for a in all_assets}
+
+    if weighting == "equal":
+        eq_w = 1.0 / top_n
+        for a in top_subset.index:
+            weights[a] = round(eq_w, 4)
+    else:
+        # Shift scores so all top_n scores are positive
+        raw_scores = top_subset["composite_score"].values
+        min_s = float(np.min(raw_scores))
+        positive_scores = raw_scores - min_s + 1.0  # Base shift ensure strictly positive
+        s_sum = float(np.sum(positive_scores))
+        norm_weights = positive_scores / s_sum
+        for a, w in zip(top_subset.index, norm_weights):
+            weights[a] = round(float(w), 4)
+
+    # Adjust rounding residual to exactly 1.0
+    w_sum = sum(weights.values())
+    if w_sum > 0:
+        first_asset = list(top_subset.index)[0]
+        weights[first_asset] = round(weights[first_asset] + (1.0 - w_sum), 4)
+
+    return weights
 
 
 def select_smart_beta_universe(

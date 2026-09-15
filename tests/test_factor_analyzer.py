@@ -66,5 +66,46 @@ class FactorAnalyzerTests(unittest.TestCase):
                 compute_crypto_factors(bad, lookback_bars=20)
 
 
+    def test_custom_factor_weights(self):
+        from scripts.crypto_factor_analyzer import compute_crypto_factors
+        prices = generate_synthetic_crypto_data(periods=100)
+        custom_w = {"momentum": 0.70, "low_volatility": 0.30, "trend_strength": 0.0, "sortino_ratio": 0.0}
+        df = compute_crypto_factors(prices, lookback_bars=50, factor_weights=custom_w)
+        self.assertIn("composite_score", df.columns)
+        self.assertEqual(len(df), len(prices.columns))
+
+    def test_invalid_factor_weights_rejected(self):
+        from scripts.crypto_factor_analyzer import compute_crypto_factors
+        prices = generate_synthetic_crypto_data(periods=50)
+        bad_cases = (
+            {},
+            {"unknown_factor": 1.0},
+            {"momentum": -0.5, "low_volatility": 1.5},
+            {"momentum": 0.0, "low_volatility": 0.0, "trend_strength": 0.0, "sortino_ratio": 0.0},
+            {"momentum": "high"},
+            "not_a_dict",
+        )
+        for bad in bad_cases:
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                compute_crypto_factors(prices, lookback_bars=20, factor_weights=bad)
+
+    def test_generate_factor_tilted_weights(self):
+        from scripts.crypto_factor_analyzer import compute_crypto_factors, generate_factor_tilted_weights
+        prices = generate_synthetic_crypto_data(periods=100)
+        factors = compute_crypto_factors(prices, lookback_bars=50)
+        
+        # Equal weights for top 2
+        w_eq = generate_factor_tilted_weights(factors, top_n=2, weighting="equal")
+        self.assertAlmostEqual(sum(w_eq.values()), 1.0, places=3)
+        non_zero = [k for k, v in w_eq.items() if v > 0]
+        self.assertEqual(len(non_zero), 2)
+        
+        # Score weighted
+        w_score = generate_factor_tilted_weights(factors, top_n=3, weighting="score_weighted")
+        self.assertAlmostEqual(sum(w_score.values()), 1.0, places=3)
+        for v in w_score.values():
+            self.assertGreaterEqual(v, 0.0)
+
+
 if __name__ == "__main__":
     unittest.main()
