@@ -30,5 +30,17 @@ class HrpClusteringTests(unittest.TestCase):
                 run_hrp_analysis(prices)
 
 
+    def test_schur_complementary_allocation(self):
+        prices = generate_synthetic_crypto_data(periods=60)
+        results = run_hrp_analysis(prices)
+        self.assertIn("Schur (Cotton)", results)
+        schur_weights = results["Schur (Cotton)"]
+        self.assertEqual(len(schur_weights), prices.shape[1])
+        # Weights should sum to 1.0 and each weight should be non-negative
+        self.assertAlmostEqual(sum(schur_weights.values()), 1.0, places=4)
+        for w in schur_weights.values():
+            self.assertGreaterEqual(w, -1e-5)
+
+
 if __name__ == "__main__":
     unittest.main()

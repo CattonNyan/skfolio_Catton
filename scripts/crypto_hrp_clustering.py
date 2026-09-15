@@ -34,6 +34,7 @@ try:
     from skfolio.optimization import (
         HierarchicalEqualRiskContribution,
         HierarchicalRiskParity,
+        SchurComplementary,
     )
     from skfolio.preprocessing import prices_to_returns
     HAS_SKFOLIO_HRP = True
@@ -85,9 +86,14 @@ def run_hrp_analysis(prices: pd.DataFrame) -> dict[str, dict[str, float]]:
     )
     model_herc.fit(returns)
 
+    # 4. Fit Schur (Peter Cotton Schur Complementary Allocation)
+    model_schur = SchurComplementary()
+    model_schur.fit(returns)
+
     models = {
         "HRP (Variance)": model_hrp,
         "HERC (Equal Risk)": model_herc,
+        "Schur (Cotton)": model_schur,
     }
 
     results: dict[str, dict[str, float]] = {}
