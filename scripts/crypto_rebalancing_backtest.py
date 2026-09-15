@@ -62,6 +62,7 @@ def simulate_rebalancing(
     rebalance_freq_bars: int = 50,
     fee_rate: float = 0.001,
     model_choice: str = "Risk Parity",
+    tolerance_band: float | None = None,
 ) -> dict[str, object]:
     """
     Run rolling-window walk-forward rebalancing backtest.
@@ -71,7 +72,8 @@ def simulate_rebalancing(
     - train_bars: Lookback window to fit the model
     - rebalance_freq_bars: How often weights are recalculated
     - fee_rate: Transaction fee (e.g., 0.001 = 0.1% per turnover)
-    - model_choice: "Risk Parity", "Max Sharpe", "Min Variance", or "Equal Weight"
+    - model_choice: "Risk Parity", "Max Sharpe", "Min Variance", "Min Semi-Variance", "Min CVaR", "HRP", "Schur", or "Equal Weight"
+    - tolerance_band: Minimum weight deviation threshold (0.0~1.0) to execute rebalancing; avoids needless turnover/fees
     """
     if not isinstance(prices, pd.DataFrame) or prices.shape[1] < 2 or len(prices) < 2:
         raise ValueError("Rebalancing requires at least two assets and two price rows.")
@@ -87,6 +89,15 @@ def simulate_rebalancing(
         raise ValueError("Rebalancing frequency must be a strictly positive integer.")
     if isinstance(fee_rate, bool) or not isinstance(fee_rate, (int, float, np.number)) or not np.isfinite(fee_rate) or not 0 <= fee_rate < 1:
         raise ValueError("Fee rate must be a finite number between 0 and 1.")
+    if tolerance_band is not None:
+        if (
+            isinstance(tolerance_band, bool)
+            or not isinstance(tolerance_band, (int, float, np.number))
+            or not np.isfinite(tolerance_band)
+            or tolerance_band < 0
+            or tolerance_band > 1
+        ):
+            raise ValueError("Tolerance band must be a finite number between 0 and 1.")
     supported_models = {
         "Risk Parity",
         "Max Sharpe",
@@ -119,6 +130,7 @@ def simulate_rebalancing(
     turnover_history: list[float] = []
     rebalance_dates: list[pd.Timestamp] = []
     weight_history: list[dict[str, float]] = []
+    skipped_rebalances = 0
 
     # Simulation loop
     test_start = train_bars
@@ -135,7 +147,7 @@ def simulate_rebalancing(
             window_returns = returns.iloc[current_t - train_bars : current_t]
 
             # Fit optimization model
-            new_weights = eq_weights.copy()
+            candidate_weights = eq_weights.copy()
             if HAS_SKFOLIO and model_choice != "Equal Weight":
                 try:
                     if model_choice == "Max Sharpe":
@@ -166,12 +178,20 @@ def simulate_rebalancing(
                         m = RiskBudgeting(risk_measure=RiskMeasure.VARIANCE)
 
                     m.fit(window_returns)
-                    new_weights = np.array(m.weights_)
+                    candidate_weights = np.array(m.weights_)
                 except Exception:
-                    new_weights = current_weights.copy()
+                    candidate_weights = current_weights.copy()
 
-            # Calculate turnover and apply transaction fee
-            turnover = float(np.sum(np.abs(new_weights - current_weights)))
+            # Check tolerance band threshold
+            max_drift = float(np.max(np.abs(candidate_weights - current_weights)))
+            if tolerance_band is not None and max_drift < tolerance_band and len(turnover_history) > 0:
+                skipped_rebalances += 1
+                new_weights = current_weights.copy()
+                turnover = 0.0
+            else:
+                new_weights = candidate_weights
+                turnover = float(np.sum(np.abs(new_weights - current_weights)))
+
             turnover_history.append(turnover)
             cost = turnover * fee_rate
 
@@ -251,6 +271,8 @@ def simulate_rebalancing(
         "Calmar Ratio": round(calmar, 3),
         "Average Turnover (%)": round(avg_turnover * 100, 2),
         "Rebalancing Count": len(rebalance_dates),
+        "Skipped Rebalances": skipped_rebalances,
+        "Tolerance Band (%)": round(tolerance_band * 100, 2) if tolerance_band is not None else "None",
         "Equal Weight Return (%)": round(total_return_eq, 2),
         "Equal Weight MDD (%)": round(eq_mdd * 100, 2),
         "Buy & Hold Return (%)": round(total_return_bh, 2),
@@ -264,6 +286,7 @@ def simulate_rebalancing(
         "nav_bh": nav_bh_series,
         "rebalance_dates": rebalance_dates,
         "weight_history": weight_history,
+        "skipped_rebalances": skipped_rebalances,
     }
 
 
@@ -280,9 +303,12 @@ def print_backtest_report(summary: dict[str, object]):
     print("--------------------------------------------------------------------------------")
     print(f" - Annualized Sharpe Ratio  : {summary['Sharpe Ratio (Ann.)']}")
     print(f" - Annualized Sortino Ratio : {summary['Sortino Ratio (Ann.)']}")
-    print(f" - Calmar Ratio (Ret / MDD) : {summary['Calmar Ratio']}")
+    print(f" - Calmar Ratio             : {summary['Calmar Ratio']}")
     print(f" - Average Turnover Rate    : {summary['Average Turnover (%)']}% per rebalance")
     print(f" - Total Rebalance Events   : {summary['Rebalancing Count']} times")
+    if summary.get("Skipped Rebalances", 0) > 0 or summary.get("Tolerance Band (%)") != "None":
+        print(f" - Tolerance Band Drift     : {summary['Tolerance Band (%)']}%")
+        print(f" - Skipped Low-Drift Events : {summary['Skipped Rebalances']} times (fee saved)")
     print("================================================================================\n")
 
 
@@ -290,10 +316,17 @@ def main():
     parser = argparse.ArgumentParser(description="Crypto Portfolio Rebalancing Backtest")
     parser.add_argument("--data-dir", type=str, default="", help="Directory with Freqtrade feather files")
     parser.add_argument("--timeframe", type=str, default="15m", help="Candle timeframe")
-    parser.add_argument("--model", type=str, default="Risk Parity", choices=["Risk Parity", "Max Sharpe", "Min Variance", "HRP", "Equal Weight"], help="Model to rebalance")
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="Risk Parity",
+        choices=["Risk Parity", "Max Sharpe", "Min Variance", "Min Semi-Variance", "Min CVaR", "HRP", "Schur", "Equal Weight"],
+        help="Model to rebalance",
+    )
     parser.add_argument("--train-bars", type=int, default=300, help="Lookback training window in bars")
     parser.add_argument("--rebalance-bars", type=int, default=50, help="Rebalancing frequency in bars")
     parser.add_argument("--fee", type=float, default=0.001, help="Transaction fee rate (0.001 = 0.1%%)")
+    parser.add_argument("--tolerance-band", type=float, default=None, help="Drift threshold to execute rebalancing (e.g. 0.05 for 5%%)")
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic data")
     args = parser.parse_args()
 
@@ -319,6 +352,7 @@ def main():
         rebalance_freq_bars=args.rebalance_bars,
         fee_rate=args.fee,
         model_choice=args.model,
+        tolerance_band=args.tolerance_band,
     )
 
     print_backtest_report(res["summary"])

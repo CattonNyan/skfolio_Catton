@@ -115,5 +115,40 @@ class RebalancingTests(unittest.TestCase):
                 self.assertGreater(len(res["nav_port"]), 0)
 
 
+    def test_tolerance_band_rebalancing(self):
+        prices = generate_synthetic_crypto_data(periods=200)
+        # 1. Without tolerance band (every scheduled rebalance executes)
+        res_no_band = simulate_rebalancing(
+            prices=prices,
+            train_bars=80,
+            rebalance_freq_bars=15,
+            fee_rate=0.001,
+            model_choice="Risk Parity",
+            tolerance_band=None,
+        )
+        # 2. With high tolerance band (e.g. 0.15 = 15% drift required)
+        res_with_band = simulate_rebalancing(
+            prices=prices,
+            train_bars=80,
+            rebalance_freq_bars=15,
+            fee_rate=0.001,
+            model_choice="Risk Parity",
+            tolerance_band=0.15,
+        )
+        self.assertIn("Skipped Rebalances", res_with_band["summary"])
+        self.assertGreater(res_with_band["skipped_rebalances"], 0)
+        # Turnover with tolerance band should be strictly less than or equal to without
+        self.assertLessEqual(
+            res_with_band["summary"]["Average Turnover (%)"],
+            res_no_band["summary"]["Average Turnover (%)"],
+        )
+
+    def test_tolerance_band_invalid_parameters_rejected(self):
+        prices = generate_synthetic_crypto_data(periods=50)
+        for bad_band in (-0.01, 1.5, "0.05", True, float("nan")):
+            with self.subTest(bad_band=bad_band), self.assertRaises(ValueError):
+                simulate_rebalancing(prices, tolerance_band=bad_band)
+
+
 if __name__ == "__main__":
     unittest.main()
