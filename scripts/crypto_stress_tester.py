@@ -69,6 +69,20 @@ HISTORICAL_SHOCKS: dict[str, dict[str, float]] = {
         "XRP": -0.08,
         "DEFAULT": -0.12,
     },
+    "2024 October Geopolitical De-escalation Shock": {
+        "BTC": -0.08,
+        "ETH": -0.12,
+        "SOL": -0.15,
+        "XRP": -0.10,
+        "DEFAULT": -0.14,
+    },
+    "DeFi Liquidity Cascade & Flash Crash": {
+        "BTC": -0.18,
+        "ETH": -0.26,
+        "SOL": -0.32,
+        "XRP": -0.24,
+        "DEFAULT": -0.35,
+    },
 }
 
 
@@ -145,10 +159,14 @@ def evaluate_stress_test(
         else:
             grade = "D (Severe Vulnerability)"
 
+        # Break-even return required to recover to initial capital
+        recovery_req = (abs_drop / (1.0 - abs_drop) * 100) if abs_drop < 1.0 else 9999.0
+
         results[scenario_name] = {
             "portfolio_loss_pct": round(portfolio_shock * 100, 2),
             "dollar_loss": round(loss_amount, 2),
             "remaining_balance": round(remaining_balance, 2),
+            "recovery_required_pct": round(recovery_req, 2),
             "resilience_grade": grade,
         }
 
@@ -167,16 +185,17 @@ def print_stress_test_report(
     print(f"Total Portfolio Capital: ${total_wallet:,.2f}")
     w_str = ", ".join([f"{k}: {v*100:.1f}%" for k, v in weights.items()])
     print(f"Asset Allocation Weights: {w_str}\n")
-    print(f"{'Historical Scenario':<30} | {'Impact':>9} | {'Loss ($)':>12} | {'Remaining':>12} | {'Grade'}")
-    print("--------------------------------------------------------------------------------")
+    print(f"{'Historical Scenario':<32} | {'Impact':>8} | {'Loss ($)':>10} | {'Remaining':>10} | {'Recovery Req':>12} | {'Grade'}")
+    print("---------------------------------------------------------------------------------------------------------")
 
     for name, m in results.items():
         pct = f"{m['portfolio_loss_pct']:+.2f}%"
         loss = f"-${m['dollar_loss']:,.2f}"
         rem = f"${m['remaining_balance']:,.2f}"
-        print(f"{name:<30} | {pct:>9} | {loss:>12} | {rem:>12} | {m['resilience_grade']}")
+        rec = f"+{m['recovery_required_pct']:.1f}%"
+        print(f"{name:<32} | {pct:>8} | {loss:>10} | {rem:>10} | {rec:>12} | {m['resilience_grade']}")
 
-    print("================================================================================\n")
+    print("=========================================================================================================\n")
 
 
 def main():

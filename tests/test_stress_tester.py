@@ -101,5 +101,21 @@ class StressTesterTests(unittest.TestCase):
                 evaluate_stress_test({"BTC/USDT": 1.0}, custom_shock=bad_shock)
 
 
+    def test_recovery_required_and_new_scenarios(self):
+        weights = {"BTC/USDT": 0.5, "ETH/USDT": 0.3, "SOL/USDT": 0.2}
+        results = evaluate_stress_test(weights, total_wallet=10000.0)
+
+        # Check new shock scenarios present
+        self.assertIn("2024 October Geopolitical De-escalation Shock", results)
+        self.assertIn("DeFi Liquidity Cascade & Flash Crash", results)
+
+        # Verify recovery_required_pct
+        for name, metrics in results.items():
+            self.assertIn("recovery_required_pct", metrics)
+            loss_pct = abs(metrics["portfolio_loss_pct"]) / 100.0
+            expected_rec = (loss_pct / (1.0 - loss_pct)) * 100
+            self.assertAlmostEqual(metrics["recovery_required_pct"], expected_rec, places=1)
+
+
 if __name__ == "__main__":
     unittest.main()
