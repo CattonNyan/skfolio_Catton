@@ -99,5 +99,21 @@ class RebalancingTests(unittest.TestCase):
                 simulate_rebalancing(bad_prices)
 
 
+    def test_min_cvar_and_schur_rebalancing(self):
+        prices = generate_synthetic_crypto_data(periods=150)
+        for model in ("Min CVaR", "Schur"):
+            with self.subTest(model=model):
+                res = simulate_rebalancing(
+                    prices=prices,
+                    train_bars=60,
+                    rebalance_freq_bars=15,
+                    fee_rate=0.001,
+                    model_choice=model,
+                )
+                self.assertIn("summary", res)
+                self.assertEqual(res["summary"]["Model"], model)
+                self.assertGreater(len(res["nav_port"]), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

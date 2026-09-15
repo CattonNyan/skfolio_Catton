@@ -260,5 +260,18 @@ class CryptoOptimizerTests(unittest.TestCase):
                 run_optimization(bad)
 
 
+    def test_min_cvar_optimization(self):
+        from scripts.crypto_portfolio_optimizer import HAS_SKFOLIO, run_optimization
+        if not HAS_SKFOLIO:
+            self.skipTest("skfolio not available")
+        prices = generate_synthetic_crypto_data(periods=60)
+        results = run_optimization(prices)
+        self.assertIn("Min CVaR", results)
+        cvar_weights = results["Min CVaR"]
+        self.assertAlmostEqual(sum(cvar_weights.values()), 1.0, places=4)
+        for w in cvar_weights.values():
+            self.assertGreaterEqual(w, -1e-5)
+
+
 if __name__ == "__main__":
     unittest.main()

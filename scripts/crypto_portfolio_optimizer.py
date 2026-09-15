@@ -32,6 +32,7 @@ import pandas as pd
 try:
     from skfolio import RiskMeasure
     from skfolio.optimization import (
+        MeanRisk,
         MeanVariance,
         ObjectiveFunction,
         RiskBudgeting,
@@ -250,11 +251,20 @@ def run_optimization(
     )
     model_semi_variance.fit(returns)
 
+    # 5. Minimum CVaR (Conditional Value at Risk / Expected Shortfall Tail Risk)
+    model_cvar = MeanRisk(
+        objective_function=ObjectiveFunction.MINIMIZE_RISK,
+        risk_measure=RiskMeasure.CVAR,
+        **model_kwargs,
+    )
+    model_cvar.fit(returns)
+
     models = {
         "Max Sharpe Ratio": model_sharpe,
         "Min Variance": model_min_var,
         "Risk Parity (ERC)": model_risk_parity,
         "Min Semi-Variance": model_semi_variance,
+        "Min CVaR": model_cvar,
     }
 
     results: dict[str, dict[str, float]] = {}
