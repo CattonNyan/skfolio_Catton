@@ -5,7 +5,10 @@ import pandas as pd
 import numpy as np
 
 from scripts.crypto_portfolio_optimizer import generate_synthetic_crypto_data
-from scripts.crypto_correlation_breakdown import detect_correlation_breakdown
+from scripts.crypto_correlation_breakdown import (
+    compute_diversification_ratio,
+    detect_correlation_breakdown,
+)
 
 
 class CorrelationBreakdownTests(unittest.TestCase):
@@ -71,6 +74,33 @@ class CorrelationBreakdownTests(unittest.TestCase):
         for bad in invalid_prices:
             with self.subTest(bad=type(bad)), self.assertRaises(ValueError):
                 detect_correlation_breakdown(bad, rolling_window=10)
+
+
+    def test_compute_diversification_ratio(self):
+        prices = generate_synthetic_crypto_data(periods=100)
+        dr_equal = compute_diversification_ratio(prices)
+        self.assertIsInstance(dr_equal, float)
+        # Because synthetic crypto assets are not perfectly correlated, DR should be > 1.0
+        self.assertGreater(dr_equal, 1.0)
+
+        # Custom weights
+        weights = {"BTC/USDT": 0.4, "ETH/USDT": 0.3, "SOL/USDT": 0.2, "XRP/USDT": 0.1}
+        dr_weighted = compute_diversification_ratio(prices, weights=weights)
+        self.assertGreater(dr_weighted, 1.0)
+
+        # Perfectly correlated identical assets: DR must be approximately 1.0
+        df_identical = pd.DataFrame({"A": prices.iloc[:, 0], "B": prices.iloc[:, 0]})
+        dr_identical = compute_diversification_ratio(df_identical)
+        self.assertAlmostEqual(dr_identical, 1.0, places=3)
+
+    def test_diversification_ratio_invalid_inputs_rejected(self):
+        prices = generate_synthetic_crypto_data(periods=50)
+        with self.assertRaises(ValueError):
+            compute_diversification_ratio(prices.iloc[:, :1])
+        with self.assertRaises(ValueError):
+            compute_diversification_ratio(prices, weights={})
+        with self.assertRaises(ValueError):
+            compute_diversification_ratio(prices, weights={"BTC/USDT": -0.5})
 
 
 if __name__ == "__main__":

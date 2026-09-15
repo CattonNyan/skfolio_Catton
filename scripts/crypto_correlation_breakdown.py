@@ -30,6 +30,65 @@ from scripts.crypto_portfolio_optimizer import (
 )
 
 
+def compute_diversification_ratio(
+    prices_or_returns: pd.DataFrame,
+    weights: dict[str, float] | None = None,
+    is_returns: bool = False,
+) -> float:
+    """
+    Compute the Choueifaty Diversification Ratio (DR).
+
+    DR = (sum of weighted individual asset volatilities) / (portfolio total volatility)
+
+    A DR of 1.0 indicates perfect correlation across assets (no diversification benefit).
+    A DR > 1.0 quantifies the diversification multiplier achieved through imperfect correlation.
+    """
+    if not isinstance(prices_or_returns, pd.DataFrame) or prices_or_returns.shape[1] < 2:
+        raise ValueError("DataFrame must contain at least two assets.")
+    try:
+        raw_vals = prices_or_returns.to_numpy(dtype=float)
+    except (TypeError, ValueError) as error:
+        raise ValueError("DataFrame values must be numeric.") from error
+    if not np.all(np.isfinite(raw_vals)):
+        raise ValueError("DataFrame contains non-finite values.")
+
+    returns = prices_or_returns if is_returns else prices_or_returns.pct_change().dropna()
+    if len(returns) < 2:
+        raise ValueError("Returns series must contain at least two observations.")
+
+    assets = list(returns.columns)
+    n = len(assets)
+
+    if weights is None:
+        w_vec = np.ones(n, dtype=float) / n
+    else:
+        if not isinstance(weights, dict) or not weights:
+            raise ValueError("Weights must be a non-empty dictionary.")
+        clean_w = []
+        for a in assets:
+            val = weights.get(a, 0.0)
+            if isinstance(val, bool) or not isinstance(val, (int, float, np.number)) or not np.isfinite(val) or val < 0:
+                raise ValueError(f"Weight for asset '{a}' must be a finite non-negative number.")
+            clean_w.append(float(val))
+        w_arr = np.array(clean_w, dtype=float)
+        w_sum = float(np.sum(w_arr))
+        if w_sum <= 0:
+            raise ValueError("Sum of portfolio weights must be strictly positive.")
+        w_vec = w_arr / w_sum
+
+    asset_vols = returns.std(ddof=1).values
+    weighted_vol = float(np.dot(w_vec, asset_vols))
+
+    cov = returns.cov().values
+    port_var = float(np.dot(w_vec, np.dot(cov, w_vec)))
+    if port_var <= 1e-12:
+        return 1.0
+    port_vol = np.sqrt(port_var)
+
+    dr = weighted_vol / (port_vol + 1e-12)
+    return round(float(dr), 4)
+
+
 def detect_correlation_breakdown(
     prices: pd.DataFrame,
     benchmark: str | None = None,
