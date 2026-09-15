@@ -105,6 +105,29 @@ class TravelRuleAdvisorTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             calculate_travel_rule_plan("BTC", target_amount=1.0, coin_price_krw=1000.0, network_fee_coins=-0.1)
 
+    def test_interval_scheduling_and_anti_structuring(self):
+        # 3 batches with 15 min interval -> 2 gaps = 30 minutes total
+        res = calculate_travel_rule_plan(
+            coin_symbol="XRP",
+            target_amount=1200.0,
+            coin_price_krw=2000.0,  # 2.4M KRW -> 3 batches
+            interval_minutes=15,
+        )
+        self.assertEqual(res["recommended_batches"], 3)
+        self.assertEqual(res["batch_interval_minutes"], 15)
+        self.assertEqual(res["total_duration_minutes"], 30)
+        self.assertFalse(res["anti_structuring_alert"])
+
+        # High amount (6M KRW) should trigger anti-structuring alert
+        res_high = calculate_travel_rule_plan(
+            coin_symbol="BTC",
+            target_amount=0.06,
+            coin_price_krw=100000000.0,  # 6M KRW
+            daily_warning_threshold_krw=5000000.0,
+        )
+        self.assertTrue(res_high["anti_structuring_alert"])
+        self.assertIn("FDS/STR", res_high["anti_structuring_note"])
+
 
 if __name__ == "__main__":
     unittest.main()

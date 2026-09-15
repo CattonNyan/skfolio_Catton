@@ -55,9 +55,11 @@ def calculate_travel_rule_plan(
     safe_buffer_krw: float = DEFAULT_SAFE_BUFFER_KRW,
     network_fee_coins: float = 0.0,
     auto_preset_fee: bool = False,
+    interval_minutes: int = 20,
+    daily_warning_threshold_krw: float = 5000000.0,
 ) -> dict[str, object]:
     """
-    Calculate Travel Rule applicability and batch transfer recommendations.
+    Calculate Travel Rule applicability, batch transfer recommendations, and anti-structuring intervals.
 
     Parameters:
     - coin_symbol: Crypto asset symbol (e.g. 'XRP', 'TRX', 'SOL', 'BTC')
@@ -67,6 +69,8 @@ def calculate_travel_rule_plan(
     - safe_buffer_krw: Conservative batch threshold to avoid market volatility breach
     - network_fee_coins: Withdrawal fee charged per transaction by the originating exchange
     - auto_preset_fee: If True and network_fee_coins is 0, auto-fill from standard Korean presets
+    - interval_minutes: Recommended interval between split transfers to minimize AML STR flag risk
+    - daily_warning_threshold_krw: Threshold above which total volume triggers aggressive AML monitoring
     """
     if not isinstance(coin_symbol, str) or not coin_symbol.strip():
         raise ValueError("Coin symbol must be a non-empty string.")
@@ -87,6 +91,10 @@ def calculate_travel_rule_plan(
         raise ValueError("Safe buffer must be strictly less than statutory threshold.")
     if isinstance(network_fee_coins, bool) or not isinstance(network_fee_coins, (int, float)) or not math.isfinite(network_fee_coins) or network_fee_coins < 0:
         raise ValueError("Network fee must be a non-negative finite number.")
+    if isinstance(interval_minutes, bool) or not isinstance(interval_minutes, int) or interval_minutes <= 0:
+        raise ValueError("Interval minutes must be a strictly positive integer.")
+    if isinstance(daily_warning_threshold_krw, bool) or not isinstance(daily_warning_threshold_krw, (int, float)) or not math.isfinite(daily_warning_threshold_krw) or daily_warning_threshold_krw <= 0:
+        raise ValueError("Daily warning threshold must be a strictly positive finite number.")
 
     total_value_krw = target_amount * coin_price_krw
     requires_travel_rule = total_value_krw >= threshold_krw
@@ -101,10 +109,23 @@ def calculate_travel_rule_plan(
         total_fee_coins = network_fee_coins * num_batches
         total_fee_krw = total_fee_coins * coin_price_krw
 
+        total_duration_minutes = (num_batches - 1) * interval_minutes
+        anti_structuring_alert = total_value_krw >= daily_warning_threshold_krw or num_batches >= 4
+
+        if anti_structuring_alert:
+            aml_note = (
+                f"주의: 분할 횟수({num_batches}회) 또는 총액(KRW {total_value_krw:,.0f})이 높아 "
+                f"거래소 FDS/STR(이상거래탐지/전신환 분할송금) 의심 계좌로 등록될 수 있습니다. "
+                f"회당 최소 {interval_minutes}분 이상의 텀을 두고 송금하거나 합법적 제휴 거래소(VASP)를 이용하세요."
+            )
+        else:
+            aml_note = f"안전: 회당 약 {interval_minutes}분의 시간차를 두고 분할 전송하는 것을 권장합니다."
+
         advice = (
             f"Transfer exceeds KRW {threshold_krw:,.0f} limit. Mandatory VASP-to-VASP Travel Rule applies. "
             f"If sending to an unregistered exchange or personal wallet, split into {num_batches} batches "
-            f"of ~{per_batch_coins:.4f} {coin_symbol} (~KRW {per_batch_krw:,.0f}) with adequate time spacing."
+            f"of ~{per_batch_coins:.4f} {coin_symbol} (~KRW {per_batch_krw:,.0f}) with {interval_minutes}m spacing. "
+            f"Estimated completion: ~{total_duration_minutes} minutes."
         )
     else:
         num_batches = 1
@@ -112,6 +133,9 @@ def calculate_travel_rule_plan(
         per_batch_krw = total_value_krw
         total_fee_coins = network_fee_coins
         total_fee_krw = total_fee_coins * coin_price_krw
+        total_duration_minutes = 0
+        anti_structuring_alert = False
+        aml_note = "단일 송금 가능 (100만원 미만 특례)."
 
         advice = (
             f"Transfer is below KRW {threshold_krw:,.0f} (KRW {total_value_krw:,.0f}). "
@@ -127,6 +151,10 @@ def calculate_travel_rule_plan(
         "safe_buffer_krw": round(safe_buffer_krw, 2),
         "requires_travel_rule": requires_travel_rule,
         "recommended_batches": num_batches,
+        "batch_interval_minutes": interval_minutes,
+        "total_duration_minutes": total_duration_minutes,
+        "anti_structuring_alert": anti_structuring_alert,
+        "anti_structuring_note": aml_note,
         "per_batch_coins": round(per_batch_coins, 6),
         "per_batch_krw": round(per_batch_krw, 2),
         "max_safe_single_amount": round(max_safe_coin_per_tx, 6),
