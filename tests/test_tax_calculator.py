@@ -102,6 +102,28 @@ class TaxCalculatorTests(unittest.TestCase):
             with self.subTest(bad_rate=bad_rate), self.assertRaises(ValueError):
                 compute_crypto_tax_impact([1000000.0], usdt_krw_rate=bad_rate)
 
+    def test_carried_forward_loss_netting(self):
+        # 10M profit, 4M carried loss -> adjusted profit: 6M
+        # 2.5M basic allowance -> taxable base: 3.5M
+        # tax: 3.5M * 0.22 = 770,000 KRW
+        res = compute_crypto_tax_impact(
+            realized_profits=[10000000.0],
+            annual_allowance_krw=2500000.0,
+            tax_rate=0.22,
+            carried_forward_loss_krw=4000000.0,
+        )
+        self.assertEqual(res["carried_forward_loss_krw"], 4000000.0)
+        self.assertEqual(res["carried_loss_applied_krw"], 4000000.0)
+        self.assertEqual(res["remaining_carried_loss_krw"], 0.0)
+        self.assertEqual(res["taxable_base"], 3500000.0)
+        self.assertEqual(res["estimated_tax_krw"], 770000.0)
+
+        # Invalid carried loss
+        with self.assertRaises(ValueError):
+            compute_crypto_tax_impact([1000000.0], carried_forward_loss_krw=-500.0)
+        with self.assertRaises(ValueError):
+            compute_crypto_tax_impact([1000000.0], carried_forward_loss_krw=True)
+
 
 if __name__ == "__main__":
     unittest.main()

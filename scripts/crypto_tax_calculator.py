@@ -31,9 +31,10 @@ def compute_crypto_tax_impact(
     tax_rate: float = 0.22,
     usdt_krw_rate: float = 1350.0,
     initial_capital_krw: float = 10000000.0,
+    carried_forward_loss_krw: float = 0.0,
 ) -> dict[str, object]:
     """
-    Calculate annual crypto capital gains tax, net of loss deduction.
+    Calculate annual crypto capital gains tax, net of loss deduction and carried-forward losses.
 
     Parameters:
     - realized_profits: List of realized profits/losses in KRW (or converted to KRW)
@@ -41,6 +42,7 @@ def compute_crypto_tax_impact(
     - tax_rate: Effective tax rate including local tax (e.g. 0.22 for 22%)
     - usdt_krw_rate: Exchange rate applied
     - initial_capital_krw: Starting capital for return calculation
+    - carried_forward_loss_krw: Prior-year accumulated net loss carried forward to offset gains (이월결손금)
     """
     if isinstance(annual_allowance_krw, bool) or not np.isfinite(annual_allowance_krw) or annual_allowance_krw < 0:
         raise ValueError("Annual allowance must be a finite non-negative amount.")
@@ -50,6 +52,8 @@ def compute_crypto_tax_impact(
         raise ValueError("Exchange rate must be a finite strictly positive number.")
     if isinstance(initial_capital_krw, bool) or not np.isfinite(initial_capital_krw) or initial_capital_krw <= 0:
         raise ValueError("Initial capital must be strictly positive.")
+    if isinstance(carried_forward_loss_krw, bool) or not np.isfinite(carried_forward_loss_krw) or carried_forward_loss_krw < 0:
+        raise ValueError("Carried-forward loss must be a finite non-negative amount.")
 
     if any(isinstance(p, bool) for p in realized_profits):
         raise ValueError("Realized profits must not contain boolean values.")
@@ -61,8 +65,21 @@ def compute_crypto_tax_impact(
 
     net_realized_profit = float(profits_arr.sum())
 
-    # Tax Base after Loss Offsetting & Basic Allowance
-    taxable_base = max(0.0, net_realized_profit - annual_allowance_krw)
+    # Offset prior carried-forward losses before basic allowance
+    carried_loss_applied = 0.0
+    remaining_carried_loss = carried_forward_loss_krw
+    if net_realized_profit > 0 and carried_forward_loss_krw > 0:
+        carried_loss_applied = min(net_realized_profit, carried_forward_loss_krw)
+        adjusted_profit = net_realized_profit - carried_loss_applied
+        remaining_carried_loss = carried_forward_loss_krw - carried_loss_applied
+    elif net_realized_profit < 0:
+        adjusted_profit = net_realized_profit
+        remaining_carried_loss = carried_forward_loss_krw + abs(net_realized_profit)
+    else:
+        adjusted_profit = net_realized_profit
+
+    # Tax Base after Loss Offsetting, Carried Losses, & Basic Allowance
+    taxable_base = max(0.0, adjusted_profit - annual_allowance_krw)
     estimated_tax = taxable_base * tax_rate
     after_tax_profit = net_realized_profit - estimated_tax
 
@@ -75,6 +92,9 @@ def compute_crypto_tax_impact(
         "gross_realized_gains": round(gains, 2),
         "gross_realized_losses": round(losses, 2),
         "net_realized_profit": round(net_realized_profit, 2),
+        "carried_forward_loss_krw": round(carried_forward_loss_krw, 2),
+        "carried_loss_applied_krw": round(carried_loss_applied, 2),
+        "remaining_carried_loss_krw": round(remaining_carried_loss, 2),
         "annual_allowance_krw": round(annual_allowance_krw, 2),
         "taxable_base": round(taxable_base, 2),
         "effective_tax_rate_pct": round(tax_rate * 100, 1),
@@ -129,6 +149,8 @@ def print_tax_report(res: dict[str, object]):
     print(f"총 실현 이익 (Gross Gains)         : ₩{res['gross_realized_gains']:,.0f}")
     print(f"총 실현 손실 (Gross Losses)        : -₩{res['gross_realized_losses']:,.0f}")
     print(f"손익 통산 순수익 (Net Profit)      : ₩{res['net_realized_profit']:,.0f}")
+    if res.get("carried_forward_loss_krw", 0) > 0:
+        print(f"이월결손금 공제 (Carried Loss)     : -₩{res['carried_loss_applied_krw']:,.0f} (잔여: ₩{res['remaining_carried_loss_krw']:,.0f})")
     print("--------------------------------------------------------------------------------")
     print(f"기본 공제액 (Annual Allowance)     : ₩{res['annual_allowance_krw']:,.0f}")
     print(f"과세 표준 (Taxable Base)           : ₩{res['taxable_base']:,.0f}")
@@ -147,6 +169,7 @@ def main():
     parser.add_argument("--profit", type=float, default=12000000.0, help="Annual net realized profit in KRW")
     parser.add_argument("--capital", type=float, default=50000000.0, help="Initial capital in KRW")
     parser.add_argument("--allowance", type=float, default=2500000.0, help="Basic allowance in KRW (default: 2,500,000)")
+    parser.add_argument("--carried-loss", type=float, default=0.0, help="Prior year carried-forward loss in KRW")
     parser.add_argument("--tax-rate", type=float, default=0.22, help="Effective tax rate (default: 0.22)")
     parser.add_argument("--export-json", type=str, default="", help="Path to export JSON metrics")
     args = parser.parse_args()
@@ -163,6 +186,7 @@ def main():
         annual_allowance_krw=args.allowance,
         tax_rate=args.tax_rate,
         initial_capital_krw=args.capital,
+        carried_forward_loss_krw=args.carried_loss,
     )
 
     print_tax_report(res)
