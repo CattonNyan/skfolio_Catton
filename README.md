@@ -84,7 +84,9 @@
 | **Min Variance** | 전체 포트폴리오의 변동성을 극소화 | 급격한 변동성을 피하고 안정적인 자산 보존을 원할 때 |
 | **Risk Parity (ERC)** | 각 자산이 전체 위험에 기여하는 비중을 동일하게 배분 | 특정 고변동성 알트코인에 위험이 집중되는 현상 방지 |
 | **Min Semi-Variance** | 하방 변동성(낙폭 위험)만을 최소화 | 상승 변동성은 제한하지 않고 급락 위험만 회피 |
+| **Min CVaR** | 조건부 가치평가(Expected Shortfall) 극소화 | 극단적 꼬리 위험(Fat-Tail)과 급락 손실 집중 방어 |
 | **HRP (Hierarchical Risk Parity)** | 머신러닝 계층적 트리 군집화 기반 위험 배분 | 공분산 역행렬을 구하지 않아 다중공선성에 가장 강인함 |
+| **Schur Complementary (Cotton)** | Peter Cotton 슈어 보수 기반 계층적 배분 | 상위 클러스터 간 위험 전이 차단 및 독립적 위험 가중 |
 
 ---
 

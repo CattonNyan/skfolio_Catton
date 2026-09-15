@@ -2,6 +2,30 @@
 
 <!-- version list -->
 
+## v1.3.0 (2026-09-16)
+
+### Features
+
+- **cluster**: Peter Cotton Schur Complementary Allocation added to clustering optimizer (`scripts/crypto_hrp_clustering.py`)
+  - Calculates Schur complement on covariance clusters to optimize hierarchical sub-portfolio weight allocation
+- **optimizer**: Min CVaR (Conditional Value-at-Risk / Expected Shortfall) tail risk model in `crypto_portfolio_optimizer.py` and `app_dashboard.py`
+  - Minimizes extreme tail risk for fat-tailed crypto assets
+- **rebalance**: Tolerance-band drift rebalancing (`scripts/crypto_rebalancing_backtest.py`)
+  - Suppresses unnecessary rebalance trades when weight drift remains within threshold, minimizing fee drag
+- **factor**: Customizable factor weights and factor-tilted portfolio allocator (`scripts/crypto_factor_analyzer.py`)
+  - Supports custom weights across momentum, volatility, size, and sortino factors
+- **monte-carlo**: Student-t fat-tailed distribution simulator (`scripts/crypto_monte_carlo.py`)
+  - Simulates realistic heavy-tailed market shock distributions with configurable degrees of freedom
+- **stress**: Recovery required return calculation (`(1 / (1 - loss)) - 1`) and modern geopolitical shock scenarios (`scripts/crypto_stress_tester.py`)
+- **correlation**: Choueifaty Diversification Ratio calculator for crypto portfolios (`scripts/crypto_correlation_breakdown.py`)
+- **travel-rule**: Anti-structuring alert and batch interval duration scheduler (`scripts/crypto_travel_rule_advisor.py`)
+- **tax**: Multi-year loss carryforward netting simulator for Korean crypto taxation (`scripts/crypto_tax_calculator.py`)
+- **dashboard**: Streamlit dashboard v1.3.0 integration with Schur clustering, Min CVaR, tolerance drift slider, and Student-t distribution
+
+### Bug Fixes
+
+- **stats**: Fixed empty `gaps` array edge case in `compute_optimal_n_clusters` when universe has 2 or fewer assets (`src/skfolio/utils/stats.py`)
+
 ## v1.2.0 (2026-09-14)
 
 ### Features
