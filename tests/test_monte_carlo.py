@@ -109,5 +109,33 @@ class MonteCarloTests(unittest.TestCase):
         self.assertEqual(res["days"], 10)
 
 
+    def test_student_t_distribution_simulation(self):
+        prices = generate_synthetic_crypto_data(periods=100)
+        weights = {"BTC/USDT": 0.6, "ETH/USDT": 0.4}
+        res_t = simulate_monte_carlo_paths(
+            prices=prices,
+            weights=weights,
+            days=20,
+            num_simulations=100,
+            initial_capital=10000.0,
+            seed=42,
+            distribution="student_t",
+            df=4.0,
+        )
+        self.assertEqual(res_t["distribution"], "student_t")
+        self.assertEqual(res_t["degrees_of_freedom"], 4.0)
+        self.assertGreater(res_t["expected_final_wealth"], 0)
+        self.assertEqual(len(res_t["path_p50"]), 21)
+
+    def test_invalid_distribution_parameters_rejected(self):
+        prices = generate_synthetic_crypto_data(periods=50)
+        weights = {"BTC/USDT": 1.0}
+        with self.assertRaises(ValueError):
+            simulate_monte_carlo_paths(prices, weights, distribution="unknown_dist")
+        for bad_df in (1.5, 2.0, -3.0, "4.0", True):
+            with self.subTest(bad_df=bad_df), self.assertRaises(ValueError):
+                simulate_monte_carlo_paths(prices, weights, distribution="student_t", df=bad_df)
+
+
 if __name__ == "__main__":
     unittest.main()

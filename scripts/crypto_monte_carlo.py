@@ -37,9 +37,11 @@ def simulate_monte_carlo_paths(
     num_simulations: int = 1000,
     initial_capital: float = 10000.0,
     seed: int = 42,
+    distribution: str = "normal",
+    df: float = 4.0,
 ) -> dict[str, object]:
     """
-    Simulate future portfolio paths using Geometric Brownian Motion (GBM).
+    Simulate future portfolio paths using Geometric Brownian Motion (GBM) or Student-t Jump-diffusion.
 
     Returns summary metrics, percentile cones, and risk distributions.
     """
@@ -62,6 +64,11 @@ def simulate_monte_carlo_paths(
         raise ValueError("Initial capital must be a strictly positive finite number.")
     if isinstance(seed, bool) or not isinstance(seed, (int, np.integer)):
         raise ValueError("Seed must be an integer.")
+    if distribution not in {"normal", "student_t"}:
+        raise ValueError(f"Unsupported distribution '{distribution}'. Choose 'normal' or 'student_t'.")
+    if distribution == "student_t":
+        if isinstance(df, bool) or not isinstance(df, (int, float, np.number)) or not np.isfinite(df) or df <= 2.0:
+            raise ValueError("Degrees of freedom 'df' must be a finite number greater than 2.0.")
 
     returns = prices.pct_change().dropna()
     if returns.empty:
@@ -108,7 +115,13 @@ def simulate_monte_carlo_paths(
 
     rng = np.random.default_rng(seed)
     # Generate random shocks: shape = (num_simulations, days)
-    random_shocks = rng.standard_normal(size=(num_simulations, days))
+    if distribution == "student_t":
+        # Standardize Student-t shocks so variance is 1: var(t_df) = df / (df - 2)
+        raw_t = rng.standard_t(df=float(df), size=(num_simulations, days))
+        scale = np.sqrt((float(df) - 2.0) / float(df))
+        random_shocks = raw_t * scale
+    else:
+        random_shocks = rng.standard_normal(size=(num_simulations, days))
     step_returns = np.exp(drift + vol * random_shocks)
 
     # Cumulative wealth paths starting from initial_capital (vectorized)
@@ -147,6 +160,8 @@ def simulate_monte_carlo_paths(
         "days": days,
         "num_simulations": num_simulations,
         "initial_capital": initial_capital,
+        "distribution": distribution,
+        "degrees_of_freedom": float(df) if distribution == "student_t" else None,
         "expected_final_wealth": round(float(np.mean(final_wealth)), 2),
         "expected_return_pct": expected_ret_pct,
         "median_final_wealth": round(float(np.median(final_wealth)), 2),
@@ -171,8 +186,10 @@ simulate_monte_carlo = simulate_monte_carlo_paths
 
 def print_monte_carlo_report(res: dict[str, object]):
     """Print terminal report of Monte Carlo simulation."""
+    dist_label = f"Student-t (df={res['degrees_of_freedom']})" if res.get("distribution") == "student_t" else "Gaussian Normal"
     print("================================================================================")
     print(f"        MONTE CARLO FORWARD-LOOKING RISK SIMULATION ({res['days']} Days, {res['num_simulations']:,} Paths)      ")
+    print(f"        Distribution: {dist_label}")
     print("================================================================================")
     print(f"{'Initial Capital':<26}: ${res['initial_capital']:,.2f}")
     print(f"{'Expected Final Wealth':<26}: ${res['expected_final_wealth']:,.2f}")
@@ -195,6 +212,8 @@ def main():
     parser.add_argument("--days", type=int, default=90, help="Future simulation horizon in days")
     parser.add_argument("--sims", type=int, default=1000, help="Number of simulated paths")
     parser.add_argument("--capital", type=float, default=10000.0, help="Initial capital")
+    parser.add_argument("--dist", type=str, default="normal", choices=["normal", "student_t"], help="Distribution model")
+    parser.add_argument("--df", type=float, default=4.0, help="Degrees of freedom for Student-t distribution")
     parser.add_argument("--export-json", type=str, default="", help="Path to export JSON metrics")
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic data")
     args = parser.parse_args()
@@ -218,6 +237,8 @@ def main():
         days=args.days,
         num_simulations=args.sims,
         initial_capital=args.capital,
+        distribution=args.dist,
+        df=args.df,
     )
 
     print_monte_carlo_report(res)
