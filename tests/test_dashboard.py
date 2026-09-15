@@ -87,10 +87,12 @@ class DashboardTests(unittest.TestCase):
             {"BTC": [0.01, -0.01] * 10, "ETH": [0.02, -0.015] * 10},
             index=dates,
         )
-        weights = cached_fit_model(returns, "Risk Parity (ERC)", min_w=0.1, max_w=0.9)
-        self.assertIn("BTC", weights)
-        self.assertIn("ETH", weights)
-        self.assertAlmostEqual(sum(weights.values()), 1.0, places=3)
+        for model in ("Risk Parity (ERC)", "Min CVaR (조건부 가치위험 최소화)", "Schur Complementary (Cotton 보완 배분)"):
+            with self.subTest(model=model):
+                weights = cached_fit_model(returns, model, min_w=0.1, max_w=0.9)
+                self.assertIn("BTC", weights)
+                self.assertIn("ETH", weights)
+                self.assertAlmostEqual(sum(weights.values()), 1.0, places=3)
 
     @unittest.skipUnless(HAS_DASHBOARD_DEPS, "plotly or streamlit not installed")
     def test_chart_functions_with_empty_and_misaligned_data(self):

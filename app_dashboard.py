@@ -41,16 +41,18 @@ from scripts.crypto_krw_fee_calculator import (
 from scripts.crypto_tax_calculator import compute_crypto_tax_impact
 from scripts.crypto_travel_rule_advisor import calculate_travel_rule_plan
 from scripts.fetch_upbit_crypto import fetch_upbit_historical_prices
-from scripts.crypto_factor_analyzer import compute_crypto_factors
+from scripts.crypto_factor_analyzer import compute_crypto_factors, generate_factor_tilted_weights
 
 # Optional skfolio optimization imports
 try:
     from skfolio import RiskMeasure
     from skfolio.optimization import (
         HierarchicalRiskParity,
+        MeanRisk,
         MeanVariance,
         ObjectiveFunction,
         RiskBudgeting,
+        SchurComplementary,
     )
     from skfolio.preprocessing import prices_to_returns
     HAS_SKFOLIO = True
@@ -87,6 +89,10 @@ def cached_fit_model(returns_df: pd.DataFrame, model_type: str, min_w: float | N
         model = MeanVariance(objective_function=ObjectiveFunction.MINIMIZE_RISK, risk_measure=RiskMeasure.VARIANCE, **c_kwargs)
     elif "Min Semi-Variance" in model_type:
         model = MeanVariance(objective_function=ObjectiveFunction.MINIMIZE_RISK, risk_measure=RiskMeasure.SEMI_VARIANCE, **c_kwargs)
+    elif "Min CVaR" in model_type:
+        model = MeanRisk(objective_function=ObjectiveFunction.MINIMIZE_RISK, risk_measure=RiskMeasure.CVAR, **c_kwargs)
+    elif "Schur" in model_type:
+        model = SchurComplementary()
     elif "HRP" in model_type:
         model = HierarchicalRiskParity(risk_measure=RiskMeasure.VARIANCE)
     else:
@@ -428,7 +434,9 @@ def main():
                 "Max Sharpe Ratio (샤프 최대화)",
                 "Min Variance (최소 분산)",
                 "Min Semi-Variance (하방 위험 최소화)",
+                "Min CVaR (조건부 가치위험 최소화)",
                 "Hierarchical Risk Parity (HRP)",
+                "Schur Complementary (Cotton 보완 배분)",
             ],
             index=0,
         )
@@ -618,13 +626,16 @@ def main():
         st.subheader("🔄 주기적 포트폴리오 리밸런싱(Rolling Window) 백테스트")
         st.caption("일정 주기마다 최적 비중을 재계산하고 자산을 재조정(Rebalancing)할 때의 실제 워크포워드 성과를 측정합니다.")
 
-        col_r1, col_r2, col_r3 = st.columns(3)
+        col_r1, col_r2, col_r3, col_r4 = st.columns(4)
         with col_r1:
             train_bars = st.slider("학습 윈도우 크기 (Lookback Bars)", min_value=50, max_value=500, value=200, step=25)
         with col_r2:
             rebal_bars = st.slider("리밸런싱 주기 (Rebalance Every N Bars)", min_value=10, max_value=100, value=30, step=5)
         with col_r3:
             fee_rate = st.number_input("거래 수수료율 (Fee Rate)", min_value=0.0, max_value=0.01, value=0.001, step=0.0005, format="%.4f")
+        with col_r4:
+            tol_band_pct = st.slider("드리프트 허용 밴드(%)", min_value=0, max_value=20, value=0, step=1, help="오차 미만의 드리프트 발생 시 리밸런싱을 건너뛰어 수수료 절감")
+            tol_band = tol_band_pct / 100.0 if tol_band_pct > 0 else None
 
         if st.button("🚀 롤링 리밸런싱 백테스트 실행", key="btn_run_rebalance"):
             with st.spinner("리밸런싱 워크포워드 시뮬레이션 계산 중..."):
@@ -636,6 +647,10 @@ def main():
                         clean_model = "Max Sharpe"
                     elif "Min Semi-Variance" in model_type:
                         clean_model = "Min Semi-Variance"
+                    elif "Min CVaR" in model_type:
+                        clean_model = "Min CVaR"
+                    elif "Schur" in model_type:
+                        clean_model = "Schur"
                     elif "Min Variance" in model_type:
                         clean_model = "Min Variance"
                     elif "HRP" in model_type:
@@ -647,6 +662,7 @@ def main():
                         rebalance_freq_bars=rebal_bars,
                         fee_rate=fee_rate,
                         model_choice=clean_model,
+                        tolerance_band=tol_band,
                     )
                     s = reb_res["summary"]
 
@@ -654,7 +670,10 @@ def main():
                     rc1.metric("총 수익률 (전략)", f"{s['Total Return (%)']:.2f}%", f"{s['Total Return (%)'] - s['Buy & Hold Return (%)']:+.2f}% vs B&H")
                     rc2.metric("최대 낙폭 (MDD)", f"{s['Max Drawdown (%)']:.2f}%", f"{s['Max Drawdown (%)'] - s['Buy & Hold MDD (%)']:+.2f}% vs B&H")
                     rc3.metric("연환산 샤프 지수", f"{s['Sharpe Ratio (Ann.)']:.3f}")
-                    rc4.metric("평균 회전율 (Turnover)", f"{s['Average Turnover (%)']:.2f}%")
+                    turnover_label = f"{s['Average Turnover (%)']:.2f}%"
+                    if s.get("Skipped Rebalances", 0) > 0:
+                        turnover_label += f" ({s['Skipped Rebalances']}회 스킵)"
+                    rc4.metric("평균 회전율 (Turnover)", turnover_label)
 
                     fig_reb_nav = create_rebalancing_nav_chart(reb_res["nav_port"], reb_res["nav_eq"], reb_res["nav_bh"])
                     st.plotly_chart(fig_reb_nav, use_container_width=True)
@@ -670,17 +689,27 @@ def main():
 
     with tab_mc:
         st.subheader("🎲 몬테카를로 미래 자산 경로 & VaR/CVaR 시뮬레이션")
-        st.caption("기하 브라운 운동(GBM) 기반으로 1,000개 이상의 미래 자산 경로를 시뮬레이션하여 95% 신뢰구간과 최대 손실 위험(VaR)을 산출합니다.")
-        col_m1, col_m2 = st.columns(2)
+        st.caption("기하 브라운 운동(GBM) 및 Student-t 팻테일 기반으로 미래 자산 경로를 시뮬레이션하여 95% 신뢰구간과 극단 손실 위험(VaR/CVaR)을 산출합니다.")
+        col_m1, col_m2, col_m3 = st.columns(3)
         with col_m1:
             mc_days = st.slider("미래 시뮬레이션 기간 (Days)", min_value=30, max_value=365, value=90, step=15)
         with col_m2:
             mc_sims = st.slider("시뮬레이션 경로 수 (Paths)", min_value=200, max_value=2000, value=1000, step=100)
+        with col_m3:
+            dist_opt = st.selectbox("확률 분포 모델", options=["정규분포 (표준 GBM)", "Student-t (팻테일/극단 충격 반영)"], index=0)
+            mc_dist = "student_t" if "Student-t" in dist_opt else "normal"
 
         if st.button("🚀 몬테카를로 시뮬레이션 실행", key="btn_run_mc"):
             with st.spinner("몬테카를로 경로 시뮬레이션 계산 중..."):
                 try:
-                    mc_res = simulate_monte_carlo(prices, weights_dict, initial_capital=wallet_size, days=mc_days, num_simulations=mc_sims)
+                    mc_res = simulate_monte_carlo(
+                        prices,
+                        weights_dict,
+                        initial_capital=wallet_size,
+                        days=mc_days,
+                        num_simulations=mc_sims,
+                        distribution=mc_dist,
+                    )
                     m1, m2, m3, m4 = st.columns(4)
                     m1.metric("기대 최종 자산 (평균)", f"${mc_res['expected_final_wealth']:,.2f}")
                     m2.metric("중앙값 최종 자산", f"${mc_res['median_final_wealth']:,.2f}")
@@ -699,7 +728,7 @@ def main():
 
     with tab_stress:
         st.subheader("💥 역사적 크립토 블랙스완 스트레스 테스터")
-        st.caption("2020년 코로나 쇼크, 2022년 루나 붕괴, FTX 파산, 2021년 중국 채굴 금지 등 실제 역사적 극단 위기 상황을 현재 포트폴리오에 주입하여 자본 방어력을 진단합니다.")
+        st.caption("2020년 코로나 쇼크, 2022년 루나 붕괴, FTX 파산, 2024년 지정학적 쇼크 및 디파이 유동성 캐스케이드 등 실제 역사적 극단 위기 상황을 현재 포트폴리오에 주입하여 자본 방어력과 원금 회복 필요 수익률을 진단합니다.")
         try:
             stress_res = evaluate_stress_test(weights_dict, total_wallet=wallet_size)
             stress_df = pd.DataFrame([
@@ -708,6 +737,7 @@ def main():
                     "포트폴리오 손실률": f"{v['portfolio_loss_pct']:+.2f}%",
                     "예상 손실액": f"-${v['dollar_loss']:,.2f}",
                     "충격 후 잔여 자산": f"${v['remaining_balance']:,.2f}",
+                    "원금 회복 필요 수익률": f"+{v.get('recovery_required_pct', 0.0):.1f}%",
                     "리스크 방어 등급": v["resilience_grade"],
                 }
                 for k, v in stress_res.items()
@@ -983,10 +1013,34 @@ def main():
             step=10,
         )
 
+        with st.expander("⚖️ 팩터 가중치 사용자 정의 (Custom Factor Weights)", expanded=False):
+            fw_c1, fw_c2, fw_c3, fw_c4 = st.columns(4)
+            with fw_c1:
+                w_mom = st.slider("모멘텀 가중치(%)", 0, 100, 30, 5)
+            with fw_c2:
+                w_vol = st.slider("저변동성 가중치(%)", 0, 100, 25, 5)
+            with fw_c3:
+                w_trend = st.slider("추세강도 가중치(%)", 0, 100, 25, 5)
+            with fw_c4:
+                w_sortino = st.slider("소르티노(하방) 가중치(%)", 0, 100, 20, 5)
+
+        custom_weights = {
+            "momentum": float(w_mom),
+            "low_volatility": float(w_vol),
+            "trend_strength": float(w_trend),
+            "sortino_ratio": float(w_sortino),
+        }
+        if sum(custom_weights.values()) == 0:
+            custom_weights = None
+
         if st.button("🚀 멀티팩터 스마트 베타 분석 실행", key="btn_run_factors"):
             try:
                 with st.spinner("멀티팩터 점수 산출 중..."):
-                    factors_df = compute_crypto_factors(prices=prices, lookback_bars=factor_lookback)
+                    factors_df = compute_crypto_factors(
+                        prices=prices,
+                        lookback_bars=factor_lookback,
+                        factor_weights=custom_weights,
+                    )
 
                     col_fb1, col_fb2 = st.columns([3, 2])
                     with col_fb1:
@@ -1009,6 +1063,16 @@ def main():
                     top_coin = factors_df.index[0]
                     top_score = factors_df["composite_score"].iloc[0]
                     st.success(f"🌟 현재 스마트 베타 최고 순위 자산: **{top_coin}** (종합 Z-Score: {top_score:+.2f})")
+
+                    # Factor-tilted portfolio allocation
+                    st.subheader("💼 Top-N 스마트 베타 팩터 틸트(Tilt) 포트폴리오 비중")
+                    tilted_w = generate_factor_tilted_weights(factors_df, top_n=min(3, len(factors_df)), weighting="score_weighted")
+                    tilt_table = pd.DataFrame({
+                        "자산": list(tilted_w.keys()),
+                        "팩터 틸트 비중": [f"{w*100:.2f}%" for w in tilted_w.values()],
+                        "배분 금액": [f"${w * wallet_size:,.2f}" for w in tilted_w.values()],
+                    })
+                    st.dataframe(tilt_table[tilt_table["배분 금액"] != "$0.00"], use_container_width=True, hide_index=True)
             except Exception as ex:
                 st.error(f"팩터 분석 오류: {ex}")
 

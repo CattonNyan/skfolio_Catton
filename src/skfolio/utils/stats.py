@@ -594,6 +594,8 @@ def compute_optimal_n_clusters(distance: FloatArray, linkage_matrix: FloatArray)
     dispersion = np.array(dispersion)
     gaps = np.roll(dispersion, -2) + dispersion - 2 * np.roll(dispersion, -1)
     gaps = gaps[:-2]
+    if len(gaps) == 0:
+        return max(1, min(2, distance.shape[0]))
     # k=0 represents one cluster
     k = np.argmax(gaps) + 2
     return k
