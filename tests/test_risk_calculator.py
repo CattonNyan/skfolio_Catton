@@ -90,6 +90,33 @@ class RiskCalculatorTests(unittest.TestCase):
             self.assertFalse(update_freqtrade_risk_config(sample, config_path, "synthetic"))
             self.assertEqual(config_path.read_text(encoding="utf-8"), original)
 
+    def test_effective_number_of_constituents(self):
+        from scripts.crypto_risk_budget_calculator import calculate_effective_number_of_constituents
+        # 4 equal assets: ENC should be 4.0
+        enc_eq = calculate_effective_number_of_constituents([0.25, 0.25, 0.25, 0.25])
+        self.assertAlmostEqual(enc_eq, 4.0, places=2)
+
+        # Concentrated asset: ENC should be 1.0
+        enc_conc = calculate_effective_number_of_constituents([1.0, 0.0, 0.0])
+        self.assertAlmostEqual(enc_conc, 1.0, places=2)
+
+    def test_effective_number_of_bets(self):
+        from scripts.crypto_risk_budget_calculator import calculate_effective_number_of_bets
+        import numpy as np
+        # Diagonal uncorrelated covariance
+        cov = np.diag([0.04, 0.04, 0.04])
+        # Equal weights in equal risk uncorrelated assets -> ENB should be 3.0
+        res = calculate_effective_number_of_bets([1/3, 1/3, 1/3], cov)
+        self.assertAlmostEqual(res["enb_entropy"], 3.0, places=1)
+        self.assertAlmostEqual(res["enb_herfindahl"], 3.0, places=1)
+
+        # Unequal risk: one hyper-volatile asset
+        cov_skew = np.diag([0.01, 0.01, 1.0])
+        res_skew = calculate_effective_number_of_bets([1/3, 1/3, 1/3], cov_skew)
+        # ENB should be significantly less than 3 because asset 3 dominates risk
+        self.assertLess(res_skew["enb_entropy"], 2.0)
+
 
 if __name__ == "__main__":
     unittest.main()
+

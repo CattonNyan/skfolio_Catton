@@ -61,6 +61,67 @@ def calculate_volatility_metrics(prices: pd.DataFrame) -> pd.DataFrame:
     }, index=prices.columns).rename_axis("asset")
 
 
+def calculate_effective_number_of_constituents(weights: np.ndarray | Sequence[float]) -> float:
+    """Calculate Effective Number of Constituents (ENC = 1 / sum(w_i^2))."""
+    w = np.asarray(weights, dtype=float)
+    if len(w) == 0 or np.sum(w) <= 0:
+        return 0.0
+    w_norm = w / np.sum(w)
+    herfindahl = np.sum(w_norm ** 2)
+    return float(round(1.0 / herfindahl, 3)) if herfindahl > 0 else 0.0
+
+
+def calculate_effective_number_of_bets(
+    weights: np.ndarray | Sequence[float],
+    cov_matrix: np.ndarray,
+) -> dict[str, object]:
+    """Calculate Meucci Effective Number of Bets (ENB) and Relative Risk Contributions.
+
+    Parameters:
+    - weights: Portfolio weights vector
+    - cov_matrix: Asset covariance matrix (N x N)
+    """
+    w = np.asarray(weights, dtype=float)
+    sigma = np.asarray(cov_matrix, dtype=float)
+    if len(w) == 0 or sigma.shape[0] != len(w) or sigma.shape[1] != len(w):
+        raise ValueError("Weights length must match covariance matrix dimensions.")
+
+    port_var = float(w @ sigma @ w)
+    if port_var <= 0.0:
+        return {
+            "enb_entropy": 0.0,
+            "enb_herfindahl": 0.0,
+            "relative_risk_contributions": np.zeros_like(w),
+            "portfolio_volatility": 0.0,
+        }
+
+    port_vol = np.sqrt(port_var)
+    mrc = (sigma @ w) / port_vol
+    trc = w * mrc
+    p = trc / port_vol
+
+    p_clean = np.maximum(0.0, p)
+    total_p = np.sum(p_clean)
+    if total_p > 0:
+        p_clean = p_clean / total_p
+    else:
+        p_clean = np.ones(len(w)) / len(w)
+
+    entropy_term = 0.0
+    for pi in p_clean:
+        if pi > 1e-12:
+            entropy_term -= pi * np.log(pi)
+    enb_entropy = float(np.exp(entropy_term))
+    enb_herf = float(1.0 / np.sum(p_clean ** 2)) if np.sum(p_clean ** 2) > 0 else 0.0
+
+    return {
+        "enb_entropy": round(enb_entropy, 3),
+        "enb_herfindahl": round(enb_herf, 3),
+        "relative_risk_contributions": p_clean,
+        "portfolio_volatility": port_vol,
+    }
+
+
 def compute_risk_guidelines(
     prices: pd.DataFrame,
     weights: dict[str, float] | None = None,
