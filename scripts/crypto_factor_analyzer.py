@@ -46,6 +46,58 @@ _FACTOR_KEY_TO_Z: dict[str, str] = {
 }
 
 
+def compute_omega_ratio(
+    returns: pd.Series | np.ndarray,
+    threshold: float = 0.0,
+) -> float:
+    """Calculate Keating & Shadwick (2002) Omega Ratio.
+
+    Omega = sum(max(0, r - L)) / sum(max(0, L - r))
+    Evaluates probability-weighted gains versus losses relative to threshold L.
+    """
+    ret_arr = np.asarray(returns, dtype=float)
+    if len(ret_arr) == 0:
+        raise ValueError("Returns must be non-empty.")
+    valid_ret = ret_arr[np.isfinite(ret_arr)]
+    if len(valid_ret) == 0:
+        return 0.0
+
+    gains = np.maximum(0.0, valid_ret - threshold)
+    losses = np.maximum(0.0, threshold - valid_ret)
+
+    sum_losses = float(np.sum(losses))
+    sum_gains = float(np.sum(gains))
+
+    if sum_losses == 0.0:
+        return float("inf") if sum_gains > 0.0 else 1.0
+
+    return float(sum_gains / sum_losses)
+
+
+def compute_gain_to_pain_ratio(
+    returns: pd.Series | np.ndarray,
+) -> float:
+    """Calculate Jack Schwager's Gain-to-Pain Ratio (GPR).
+
+    GPR = sum(all returns) / sum(|negative returns|)
+    Measures cumulative net return per unit of pain suffered.
+    """
+    ret_arr = np.asarray(returns, dtype=float)
+    if len(ret_arr) == 0:
+        raise ValueError("Returns must be non-empty.")
+    valid_ret = ret_arr[np.isfinite(ret_arr)]
+    if len(valid_ret) == 0:
+        return 0.0
+
+    total_return = float(np.sum(valid_ret))
+    pain = float(np.sum(np.abs(valid_ret[valid_ret < 0])))
+
+    if pain == 0.0:
+        return float("inf") if total_return > 0.0 else 0.0
+
+    return float(total_return / pain)
+
+
 def compute_crypto_factors(
     prices: pd.DataFrame,
     lookback_bars: int = 60,
@@ -107,12 +159,22 @@ def compute_crypto_factors(
     downside_dev = neg_returns.std().fillna(vol) + 1e-9
     sortino_ratio = returns.mean() / downside_dev
 
+    # Omega ratio and Gain-to-Pain ratio per asset
+    omega_vals = {}
+    gpr_vals = {}
+    for col in returns.columns:
+        r_col = returns[col].dropna().values
+        omega_vals[col] = compute_omega_ratio(r_col, threshold=0.0)
+        gpr_vals[col] = compute_gain_to_pain_ratio(r_col)
+
     df = pd.DataFrame({
         "momentum": momentum,
         "volatility": vol,
         "low_volatility": low_vol,
         "trend_strength": trend_ratio,
         "sortino_ratio": sortino_ratio,
+        "omega_ratio": pd.Series(omega_vals),
+        "gain_to_pain": pd.Series(gpr_vals),
     }, index=prices.columns).rename_axis("asset")
 
     # Compute Z-Scores across assets

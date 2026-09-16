@@ -106,6 +106,33 @@ class FactorAnalyzerTests(unittest.TestCase):
         for v in w_score.values():
             self.assertGreaterEqual(v, 0.0)
 
+    def test_omega_ratio(self):
+        from scripts.crypto_factor_analyzer import compute_omega_ratio
+        # Balanced returns: positive and negative
+        rets = np.array([0.02, 0.04, -0.01, -0.02, 0.03])
+        # Gains: 0.02 + 0.04 + 0.03 = 0.09
+        # Losses: 0.01 + 0.02 = 0.03 -> Omega = 0.09 / 0.03 = 3.0
+        omega = compute_omega_ratio(rets, threshold=0.0)
+        self.assertAlmostEqual(omega, 3.0, places=4)
+
+        # All positive returns
+        self.assertEqual(compute_omega_ratio([0.01, 0.02]), float("inf"))
+
+        with self.assertRaises(ValueError):
+            compute_omega_ratio([])
+
+    def test_gain_to_pain_ratio(self):
+        from scripts.crypto_factor_analyzer import compute_gain_to_pain_ratio
+        rets = np.array([0.05, 0.03, -0.02, -0.01])
+        # Total return = 0.05 + 0.03 - 0.02 - 0.01 = 0.05
+        # Pain = 0.02 + 0.01 = 0.03 -> GPR = 0.05 / 0.03 = 1.6667
+        gpr = compute_gain_to_pain_ratio(rets)
+        self.assertAlmostEqual(gpr, 5.0 / 3.0, places=4)
+
+        with self.assertRaises(ValueError):
+            compute_gain_to_pain_ratio([])
+
 
 if __name__ == "__main__":
     unittest.main()
+
