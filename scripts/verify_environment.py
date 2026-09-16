@@ -53,6 +53,9 @@ def verify():
         ("scripts.crypto_kimchi_hedging", "Kimchi Hedging Simulator"),
         ("scripts.crypto_synthetic_data", "Jump-Diffusion Path Generator"),
         ("scripts.freqtrade_funding_arbitrage", "Funding Arbitrage Configurator"),
+        ("scripts.fetch_coinbase_crypto", "Coinbase Price Fetcher"),
+        ("scripts.crypto_vol_target_allocator", "Vol-Targeting Allocator"),
+        ("scripts.crypto_tail_dependence", "Tail Dependence Analyzer"),
     ]
     for module_name, display_name in korean_tools:
         try:

@@ -35,6 +35,9 @@ from tests.test_triangular_arbitrage import TriangularArbitrageTests
 from tests.test_kimchi_hedging import KimchiHedgingTests
 from tests.test_synthetic_data import SyntheticDataTests
 from tests.test_funding_arbitrage import FundingArbitrageTests
+from tests.test_coinbase_fetcher import CoinbaseFetcherTests
+from tests.test_vol_target_allocator import VolTargetAllocatorTests
+from tests.test_tail_dependence import TailDependenceTests
 
 
 def suite():
@@ -70,6 +73,9 @@ def suite():
     s.addTests(loader.loadTestsFromTestCase(KimchiHedgingTests))
     s.addTests(loader.loadTestsFromTestCase(SyntheticDataTests))
     s.addTests(loader.loadTestsFromTestCase(FundingArbitrageTests))
+    s.addTests(loader.loadTestsFromTestCase(CoinbaseFetcherTests))
+    s.addTests(loader.loadTestsFromTestCase(VolTargetAllocatorTests))
+    s.addTests(loader.loadTestsFromTestCase(TailDependenceTests))
     return s
 
 

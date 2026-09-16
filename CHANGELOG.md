@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v1.5.0 (2026-09-16)
+
+### Features
+
+- **coinbase**: Institutional USD benchmark candlestick fetcher and spot price API (`scripts/fetch_coinbase_crypto.py`)
+  - Connects to Coinbase Exchange public candles and v2 spot endpoints for institutional USD pricing
+- **factor**: Keating-Shadwick Omega ratio and Jack Schwager Gain-to-Pain ratio metrics (`scripts/crypto_factor_analyzer.py`)
+  - Evaluates non-Gaussian gain/loss distribution probabilities and cumulative return per unit of downside pain
+- **vol-target**: Constant volatility targeting allocator and dynamic cash buffer engine (`scripts/crypto_vol_target_allocator.py`)
+  - Automatically scales risky exposure inversely with rolling realized volatility, preserving capital during crash regimes
+- **tail-risk**: Empirical lower/upper tail dependence and crash asymmetry matrix (`scripts/crypto_tail_dependence.py`)
+  - Quantifies systemic joint crash vulnerability and asymmetric tail co-movement across cryptocurrencies
+
+### Testing & Verification
+
+- Expanded test suite to **232 unit tests passing across 33 test modules** (`tests/test_crypto_suite.py`)
+- Registered Coinbase fetcher, Vol-Target allocator, and Tail-Dependence analyzer in `scripts/verify_environment.py`
+
 ## v1.4.0 (2026-09-16)
 
 ### Features
