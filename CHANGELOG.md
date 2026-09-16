@@ -2,6 +2,33 @@
 
 <!-- version list -->
 
+## v1.4.0 (2026-09-16)
+
+### Features
+
+- **liquidity**: Amihud illiquidity ratio and Corwin-Schultz (2012) spread filter (`scripts/crypto_liquidity_filter.py`)
+  - Filters out thin-book, high-impact altcoins prior to portfolio optimization
+- **sizing**: Discrete and continuous Kelly Criterion & Half-Kelly position sizer (`scripts/crypto_kelly_sizer.py`)
+  - Calculates optimal capital growth fractions and geometric compounding rates
+- **bithumb**: Bithumb Korean exchange public REST API candlestick fetcher and symbol normalizer (`scripts/fetch_bithumb_crypto.py`)
+- **arbitrage**: 3-legged triangular arbitrage scanner and fee drag analyzer (`scripts/crypto_triangular_arbitrage.py`)
+  - Calculates implied cross-rates, theoretical profit, and net profit after 3-leg execution drag
+- **rebalance**: Maximum drawdown circuit breaker and de-risking guard (`scripts/crypto_rebalancing_backtest.py`)
+  - Automatically shifts portfolio to cash/stablecoin when rolling peak-to-trough drawdown exceeds threshold
+- **black-litterman**: Idzorek view confidence scaling to uncertainty matrix (`scripts/crypto_black_litterman.py`)
+  - Scales $\Omega$ diagonally based on user confidence levels $(0 < c < 1)$
+- **hedging**: Kimchi Premium delta-neutral basis and funding rate arbitrage simulator (`scripts/crypto_kimchi_hedging.py`)
+  - Simulates carry yield, funding income, network withdrawal fees, and annualized APR %
+- **risk**: Meucci Effective Number of Bets (ENB) and Constituents (ENC) diversification metrics (`scripts/crypto_risk_budget_calculator.py`)
+- **synthetic**: Correlated multivariate crypto paths with Merton (1976) jump-diffusion generator (`scripts/crypto_synthetic_data.py`)
+- **funding-arbitrage**: Freqtrade funding rate carrier whitelist and futures config generator (`scripts/freqtrade_funding_arbitrage.py`)
+- **dashboard**: Streamlit dashboard v1.4.0 integration with ENB/ENC diversification metrics and drawdown guard slider (`app_dashboard.py`)
+
+### Testing & Verification
+
+- Expanded test suite to **217 unit tests passing across 30 test modules** (`tests/test_crypto_suite.py`)
+- Registered all 7 new tools in `scripts/verify_environment.py`
+
 ## v1.3.0 (2026-09-16)
 
 ### Features

@@ -46,6 +46,13 @@ def verify():
         ("scripts.crypto_tax_calculator", "Crypto Tax Calculator"),
         ("scripts.crypto_factor_analyzer", "Multi-Factor Screener"),
         ("scripts.crypto_black_litterman", "Black-Litterman Engine"),
+        ("scripts.crypto_liquidity_filter", "Liquidity Risk Filter"),
+        ("scripts.crypto_kelly_sizer", "Kelly Position Sizer"),
+        ("scripts.fetch_bithumb_crypto", "Bithumb Price Fetcher"),
+        ("scripts.crypto_triangular_arbitrage", "Triangular Arbitrage Scanner"),
+        ("scripts.crypto_kimchi_hedging", "Kimchi Hedging Simulator"),
+        ("scripts.crypto_synthetic_data", "Jump-Diffusion Path Generator"),
+        ("scripts.freqtrade_funding_arbitrage", "Funding Arbitrage Configurator"),
     ]
     for module_name, display_name in korean_tools:
         try:

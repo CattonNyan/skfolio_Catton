@@ -28,6 +28,13 @@ from tests.test_upbit_fetcher import UpbitFetcherTests
 from tests.test_krw_fee_calculator import KrwFeeCalculatorTests
 from tests.test_kimchi_regime import KimchiRegimeTests
 from tests.test_travel_rule_advisor import TravelRuleAdvisorTests
+from tests.test_liquidity_filter import LiquidityFilterTests
+from tests.test_kelly_sizer import KellySizerTests
+from tests.test_bithumb_fetcher import BithumbFetcherTests
+from tests.test_triangular_arbitrage import TriangularArbitrageTests
+from tests.test_kimchi_hedging import KimchiHedgingTests
+from tests.test_synthetic_data import SyntheticDataTests
+from tests.test_funding_arbitrage import FundingArbitrageTests
 
 
 def suite():
@@ -56,6 +63,13 @@ def suite():
     s.addTests(loader.loadTestsFromTestCase(KrwFeeCalculatorTests))
     s.addTests(loader.loadTestsFromTestCase(KimchiRegimeTests))
     s.addTests(loader.loadTestsFromTestCase(TravelRuleAdvisorTests))
+    s.addTests(loader.loadTestsFromTestCase(LiquidityFilterTests))
+    s.addTests(loader.loadTestsFromTestCase(KellySizerTests))
+    s.addTests(loader.loadTestsFromTestCase(BithumbFetcherTests))
+    s.addTests(loader.loadTestsFromTestCase(TriangularArbitrageTests))
+    s.addTests(loader.loadTestsFromTestCase(KimchiHedgingTests))
+    s.addTests(loader.loadTestsFromTestCase(SyntheticDataTests))
+    s.addTests(loader.loadTestsFromTestCase(FundingArbitrageTests))
     return s
 
 
