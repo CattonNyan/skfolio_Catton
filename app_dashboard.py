@@ -42,6 +42,10 @@ from scripts.crypto_tax_calculator import compute_crypto_tax_impact
 from scripts.crypto_travel_rule_advisor import calculate_travel_rule_plan
 from scripts.fetch_upbit_crypto import fetch_upbit_historical_prices
 from scripts.crypto_factor_analyzer import compute_crypto_factors, generate_factor_tilted_weights
+from scripts.crypto_risk_budget_calculator import (
+    calculate_effective_number_of_bets,
+    calculate_effective_number_of_constituents,
+)
 
 # Optional skfolio optimization imports
 try:
@@ -522,11 +526,18 @@ def main():
         vol = port_ret.std() * 100
         sharpe = port_ret.mean() / (port_ret.std() + 1e-9)
 
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("선택된 최적화 모델", model_type.split("(")[0].strip())
-        col2.metric("캔들당 기대 수익률", f"{mean_ret:.4f}%")
-        col3.metric("캔들당 변동성(위험)", f"{vol:.4f}%")
-        col4.metric("샤프 지수 (Return/Risk)", f"{sharpe:.3f}")
+        w_vec = np.array([weights_dict.get(c, 0.0) for c in returns.columns])
+        enc = calculate_effective_number_of_constituents(w_vec)
+        enb_res = calculate_effective_number_of_bets(w_vec, returns.cov().values)
+        enb = enb_res["enb_entropy"]
+
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
+        col1.metric("선택 모델", model_type.split("(")[0].strip())
+        col2.metric("기대 수익률", f"{mean_ret:.4f}%")
+        col3.metric("변동성(위험)", f"{vol:.4f}%")
+        col4.metric("샤프 지수", f"{sharpe:.3f}")
+        col5.metric("유효 자산(ENC)", f"{enc:.2f}개")
+        col6.metric("유효 베팅(ENB)", f"{enb:.2f}개")
 
         st.markdown("---")
 
@@ -626,7 +637,7 @@ def main():
         st.subheader("🔄 주기적 포트폴리오 리밸런싱(Rolling Window) 백테스트")
         st.caption("일정 주기마다 최적 비중을 재계산하고 자산을 재조정(Rebalancing)할 때의 실제 워크포워드 성과를 측정합니다.")
 
-        col_r1, col_r2, col_r3, col_r4 = st.columns(4)
+        col_r1, col_r2, col_r3, col_r4, col_r5 = st.columns(5)
         with col_r1:
             train_bars = st.slider("학습 윈도우 크기 (Lookback Bars)", min_value=50, max_value=500, value=200, step=25)
         with col_r2:
@@ -636,6 +647,9 @@ def main():
         with col_r4:
             tol_band_pct = st.slider("드리프트 허용 밴드(%)", min_value=0, max_value=20, value=0, step=1, help="오차 미만의 드리프트 발생 시 리밸런싱을 건너뛰어 수수료 절감")
             tol_band = tol_band_pct / 100.0 if tol_band_pct > 0 else None
+        with col_r5:
+            dd_guard_pct = st.slider("최대 낙폭 가드 (MDD Guard %)", min_value=0, max_value=30, value=0, step=5, help="고점 대비 지정 낙폭 발생 시 긴급 현금 대피")
+            dd_guard = dd_guard_pct / 100.0 if dd_guard_pct > 0 else None
 
         if st.button("🚀 롤링 리밸런싱 백테스트 실행", key="btn_run_rebalance"):
             with st.spinner("리밸런싱 워크포워드 시뮬레이션 계산 중..."):
@@ -663,6 +677,7 @@ def main():
                         fee_rate=fee_rate,
                         model_choice=clean_model,
                         tolerance_band=tol_band,
+                        drawdown_guard=dd_guard,
                     )
                     s = reb_res["summary"]
 
@@ -673,6 +688,8 @@ def main():
                     turnover_label = f"{s['Average Turnover (%)']:.2f}%"
                     if s.get("Skipped Rebalances", 0) > 0:
                         turnover_label += f" ({s['Skipped Rebalances']}회 스킵)"
+                    if s.get("Guard Triggers", 0) > 0:
+                        turnover_label += f" [가드 {s['Guard Triggers']}회]"
                     rc4.metric("평균 회전율 (Turnover)", turnover_label)
 
                     fig_reb_nav = create_rebalancing_nav_chart(reb_res["nav_port"], reb_res["nav_eq"], reb_res["nav_bh"])
