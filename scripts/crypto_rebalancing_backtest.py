@@ -63,6 +63,7 @@ def simulate_rebalancing(
     fee_rate: float = 0.001,
     model_choice: str = "Risk Parity",
     tolerance_band: float | None = None,
+    drawdown_guard: float | None = None,
 ) -> dict[str, object]:
     """
     Run rolling-window walk-forward rebalancing backtest.
@@ -74,6 +75,7 @@ def simulate_rebalancing(
     - fee_rate: Transaction fee (e.g., 0.001 = 0.1% per turnover)
     - model_choice: "Risk Parity", "Max Sharpe", "Min Variance", "Min Semi-Variance", "Min CVaR", "HRP", "Schur", or "Equal Weight"
     - tolerance_band: Minimum weight deviation threshold (0.0~1.0) to execute rebalancing; avoids needless turnover/fees
+    - drawdown_guard: Maximum tolerable drawdown (e.g. 0.15 = 15%) from peak NAV before temporarily moving to cash/stablecoin
     """
     if not isinstance(prices, pd.DataFrame) or prices.shape[1] < 2 or len(prices) < 2:
         raise ValueError("Rebalancing requires at least two assets and two price rows.")
@@ -98,6 +100,15 @@ def simulate_rebalancing(
             or tolerance_band > 1
         ):
             raise ValueError("Tolerance band must be a finite number between 0 and 1.")
+    if drawdown_guard is not None:
+        if (
+            isinstance(drawdown_guard, bool)
+            or not isinstance(drawdown_guard, (int, float, np.number))
+            or not np.isfinite(drawdown_guard)
+            or drawdown_guard <= 0
+            or drawdown_guard >= 1
+        ):
+            raise ValueError("Drawdown guard must be a finite number strictly between 0 and 1.")
     supported_models = {
         "Risk Parity",
         "Max Sharpe",
@@ -131,6 +142,8 @@ def simulate_rebalancing(
     rebalance_dates: list[pd.Timestamp] = []
     weight_history: list[dict[str, float]] = []
     skipped_rebalances = 0
+    guard_triggers = 0
+    rolling_peak_nav = 1.0
 
     # Simulation loop
     test_start = train_bars
@@ -201,8 +214,17 @@ def simulate_rebalancing(
             # Deduct cost from portfolio NAV at rebalancing
             nav_portfolio[-1] *= (1.0 - cost)
 
-        # Portfolio return on this bar
-        port_ret = float(np.dot(current_weights, bar_ret))
+        # Check drawdown guard
+        current_nav = nav_portfolio[-1]
+        rolling_peak_nav = max(rolling_peak_nav, current_nav)
+        dd = (current_nav - rolling_peak_nav) / rolling_peak_nav if rolling_peak_nav > 0 else 0.0
+
+        if drawdown_guard is not None and dd <= -drawdown_guard:
+            guard_triggers += 1
+            port_ret = 0.0
+        else:
+            # Portfolio return on this bar
+            port_ret = float(np.dot(current_weights, bar_ret))
         next_nav_port = nav_portfolio[-1] * (1.0 + port_ret)
         nav_portfolio.append(next_nav_port)
 
@@ -273,6 +295,8 @@ def simulate_rebalancing(
         "Rebalancing Count": len(rebalance_dates),
         "Skipped Rebalances": skipped_rebalances,
         "Tolerance Band (%)": round(tolerance_band * 100, 2) if tolerance_band is not None else "None",
+        "Drawdown Guard (%)": round(drawdown_guard * 100, 2) if drawdown_guard is not None else "None",
+        "Guard Triggers": guard_triggers,
         "Equal Weight Return (%)": round(total_return_eq, 2),
         "Equal Weight MDD (%)": round(eq_mdd * 100, 2),
         "Buy & Hold Return (%)": round(total_return_bh, 2),
@@ -287,6 +311,7 @@ def simulate_rebalancing(
         "rebalance_dates": rebalance_dates,
         "weight_history": weight_history,
         "skipped_rebalances": skipped_rebalances,
+        "guard_triggers": guard_triggers,
     }
 
 

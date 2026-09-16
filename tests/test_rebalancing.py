@@ -149,6 +149,29 @@ class RebalancingTests(unittest.TestCase):
             with self.subTest(bad_band=bad_band), self.assertRaises(ValueError):
                 simulate_rebalancing(prices, tolerance_band=bad_band)
 
+    def test_drawdown_guard(self):
+        # Generate data with a steep downward shock
+        prices = generate_synthetic_crypto_data(periods=120)
+        # Force a steep crash in second half
+        prices.iloc[60:] = prices.iloc[60:] * np.linspace(1.0, 0.5, len(prices) - 60)[:, None]
+
+        res = simulate_rebalancing(
+            prices=prices,
+            train_bars=40,
+            rebalance_freq_bars=10,
+            drawdown_guard=0.10,  # 10% drawdown threshold
+        )
+        self.assertIn("Guard Triggers", res["summary"])
+        self.assertGreater(res["guard_triggers"], 0)
+        self.assertEqual(res["summary"]["Drawdown Guard (%)"], 10.0)
+
+    def test_drawdown_guard_invalid_parameters_rejected(self):
+        prices = generate_synthetic_crypto_data(periods=50)
+        for bad_guard in (-0.05, 0.0, 1.0, 1.2, "bad", True, float("nan")):
+            with self.subTest(bad_guard=bad_guard), self.assertRaises(ValueError):
+                simulate_rebalancing(prices, drawdown_guard=bad_guard)
+
 
 if __name__ == "__main__":
     unittest.main()
+
