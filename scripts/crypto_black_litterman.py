@@ -36,6 +36,7 @@ def compute_black_litterman_weights(
     tau: float = 0.05,
     risk_aversion: float = 2.5,
     prior_weights: dict[str, float] | None = None,
+    view_confidences: list[float] | None = None,
 ) -> dict[str, object]:
     """
     Compute Black-Litterman posterior expected returns and optimal weights.
@@ -46,6 +47,7 @@ def compute_black_litterman_weights(
     - tau: Scalar representing uncertainty in prior estimate (default: 0.05)
     - risk_aversion: Risk aversion parameter lambda (default: 2.5)
     - prior_weights: Optional benchmark / market equilibrium weights (default: equal weights)
+    - view_confidences: Optional confidence levels per view (0 < c < 1), applying Idzorek uncertainty scaling
     """
     if not isinstance(prices, pd.DataFrame) or prices.shape[1] == 0 or len(prices) < 2:
         raise ValueError("Prices must contain at least one asset and two rows.")
@@ -59,6 +61,14 @@ def compute_black_litterman_weights(
         raise ValueError("Tau must be a finite, strictly positive number.")
     if isinstance(risk_aversion, bool) or not isinstance(risk_aversion, (int, float, np.number)) or not np.isfinite(risk_aversion) or risk_aversion <= 0:
         raise ValueError("Risk aversion must be a finite, strictly positive number.")
+    if view_confidences is not None:
+        if not isinstance(view_confidences, (list, tuple, np.ndarray)):
+            raise ValueError("View confidences must be a list or array of numbers.")
+        if views is None or len(view_confidences) != len(views):
+            raise ValueError("Number of confidences must match number of views.")
+        for conf in view_confidences:
+            if isinstance(conf, bool) or not isinstance(conf, (int, float, np.number)) or not (0.0 < conf < 1.0):
+                raise ValueError("View confidences must be strictly between 0 and 1 (exclusive).")
 
     returns = prices.pct_change().dropna()
     assets = list(returns.columns)
@@ -157,8 +167,14 @@ def compute_black_litterman_weights(
     Q = np.array(q_vals)
     k = len(Q)
 
-    # 3. View uncertainty matrix Omega (He & Litterman specification: diag(P * (tau * Sigma) * P^T))
-    omega = np.diag(np.diag(P @ (tau * sigma) @ P.T))
+    # 3. View uncertainty matrix Omega (He & Litterman / Idzorek confidence specification)
+    diag_omega = np.diag(P @ (tau * sigma) @ P.T)
+    if view_confidences is not None:
+        conf_arr = np.array(view_confidences, dtype=float)
+        # Idzorek scaling: Omega_kk = ((1 - c_k) / c_k) * (P (tau Sigma) P^T)_kk
+        scaling = (1.0 - conf_arr) / conf_arr
+        diag_omega = diag_omega * scaling
+    omega = np.diag(diag_omega)
     # Ensure positive definiteness
     omega += np.eye(k) * 1e-8
 

@@ -127,6 +127,26 @@ class BlackLittermanTests(unittest.TestCase):
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 parse_cli_prior_weights(bad)
 
+    def test_view_confidences(self):
+        prices = generate_synthetic_crypto_data(periods=100)
+        views = ["BTC/USDT>ETH/USDT:0.05"]
+        # High confidence view
+        res_high = compute_black_litterman_weights(prices, views=views, view_confidences=[0.90])
+        # Low confidence view
+        res_low = compute_black_litterman_weights(prices, views=views, view_confidences=[0.10])
+        # High confidence should shift BTC weight higher than low confidence
+        w_high_btc = res_high["posterior_weights"]["BTC/USDT"]
+        w_low_btc = res_low["posterior_weights"]["BTC/USDT"]
+        self.assertGreater(w_high_btc, w_low_btc)
+
+    def test_view_confidences_validation(self):
+        prices = generate_synthetic_crypto_data(periods=50)
+        views = ["BTC/USDT:0.05"]
+        for bad_conf in ([1.5], [-0.1], [0.0], [1.0], [0.5, 0.5], "not_a_list"):
+            with self.subTest(bad_conf=bad_conf), self.assertRaises(ValueError):
+                compute_black_litterman_weights(prices, views=views, view_confidences=bad_conf)
+
 
 if __name__ == "__main__":
     unittest.main()
+
