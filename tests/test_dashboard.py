@@ -205,6 +205,20 @@ class DashboardTests(unittest.TestCase):
         empty_fig = create_vol_target_chart({})
         self.assertIsInstance(empty_fig, go.Figure)
 
+    @unittest.skipUnless(HAS_DASHBOARD_DEPS, "plotly or streamlit not installed")
+    def test_create_tail_dependence_heatmap(self):
+        from app_dashboard import create_tail_dependence_heatmap
+        matrix = pd.DataFrame(
+            [[1.0, 0.4], [0.4, 1.0]],
+            index=["BTC", "ETH"],
+            columns=["BTC", "ETH"],
+        )
+        fig = create_tail_dependence_heatmap(matrix, "Test Tail Heatmap")
+        self.assertIsInstance(fig, go.Figure)
+
+        empty_fig = create_tail_dependence_heatmap(pd.DataFrame(), "Empty Matrix")
+        self.assertIsInstance(empty_fig, go.Figure)
+
 
 if __name__ == "__main__":
     unittest.main()

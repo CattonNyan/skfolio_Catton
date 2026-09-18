@@ -51,6 +51,10 @@ from scripts.crypto_vol_target_allocator import (
     calculate_portfolio_realized_volatility,
     simulate_vol_targeted_backtest,
 )
+from scripts.crypto_tail_dependence import (
+    compute_bivariate_tail_dependence,
+    compute_tail_dependence_matrix,
+)
 
 # Optional skfolio optimization imports
 try:
@@ -286,6 +290,29 @@ def create_vol_target_chart(sim_res: dict[str, object]) -> go.Figure:
         plot_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=20, r=20, t=40, b=20),
         hovermode="x unified",
+    )
+    return fig
+
+
+def create_tail_dependence_heatmap(matrix: pd.DataFrame, title: str, colorscale: str = "Reds") -> go.Figure:
+    """Create interactive heatmap for lower/upper tail dependence or crash asymmetry."""
+    if not isinstance(matrix, pd.DataFrame) or matrix.empty:
+        fig = go.Figure()
+        fig.update_layout(title=title, template="plotly_dark")
+        return fig
+
+    fig = px.imshow(
+        matrix,
+        text_auto=".2f",
+        aspect="auto",
+        color_continuous_scale=colorscale,
+        title=title,
+    )
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=20, r=20, t=40, b=20),
     )
     return fig
 
@@ -552,7 +579,7 @@ def main():
         weights_dict = (inv_vols / inv_vols.sum()).to_dict()
 
     # 4. Tab Interface
-    tab_opt, tab_rebalance, tab_mc, tab_stress, tab_macro, tab_kimchi, tab_tax, tab_krw_fee, tab_travel, tab_factor, tab_vol_target = st.tabs([
+    tab_opt, tab_rebalance, tab_mc, tab_stress, tab_macro, tab_kimchi, tab_tax, tab_krw_fee, tab_travel, tab_factor, tab_vol_target, tab_tail = st.tabs([
         "📊 포트폴리오 최적화 & 자산배분",
         "🔄 주기적 리밸런싱 백테스트",
         "🎲 몬테카를로 미래 시뮬레이션",
@@ -564,6 +591,7 @@ def main():
         "🛡️ 특금법 트래블룰 안전 분할 전송",
         "🎯 퀀트 멀티팩터 & 스마트 베타",
         "🛡️ 변동성 타겟팅 & 동적 현금 버퍼",
+        "📉 꼬리 위험 & 극단 붕괴 의존성",
     ])
 
     with tab_opt:
@@ -1220,6 +1248,46 @@ def main():
                     st.info(f"📊 백테스트 결과: 기존 수익률 {s_un['total_return_pct']:.2f}% (MDD {s_un['max_drawdown_pct']:.2f}%) ➔ 타겟팅 적용 후 수익률 {s_vt['total_return_pct']:.2f}% (MDD {s_vt['max_drawdown_pct']:.2f}%, 평균 현금 비중 {s_vt['avg_cash_buffer_pct']:.1f}%)")
             except Exception as ex:
                 st.error(f"변동성 타겟팅 백테스트 오류: {ex}")
+
+    with tab_tail:
+        st.subheader("📉 극단 꼬리 위험 & 붕괴 비대칭 행렬 (Empirical Tail Dependence)")
+        st.caption("비선형 극단 상황(Flash Crash)에서의 코인 간 동반 폭락 확률(하방 꼬리 의존성, LTDC)과 동반 급등 확률(상방 꼬리 의존성, UTDC)을 측정합니다.")
+
+        q_val = st.slider("극단 꼬리 분위수 기준 (Tail Quantile Cutoff)", min_value=0.01, max_value=0.20, value=0.05, step=0.01)
+
+        try:
+            lower_m, upper_m, asym_m = compute_tail_dependence_matrix(returns, quantile=q_val)
+
+            tail_tab1, tail_tab2, tail_tab3 = st.tabs([
+                "🚨 하방 꼬리 폭락 의존성 (LTDC)",
+                "🚀 상방 꼬리 급등 의존성 (UTDC)",
+                "⚖️ 붕괴 비대칭 지수 (Crash Asymmetry)",
+            ])
+
+            with tail_tab1:
+                st.caption("하방 꼬리 의존성(LTDC): 한 코인이 하위 분위수 이하로 폭락할 때 다른 코인도 동반 폭락할 조건부 결합 확률")
+                fig_lower = create_tail_dependence_heatmap(lower_m, f"하방 극단 꼬리 폭락 의존성 행렬 (q = {q_val*100:.0f}%)", colorscale="Reds")
+                st.plotly_chart(fig_lower, use_container_width=True)
+
+            with tail_tab2:
+                st.caption("상방 꼬리 의존성(UTDC): 한 코인이 상위 분위수 이상으로 급등할 때 다른 코인도 동반 급등할 조건부 결합 확률")
+                fig_upper = create_tail_dependence_heatmap(upper_m, f"상방 극단 꼬리 급등 의존성 행렬 (q = {q_val*100:.0f}%)", colorscale="Greens")
+                st.plotly_chart(fig_upper, use_container_width=True)
+
+            with tail_tab3:
+                st.caption("붕괴 비대칭 지수(Crash Asymmetry = LTDC - UTDC): 양수(+)일수록 상승장보다 폭락장에서 동반 하락 위험이 훨씬 높음을 의미합니다.")
+                fig_asym = create_tail_dependence_heatmap(asym_m, "극단 붕괴 비대칭 지수 (Asymmetry = LTDC - UTDC)", colorscale="RdBu_r")
+                st.plotly_chart(fig_asym, use_container_width=True)
+
+            # Highlight pair with highest crash vulnerability
+            upper_tri = np.triu(np.ones(lower_m.shape), k=1).astype(bool)
+            lower_m_masked = lower_m.where(upper_tri)
+            max_pair_idx = lower_m_masked.stack().idxmax()
+            if isinstance(max_pair_idx, tuple) and len(max_pair_idx) == 2:
+                max_val = lower_m.loc[max_pair_idx[0], max_pair_idx[1]]
+                st.warning(f"⚠️ **최고 동반 폭락 위험 페어**: `{max_pair_idx[0]}` ↔ `{max_pair_idx[1]}` (동반 폭락 확률: {max_val*100:.1f}%). 두 자산을 동시에 과다 편입 시 분산투자 효과가 급락할 수 있습니다.")
+        except Exception as ex:
+            st.error(f"꼬리 의존성 분석 오류: {ex}")
 
 
 if __name__ == "__main__":
