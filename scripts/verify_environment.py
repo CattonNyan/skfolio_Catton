@@ -56,6 +56,8 @@ def verify():
         ("scripts.fetch_coinbase_crypto", "Coinbase Price Fetcher"),
         ("scripts.crypto_vol_target_allocator", "Vol-Targeting Allocator"),
         ("scripts.crypto_tail_dependence", "Tail Dependence Analyzer"),
+        ("scripts.crypto_drawdown_metrics", "Drawdown & Ulcer Index Engine"),
+        ("scripts.http_retry_helper", "HTTP Retry Helper"),
     ]
     for module_name, display_name in korean_tools:
         try:
