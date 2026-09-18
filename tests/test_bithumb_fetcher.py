@@ -7,6 +7,8 @@ from scripts.fetch_bithumb_crypto import (
     normalize_bithumb_symbol,
     fetch_bithumb_candlestick,
     fetch_bithumb_multi_assets,
+    fetch_bithumb_orderbook,
+    compute_bithumb_spread,
     VALID_BITHUMB_INTERVALS,
 )
 
@@ -59,6 +61,47 @@ class BithumbFetcherTests(unittest.TestCase):
         self.assertEqual(len(res.columns), 2)
         self.assertIn("BTC/KRW", res.columns)
         self.assertIn("ETH/KRW", res.columns)
+
+    def test_orderbook_invalid_parameters(self):
+        with self.assertRaises(ValueError):
+            fetch_bithumb_orderbook("BTC", count=0)
+        with self.assertRaises(ValueError):
+            fetch_bithumb_orderbook("BTC", count=100)
+        with self.assertRaises(ValueError):
+            compute_bithumb_spread({})
+        with self.assertRaises(ValueError):
+            compute_bithumb_spread({"bids": [], "asks": []})
+
+    @patch("urllib.request.urlopen")
+    def test_fetch_bithumb_orderbook_mock(self, mock_urlopen):
+        mock_data = {
+            "status": "0000",
+            "data": {
+                "timestamp": "1700000000000",
+                "order_currency": "BTC",
+                "payment_currency": "KRW",
+                "bids": [{"price": "90000000", "quantity": "0.5"}, {"price": "89900000", "quantity": "1.0"}],
+                "asks": [{"price": "90050000", "quantity": "0.8"}, {"price": "90100000", "quantity": "1.2"}],
+            }
+        }
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = json.dumps(mock_data).encode("utf-8")
+        mock_resp.__enter__.return_value = mock_resp
+        mock_urlopen.return_value = mock_resp
+
+        ob = fetch_bithumb_orderbook("BTC-KRW", count=2)
+        self.assertIn("bids", ob)
+        self.assertIn("asks", ob)
+        self.assertEqual(len(ob["bids"]), 2)
+
+        spread_info = compute_bithumb_spread(ob)
+        self.assertEqual(spread_info["best_bid"], 90000000.0)
+        self.assertEqual(spread_info["best_ask"], 90050000.0)
+        self.assertEqual(spread_info["spread_krw"], 50000.0)
+        self.assertAlmostEqual(spread_info["mid_price"], 90025000.0, places=1)
+        self.assertGreater(spread_info["spread_bps"], 0.0)
+        self.assertGreater(spread_info["bid_depth_krw"], 0.0)
+        self.assertGreater(spread_info["ask_depth_krw"], 0.0)
 
 
 if __name__ == "__main__":

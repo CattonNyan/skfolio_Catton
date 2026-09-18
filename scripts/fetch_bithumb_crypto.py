@@ -19,6 +19,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from scripts.http_retry_helper import fetch_json_with_retry
+
 # Ensure local skfolio source and scripts are discovered
 root_dir = str(Path(__file__).resolve().parents[1])
 src_dir = str(Path(__file__).resolve().parents[1] / "src")
@@ -74,10 +76,9 @@ def fetch_bithumb_candlestick(
 
     req = urllib.request.Request(
         url,
-        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) skfolio-catton/1.4.0"},
+        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) skfolio-catton/1.6.1"},
     )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        data = json.loads(resp.read().decode("utf-8"))
+    data = fetch_json_with_retry(req, timeout=timeout)
 
     if data.get("status") != "0000" or "data" not in data:
         raise RuntimeError(f"Bithumb API error for {order_curr}_{pay_curr}: {data.get('message', 'Unknown error')}")
@@ -125,6 +126,64 @@ def fetch_bithumb_multi_assets(
 
     merged = pd.DataFrame(close_series).sort_index().ffill().dropna()
     return merged
+
+
+def fetch_bithumb_orderbook(
+    symbol: str,
+    payment_currency: str = "KRW",
+    count: int = 30,
+    timeout: float = 5.0,
+) -> dict:
+    """Fetch order book from Bithumb public REST API.
+
+    Returns dict with keys: 'timestamp', 'order_currency', 'payment_currency', 'bids', 'asks'.
+    """
+    if count <= 0 or count > 50:
+        raise ValueError("count must be between 1 and 50.")
+
+    order_curr, pay_curr = normalize_bithumb_symbol(symbol, payment_currency)
+    url = f"{BITHUMB_API_BASE}/orderbook/{order_curr}_{pay_curr}?count={count}"
+
+    req = urllib.request.Request(
+        url,
+        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) skfolio-catton/1.6.1"},
+    )
+    data = fetch_json_with_retry(req, timeout=timeout)
+
+    if data.get("status") != "0000" or "data" not in data:
+        raise RuntimeError(f"Bithumb API error for {order_curr}_{pay_curr}: {data.get('message', 'Unknown error')}")
+
+    return data["data"]
+
+
+def compute_bithumb_spread(orderbook_data: dict) -> dict[str, float]:
+    """Calculate best bid, best ask, spread in KRW, spread in bps, and market depth from Bithumb order book."""
+    if not isinstance(orderbook_data, dict):
+        raise ValueError("orderbook_data must be a dictionary.")
+
+    bids = orderbook_data.get("bids", [])
+    asks = orderbook_data.get("asks", [])
+    if not bids or not asks:
+        raise ValueError("Order book bids and asks cannot be empty.")
+
+    best_bid = float(bids[0]["price"])
+    best_ask = float(asks[0]["price"])
+    mid_price = (best_bid + best_ask) / 2.0
+    spread_krw = max(0.0, best_ask - best_bid)
+    spread_bps = (spread_krw / mid_price * 10000.0) if mid_price > 0 else 0.0
+
+    bid_depth_krw = sum(float(b["price"]) * float(b["quantity"]) for b in bids)
+    ask_depth_krw = sum(float(a["price"]) * float(a["quantity"]) for a in asks)
+
+    return {
+        "best_bid": best_bid,
+        "best_ask": best_ask,
+        "mid_price": mid_price,
+        "spread_krw": spread_krw,
+        "spread_bps": round(spread_bps, 2),
+        "bid_depth_krw": round(bid_depth_krw, 2),
+        "ask_depth_krw": round(ask_depth_krw, 2),
+    }
 
 
 def main():
