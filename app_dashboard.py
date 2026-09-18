@@ -27,7 +27,10 @@ from scripts.crypto_portfolio_optimizer import (
     load_market_data,
     sanitize_weight_constraints,
 )
-from scripts.crypto_rebalancing_backtest import simulate_rebalancing
+from scripts.crypto_rebalancing_backtest import (
+    simulate_drift_band_rebalancing,
+    simulate_rebalancing,
+)
 from scripts.crypto_monte_carlo import simulate_monte_carlo
 from scripts.crypto_stress_tester import evaluate_stress_test
 from scripts.crypto_macro_regime import calculate_macro_regime_weights, fetch_fear_and_greed_index
@@ -801,72 +804,120 @@ def main():
         st.subheader("🔄 주기적 포트폴리오 리밸런싱(Rolling Window) 백테스트")
         st.caption("일정 주기마다 최적 비중을 재계산하고 자산을 재조정(Rebalancing)할 때의 실제 워크포워드 성과를 측정합니다.")
 
-        col_r1, col_r2, col_r3, col_r4, col_r5 = st.columns(5)
-        with col_r1:
-            train_bars = st.slider("학습 윈도우 크기 (Lookback Bars)", min_value=50, max_value=500, value=200, step=25)
-        with col_r2:
-            rebal_bars = st.slider("리밸런싱 주기 (Rebalance Every N Bars)", min_value=10, max_value=100, value=30, step=5)
-        with col_r3:
-            fee_rate = st.number_input("거래 수수료율 (Fee Rate)", min_value=0.0, max_value=0.01, value=0.001, step=0.0005, format="%.4f")
-        with col_r4:
-            tol_band_pct = st.slider("드리프트 허용 밴드(%)", min_value=0, max_value=20, value=0, step=1, help="오차 미만의 드리프트 발생 시 리밸런싱을 건너뛰어 수수료 절감")
-            tol_band = tol_band_pct / 100.0 if tol_band_pct > 0 else None
-        with col_r5:
-            dd_guard_pct = st.slider("최대 낙폭 가드 (MDD Guard %)", min_value=0, max_value=30, value=0, step=5, help="고점 대비 지정 낙폭 발생 시 긴급 현금 대피")
-            dd_guard = dd_guard_pct / 100.0 if dd_guard_pct > 0 else None
+        rebal_mode = st.radio(
+            "리밸런싱 모드 선택",
+            options=["정기 캘린더 주기 리밸런싱 (Periodic)", "허용오차 드리프트 밴드 리밸런싱 (Drift Band)"],
+            horizontal=True,
+        )
 
-        if st.button("🚀 롤링 리밸런싱 백테스트 실행", key="btn_run_rebalance"):
-            with st.spinner("리밸런싱 워크포워드 시뮬레이션 계산 중..."):
-                try:
-                    clean_model = "Equal Weight"
-                    if "Risk Parity" in model_type:
-                        clean_model = "Risk Parity"
-                    elif "Max Sharpe" in model_type:
-                        clean_model = "Max Sharpe"
-                    elif "Min Semi-Variance" in model_type:
-                        clean_model = "Min Semi-Variance"
-                    elif "Min CVaR" in model_type:
-                        clean_model = "Min CVaR"
-                    elif "Schur" in model_type:
-                        clean_model = "Schur"
-                    elif "Min Variance" in model_type:
-                        clean_model = "Min Variance"
-                    elif "HRP" in model_type:
-                        clean_model = "HRP"
+        if "정기 캘린더" in rebal_mode:
+            col_r1, col_r2, col_r3, col_r4, col_r5 = st.columns(5)
+            with col_r1:
+                train_bars = st.slider("학습 윈도우 크기 (Lookback Bars)", min_value=50, max_value=500, value=200, step=25)
+            with col_r2:
+                rebal_bars = st.slider("리밸런싱 주기 (Rebalance Every N Bars)", min_value=10, max_value=100, value=30, step=5)
+            with col_r3:
+                fee_rate = st.number_input("거래 수수료율 (Fee Rate)", min_value=0.0, max_value=0.01, value=0.001, step=0.0005, format="%.4f")
+            with col_r4:
+                tol_band_pct = st.slider("드리프트 허용 밴드(%)", min_value=0, max_value=20, value=0, step=1, help="오차 미만의 드리프트 발생 시 리밸런싱을 건너뛰어 수수료 절감")
+                tol_band = tol_band_pct / 100.0 if tol_band_pct > 0 else None
+            with col_r5:
+                dd_guard_pct = st.slider("최대 낙폭 가드 (MDD Guard %)", min_value=0, max_value=30, value=0, step=5, help="고점 대비 지정 낙폭 발생 시 긴급 현금 대피")
+                dd_guard = dd_guard_pct / 100.0 if dd_guard_pct > 0 else None
 
-                    reb_res = simulate_rebalancing(
-                        prices=prices,
-                        train_bars=train_bars,
-                        rebalance_freq_bars=rebal_bars,
-                        fee_rate=fee_rate,
-                        model_choice=clean_model,
-                        tolerance_band=tol_band,
-                        drawdown_guard=dd_guard,
-                    )
-                    s = reb_res["summary"]
+            if st.button("🚀 롤링 리밸런싱 백테스트 실행", key="btn_run_rebalance"):
+                with st.spinner("리밸런싱 워크포워드 시뮬레이션 계산 중..."):
+                    try:
+                        clean_model = "Equal Weight"
+                        if "Risk Parity" in model_type:
+                            clean_model = "Risk Parity"
+                        elif "Max Sharpe" in model_type:
+                            clean_model = "Max Sharpe"
+                        elif "Min Semi-Variance" in model_type:
+                            clean_model = "Min Semi-Variance"
+                        elif "Min CVaR" in model_type:
+                            clean_model = "Min CVaR"
+                        elif "Schur" in model_type:
+                            clean_model = "Schur"
+                        elif "Min Variance" in model_type:
+                            clean_model = "Min Variance"
+                        elif "HRP" in model_type:
+                            clean_model = "HRP"
 
-                    rc1, rc2, rc3, rc4 = st.columns(4)
-                    rc1.metric("총 수익률 (전략)", f"{s['Total Return (%)']:.2f}%", f"{s['Total Return (%)'] - s['Buy & Hold Return (%)']:+.2f}% vs B&H")
-                    rc2.metric("최대 낙폭 (MDD)", f"{s['Max Drawdown (%)']:.2f}%", f"{s['Max Drawdown (%)'] - s['Buy & Hold MDD (%)']:+.2f}% vs B&H")
-                    rc3.metric("연환산 샤프 지수", f"{s['Sharpe Ratio (Ann.)']:.3f}")
-                    turnover_label = f"{s['Average Turnover (%)']:.2f}%"
-                    if s.get("Skipped Rebalances", 0) > 0:
-                        turnover_label += f" ({s['Skipped Rebalances']}회 스킵)"
-                    if s.get("Guard Triggers", 0) > 0:
-                        turnover_label += f" [가드 {s['Guard Triggers']}회]"
-                    rc4.metric("평균 회전율 (Turnover)", turnover_label)
+                        reb_res = simulate_rebalancing(
+                            prices=prices,
+                            train_bars=train_bars,
+                            rebalance_freq_bars=rebal_bars,
+                            fee_rate=fee_rate,
+                            model_choice=clean_model,
+                            tolerance_band=tol_band,
+                            drawdown_guard=dd_guard,
+                        )
+                        s = reb_res["summary"]
 
-                    fig_reb_nav = create_rebalancing_nav_chart(reb_res["nav_port"], reb_res["nav_eq"], reb_res["nav_bh"])
-                    st.plotly_chart(fig_reb_nav, use_container_width=True)
+                        rc1, rc2, rc3, rc4 = st.columns(4)
+                        rc1.metric("총 수익률 (전략)", f"{s['Total Return (%)']:.2f}%", f"{s['Total Return (%)'] - s['Buy & Hold Return (%)']:+.2f}% vs B&H")
+                        rc2.metric("최대 낙폭 (MDD)", f"{s['Max Drawdown (%)']:.2f}%", f"{s['Max Drawdown (%)'] - s['Buy & Hold MDD (%)']:+.2f}% vs B&H")
+                        rc3.metric("연환산 샤프 지수", f"{s['Sharpe Ratio (Ann.)']:.3f}")
+                        turnover_label = f"{s['Average Turnover (%)']:.2f}%"
+                        if s.get("Skipped Rebalances", 0) > 0:
+                            turnover_label += f" ({s['Skipped Rebalances']}회 스킵)"
+                        if s.get("Guard Triggers", 0) > 0:
+                            turnover_label += f" [가드 {s['Guard Triggers']}회]"
+                        rc4.metric("평균 회전율 (Turnover)", turnover_label)
 
-                    comp_df = pd.DataFrame({
-                        "포트폴리오 전략 / 벤치마크": [f"{clean_model} (정기 리밸런싱)", "동일 가중 (1/N 균등)", f"{assets[0]} (단순 보유 Buy&Hold)"],
-                        "누적 수익률": [f"{s['Total Return (%)']:.2f}%", f"{s['Equal Weight Return (%)']:.2f}%", f"{s['Buy & Hold Return (%)']:.2f}%"],
-                        "최대 낙폭(MDD)": [f"{s['Max Drawdown (%)']:.2f}%", f"{s['Equal Weight MDD (%)']:.2f}%", f"{s['Buy & Hold MDD (%)']:.2f}%"],
-                    })
-                    st.dataframe(comp_df, use_container_width=True, hide_index=True)
-                except Exception as ex:
-                    st.error(f"시뮬레이션 실행 중 오류 발생: {ex}")
+                        fig_reb_nav = create_rebalancing_nav_chart(reb_res["nav_port"], reb_res["nav_eq"], reb_res["nav_bh"])
+                        st.plotly_chart(fig_reb_nav, use_container_width=True)
+
+                        comp_df = pd.DataFrame({
+                            "포트폴리오 전략 / 벤치마크": [f"{clean_model} (정기 리밸런싱)", "동일 가중 (1/N 균등)", f"{assets[0]} (단순 보유 Buy&Hold)"],
+                            "누적 수익률": [f"{s['Total Return (%)']:.2f}%", f"{s['Equal Weight Return (%)']:.2f}%", f"{s['Buy & Hold Return (%)']:.2f}%"],
+                            "최대 낙폭(MDD)": [f"{s['Max Drawdown (%)']:.2f}%", f"{s['Equal Weight MDD (%)']:.2f}%", f"{s['Buy & Hold MDD (%)']:.2f}%"],
+                        })
+                        st.dataframe(comp_df, use_container_width=True, hide_index=True)
+                    except Exception as ex:
+                        st.error(f"시뮬레이션 실행 중 오류 발생: {ex}")
+        else:
+            col_d1, col_d2, col_d3, col_d4 = st.columns(4)
+            with col_d1:
+                band_pct = st.slider("드리프트 밴드 임계치 (Drift Band %)", min_value=1.0, max_value=25.0, value=5.0, step=0.5, help="목표 비중 대비 누적 괴리율이 이 임계치를 초과할 때만 리밸런싱을 트리거")
+            with col_d2:
+                max_hold_bars = st.slider("최대 보유 한계 (Max Holding Bars)", min_value=30, max_value=300, value=90, step=15, help="밴드 미이탈 시에도 이 기간이 경과하면 강제 리밸런싱")
+            with col_d3:
+                train_bars_band = st.slider("초기 웜업 윈도우 (Warmup Bars)", min_value=30, max_value=200, value=60, step=10)
+            with col_d4:
+                fee_rate_band = st.number_input("거래 수수료율", min_value=0.0, max_value=0.01, value=0.001, step=0.0005, format="%.4f", key="fee_band")
+
+            if st.button("🚀 드리프트 밴드 백테스트 실행", key="btn_run_drift"):
+                with st.spinner("드리프트 밴드 백테스트 계산 중..."):
+                    try:
+                        res_drift = simulate_drift_band_rebalancing(
+                            prices=prices,
+                            target_weights=weights_dict,
+                            band=band_pct / 100.0,
+                            train_bars=train_bars_band,
+                            max_holding_bars=max_hold_bars,
+                            fee_rate=fee_rate_band,
+                        )
+                        sm = res_drift["summary"]
+                        tot_ret = sm.get("Total Return (%)", sm.get("total_return_pct", 0.0))
+                        mdd_val = sm.get("Max Drawdown (%)", sm.get("max_drawdown_pct", 0.0))
+                        reb_cnt = sm.get("Rebalance Triggers", sm.get("rebalance_count", 0))
+                        max_drf = sm.get("Max Drift Observed (%)", sm.get("max_drift_pct", 0.0))
+                        avg_to = sm.get("Average Turnover (%)", sm.get("avg_turnover_pct", 0.0))
+
+                        d1, d2, d3, d4 = st.columns(4)
+                        d1.metric("총 수익률 (밴드 전략)", f"{tot_ret:.2f}%")
+                        d2.metric("최대 낙폭 (MDD)", f"{mdd_val:.2f}%")
+                        d3.metric("총 리밸런싱 횟수", f"{reb_cnt}회", f"최대 괴리 {max_drf:.1f}%")
+                        d4.metric("평균 회전율", f"{avg_to:.2f}%")
+
+                        nav_p = res_drift.get("nav_port", res_drift.get("nav_portfolio"))
+                        nav_b = res_drift.get("nav_eq", res_drift.get("nav_benchmark"))
+                        fig_band_nav = create_rebalancing_nav_chart(nav_p, nav_b, None)
+                        st.plotly_chart(fig_band_nav, use_container_width=True)
+                    except Exception as ex:
+                        st.error(f"드리프트 밴드 시뮬레이션 오류: {ex}")
 
     with tab_mc:
         st.subheader("🎲 몬테카를로 미래 자산 경로 & VaR/CVaR 시뮬레이션")

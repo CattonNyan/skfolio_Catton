@@ -247,6 +247,21 @@ class DashboardTests(unittest.TestCase):
         self.assertTrue(k_disc.is_positive_edge)
         self.assertGreater(k_disc.full_kelly, 0.0)
 
+    @unittest.skipUnless(HAS_DASHBOARD_DEPS, "plotly or streamlit not installed")
+    def test_dashboard_drift_band_rebalancing_integration(self):
+        from scripts.crypto_rebalancing_backtest import simulate_drift_band_rebalancing
+        from app_dashboard import create_rebalancing_nav_chart
+        dates = pd.date_range("2026-01-01", periods=20, freq="D")
+        prices = pd.DataFrame(
+            {"BTC": [100.0 + i * 2.0 for i in range(20)], "ETH": [100.0 + i * 1.5 for i in range(20)]},
+            index=dates,
+        )
+        res = simulate_drift_band_rebalancing(prices, band=0.05, train_bars=10, max_holding_bars=30)
+        self.assertIn("summary", res)
+        self.assertIn("nav_port", res)
+        fig = create_rebalancing_nav_chart(res["nav_port"], res["nav_eq"], None)
+        self.assertIsInstance(fig, go.Figure)
+
 
 if __name__ == "__main__":
     unittest.main()
