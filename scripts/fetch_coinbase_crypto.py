@@ -16,8 +16,9 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
+
+from scripts.http_retry_helper import fetch_json_with_retry
 
 # Ensure local skfolio source and scripts are discovered
 root_dir = str(Path(__file__).resolve().parents[1])
@@ -61,10 +62,9 @@ def fetch_coinbase_spot_price(pair: str = "BTC-USD", timeout: float = 5.0) -> fl
     url = f"{COINBASE_V2_BASE}/prices/{product}/spot"
     req = urllib.request.Request(
         url,
-        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) skfolio-catton/1.5.0"},
+        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) skfolio-catton/1.6.0"},
     )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        data = json.loads(resp.read().decode("utf-8"))
+    data = fetch_json_with_retry(req, timeout=timeout)
 
     if "data" in data and "amount" in data["data"]:
         return float(data["data"]["amount"])
@@ -92,10 +92,9 @@ def fetch_coinbase_candles(
 
     req = urllib.request.Request(
         url,
-        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) skfolio-catton/1.5.0"},
+        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) skfolio-catton/1.6.0"},
     )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        raw_bars = json.loads(resp.read().decode("utf-8"))
+    raw_bars = fetch_json_with_retry(req, timeout=timeout)
 
     if not isinstance(raw_bars, list):
         raise RuntimeError(f"Coinbase API error for {product}: {raw_bars}")

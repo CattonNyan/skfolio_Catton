@@ -39,6 +39,7 @@ from tests.test_coinbase_fetcher import CoinbaseFetcherTests
 from tests.test_vol_target_allocator import VolTargetAllocatorTests
 from tests.test_tail_dependence import TailDependenceTests
 from tests.test_drawdown_metrics import DrawdownMetricsTests
+from tests.test_http_retry import HttpRetryTests
 
 
 def suite():
@@ -78,6 +79,7 @@ def suite():
     s.addTests(loader.loadTestsFromTestCase(VolTargetAllocatorTests))
     s.addTests(loader.loadTestsFromTestCase(TailDependenceTests))
     s.addTests(loader.loadTestsFromTestCase(DrawdownMetricsTests))
+    s.addTests(loader.loadTestsFromTestCase(HttpRetryTests))
     return s
 
 
