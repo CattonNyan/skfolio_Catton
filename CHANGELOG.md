@@ -2,6 +2,26 @@
 
 <!-- version list -->
 
+## v1.6.0 (2026-09-18)
+
+### Features
+
+- **metrics**: Advanced institutional drawdown and downside risk metrics engine (`scripts/crypto_drawdown_metrics.py`)
+  - Implements Peter Martin's Ulcer Index (UI), Martin Ratio (Ulcer Performance Index - UPI), Thomas Becker's Pain Index, Pain Ratio, and Gibbon Burke's Burke Ratio
+- **rebalance**: Corridor threshold drift band rebalancing engine (`scripts/crypto_rebalancing_backtest.py`)
+  - Adds `simulate_drift_band_rebalancing` and `calculate_weight_drift` to evaluate band-triggered rebalancing vs periodic calendar rebalancing
+  - Reports Ulcer Index and Martin Ratio across all backtests
+- **dashboard**: Streamlit dashboard v1.6.0 with Volatility Targeting & Tail Risk tabs (`app_dashboard.py`)
+  - Tab 11: "🛡️ 변동성 타겟팅 & 동적 현금 버퍼 (Volatility Targeting)" with interactive de-risking and backtest curves
+  - Tab 12: "📉 꼬리 위험 & 극단 붕괴 의존성 (Tail Dependence)" with bivariate heatmaps and crash asymmetry index
+- **fetchers**: Resilient HTTP client with exponential backoff and jitter (`scripts/http_retry_helper.py`)
+  - Automatic retry for HTTP 429 (rate limits) and 5xx errors with `Retry-After` header parsing for institutional exchange fetchers
+
+### Testing & Verification
+
+- Expanded test suite to **248 unit tests passing across 36 test modules** (`tests/test_crypto_suite.py`)
+- Added tests for drawdown metrics, corridor rebalancing, dashboard components, and resilient HTTP client
+
 ## v1.5.0 (2026-09-16)
 
 ### Features

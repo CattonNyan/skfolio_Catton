@@ -522,7 +522,7 @@ skfolio_Catton/
 python tests/test_crypto_suite.py
 ```
 ```text
-Ran 232 tests in 11.642s -> OK
+Ran 248 tests in 5.034s -> OK
 ```
 
 코드가 `main` 브랜치에 푸시될 때마다 **GitHub Actions**가 클라우드에서 위 테스트를 자동으로 수행하여 코드 무결성을 보장합니다.
