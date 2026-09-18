@@ -139,6 +139,127 @@ def fetch_coinbase_multi_assets(
     return merged
 
 
+def fetch_coinbase_orderbook(
+    symbol: str,
+    level: int = 2,
+    timeout: float = 5.0,
+) -> dict:
+    """Fetch order book (market depth) from Coinbase Exchange API.
+
+    Levels:
+    - 1: Best bid and ask only
+    - 2: Top 50 bids and asks (aggregated)
+    - 3: Full order book (non-aggregated)
+
+    Returns dict with keys: 'sequence', 'bids', 'asks'.
+    """
+    if level not in (1, 2, 3):
+        raise ValueError("level must be 1, 2, or 3.")
+
+    product = normalize_coinbase_symbol(symbol)
+    url = f"{COINBASE_API_BASE}/products/{product}/book?level={level}"
+    req = urllib.request.Request(
+        url,
+        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) skfolio-catton/1.6.1"},
+    )
+    data = fetch_json_with_retry(req, timeout=timeout)
+    if not isinstance(data, dict) or "bids" not in data or "asks" not in data:
+        raise RuntimeError(f"Coinbase API error fetching orderbook for {product}: {data}")
+    return data
+
+
+def calculate_market_impact_slippage(
+    order_size_usd: float,
+    bids: list,
+    asks: list,
+    side: str = "buy",
+) -> dict:
+    """Calculate market impact slippage by walking the order book depth.
+
+    Parameters
+    ----------
+    order_size_usd : float
+        Notional order size in USD (quote currency). Must be > 0.
+    bids : list
+        List of bid levels [[price, size, ...], ...] sorted descending by price.
+    asks : list
+        List of ask levels [[price, size, ...], ...] sorted ascending by price.
+    side : str, default "buy"
+        "buy" walks the ask book, "sell" walks the bid book.
+
+    Returns
+    -------
+    dict
+        Execution metrics including vwap_price, mid_price, spread_bps,
+        slippage_bps, price_impact_bps, fully_filled, unfilled_usd.
+    """
+    if order_size_usd <= 0:
+        raise ValueError("order_size_usd must be greater than 0.")
+    if side not in ("buy", "sell"):
+        raise ValueError("side must be either 'buy' or 'sell'.")
+    if not bids or not asks:
+        raise ValueError("Order book bids and asks cannot be empty.")
+
+    best_bid = float(bids[0][0])
+    best_ask = float(asks[0][0])
+    mid_price = (best_bid + best_ask) / 2.0
+    spread_usd = max(0.0, best_ask - best_bid)
+    spread_bps = (spread_usd / mid_price * 10000.0) if mid_price > 0 else 0.0
+
+    levels = asks if side == "buy" else bids
+    benchmark_quote = best_ask if side == "buy" else best_bid
+
+    remaining_usd = float(order_size_usd)
+    executed_usd = 0.0
+    executed_base_qty = 0.0
+
+    for lvl in levels:
+        price = float(lvl[0])
+        qty = float(lvl[1])
+        level_usd = price * qty
+
+        if level_usd <= remaining_usd:
+            fill_usd = level_usd
+            fill_qty = qty
+        else:
+            fill_usd = remaining_usd
+            fill_qty = remaining_usd / price
+
+        executed_usd += fill_usd
+        executed_base_qty += fill_qty
+        remaining_usd -= fill_usd
+
+        if remaining_usd <= 1e-9:
+            break
+
+    vwap_price = (executed_usd / executed_base_qty) if executed_base_qty > 0 else benchmark_quote
+
+    if side == "buy":
+        slippage_bps = ((vwap_price - mid_price) / mid_price * 10000.0) if mid_price > 0 else 0.0
+        price_impact_bps = ((vwap_price - best_ask) / best_ask * 10000.0) if best_ask > 0 else 0.0
+    else:
+        slippage_bps = ((mid_price - vwap_price) / mid_price * 10000.0) if mid_price > 0 else 0.0
+        price_impact_bps = ((best_bid - vwap_price) / best_bid * 10000.0) if best_bid > 0 else 0.0
+
+    unfilled_usd = max(0.0, remaining_usd)
+    fully_filled = unfilled_usd <= 1e-6
+
+    return {
+        "side": side,
+        "order_size_usd": order_size_usd,
+        "executed_usd": executed_usd,
+        "executed_base_qty": executed_base_qty,
+        "vwap_price": vwap_price,
+        "mid_price": mid_price,
+        "spread_usd": spread_usd,
+        "spread_bps": spread_bps,
+        "slippage_bps": slippage_bps,
+        "price_impact_bps": price_impact_bps,
+        "fully_filled": fully_filled,
+        "unfilled_usd": unfilled_usd,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description="Coinbase Institutional Crypto Price Fetcher.")
     parser.add_argument("--symbols", nargs="+", default=["BTC", "ETH", "SOL"], help="Symbols to fetch.")
