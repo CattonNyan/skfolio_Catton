@@ -5,6 +5,7 @@ import pandas as pd
 from scripts.crypto_drawdown_metrics import (
     compute_annualized_cagr,
     compute_burke_ratio,
+    compute_drawdown_duration_stats,
     compute_drawdown_metrics_summary,
     compute_drawdown_series,
     compute_martin_ratio,
@@ -97,6 +98,19 @@ class DrawdownMetricsTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             compute_nav_series(np.array([-10.0, 20.0]), is_returns=False)
+
+    def test_drawdown_duration_stats(self):
+        # Known prices: 100 -> 90 -> 95 -> 105 (underwater for 2 periods: 90, 95) -> 100 -> 110
+        prices = [100.0, 90.0, 95.0, 105.0, 100.0, 110.0]
+        stats = compute_drawdown_duration_stats(prices, is_returns=False)
+        self.assertEqual(stats["max_drawdown_duration"], 2.0)
+        self.assertEqual(stats["current_drawdown_duration"], 0.0)
+        self.assertEqual(stats["drawdown_episodes_count"], 2.0)
+
+        # Monotonic positive series has 0 duration
+        mono_stats = compute_drawdown_duration_stats([100.0, 101.0, 102.0], is_returns=False)
+        self.assertEqual(mono_stats["max_drawdown_duration"], 0.0)
+        self.assertEqual(mono_stats["drawdown_episodes_count"], 0.0)
 
 
 if __name__ == "__main__":

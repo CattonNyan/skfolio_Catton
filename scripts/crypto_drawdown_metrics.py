@@ -208,6 +208,63 @@ def compute_burke_ratio(
     return float(excess_return / denom)
 
 
+def compute_drawdown_duration_stats(
+    data: pd.Series | np.ndarray,
+    is_returns: bool = True,
+) -> dict[str, float]:
+    """Calculate underwater drawdown duration statistics.
+
+    Parameters
+    ----------
+    data : pd.Series or np.ndarray
+        Returns or price series.
+    is_returns : bool, default True
+        Whether the input data represents returns (True) or price levels (False).
+
+    Returns
+    -------
+    dict[str, float]
+        - max_drawdown_duration: Longest period (bars) spent continuously underwater.
+        - avg_drawdown_duration: Average duration of completed underwater drawdown episodes.
+        - current_drawdown_duration: Bars underwater at the end of the series.
+        - drawdown_episodes_count: Total count of drawdown episodes.
+    """
+    dd = compute_drawdown_series(data, is_returns=is_returns)
+    if len(dd) == 0:
+        return {
+            "max_drawdown_duration": 0.0,
+            "avg_drawdown_duration": 0.0,
+            "current_drawdown_duration": 0.0,
+            "drawdown_episodes_count": 0.0,
+        }
+
+    durations: list[int] = []
+    current_len = 0
+
+    for val in dd:
+        if val < -1e-6:
+            current_len += 1
+        else:
+            if current_len > 0:
+                durations.append(current_len)
+                current_len = 0
+
+    current_dd_dur = current_len
+    all_episodes = list(durations)
+    if current_len > 0:
+        all_episodes.append(current_len)
+
+    max_dur = max(all_episodes) if all_episodes else 0
+    avg_dur = (sum(durations) / len(durations)) if durations else (float(current_len) if current_len > 0 else 0.0)
+
+    return {
+        "max_drawdown_duration": float(max_dur),
+        "avg_drawdown_duration": round(float(avg_dur), 2),
+        "current_drawdown_duration": float(current_dd_dur),
+        "drawdown_episodes_count": float(len(all_episodes)),
+    }
+
+
 def compute_drawdown_metrics_summary(
     data: pd.Series | np.ndarray,
     risk_free_rate: float = 0.0,
@@ -223,6 +280,7 @@ def compute_drawdown_metrics_summary(
     pain = compute_pain_ratio(data, risk_free_rate=risk_free_rate, is_returns=is_returns, periods_per_year=periods_per_year)
     burke = compute_burke_ratio(data, risk_free_rate=risk_free_rate, is_returns=is_returns, periods_per_year=periods_per_year)
     calmar = (cagr - risk_free_rate) / mdd if mdd > 1e-8 else (999.0 if cagr > risk_free_rate else 0.0)
+    dur_stats = compute_drawdown_duration_stats(data, is_returns=is_returns)
 
     return {
         "cagr_pct": round(cagr, 4),
@@ -233,6 +291,10 @@ def compute_drawdown_metrics_summary(
         "pain_ratio": round(pain, 4),
         "burke_ratio": round(burke, 4),
         "calmar_ratio": round(calmar, 4),
+        "max_drawdown_duration": dur_stats["max_drawdown_duration"],
+        "avg_drawdown_duration": dur_stats["avg_drawdown_duration"],
+        "current_drawdown_duration": dur_stats["current_drawdown_duration"],
+        "drawdown_episodes_count": dur_stats["drawdown_episodes_count"],
     }
 
 
