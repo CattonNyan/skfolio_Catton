@@ -282,12 +282,21 @@ def simulate_rebalancing(
     # Calmar Ratio: Return / Max Drawdown
     calmar = (total_return_port / (abs(port_mdd * 100.0) + 1e-9)) if abs(port_mdd) > 0 else 0.0
 
+    # Ulcer Index & Martin Ratio calculation
+    peak_port = nav_port_series.cummax()
+    dd_port_pct = (nav_port_series - peak_port) / np.where(peak_port > 0, peak_port, 1e-9) * 100.0
+    ulcer_index = float(np.sqrt(np.mean(np.square(dd_port_pct))))
+    ann_return = mean_ret * annual_factor * 100.0
+    martin_ratio = (ann_return / ulcer_index) if ulcer_index > 1e-6 else (999.0 if ann_return > 0 else 0.0)
+
     avg_turnover = float(np.mean(turnover_history)) if turnover_history else 0.0
 
     summary = {
         "Model": model_choice,
         "Total Return (%)": round(total_return_port, 2),
         "Max Drawdown (%)": round(port_mdd * 100, 2),
+        "Ulcer Index (%)": round(ulcer_index, 2),
+        "Martin Ratio": round(martin_ratio, 3),
         "Sharpe Ratio (Ann.)": round(sharpe, 3),
         "Sortino Ratio (Ann.)": round(sortino, 3),
         "Calmar Ratio": round(calmar, 3),
@@ -312,6 +321,136 @@ def simulate_rebalancing(
         "weight_history": weight_history,
         "skipped_rebalances": skipped_rebalances,
         "guard_triggers": guard_triggers,
+    }
+
+
+def calculate_weight_drift(
+    current_weights: np.ndarray,
+    target_weights: np.ndarray,
+) -> float:
+    """Calculate maximum absolute weight drift across any constituent asset."""
+    c = np.asarray(current_weights, dtype=float)
+    t = np.asarray(target_weights, dtype=float)
+    if c.shape != t.shape:
+        raise ValueError("Current weights and target weights must have matching dimensions.")
+    return float(np.max(np.abs(c - t)))
+
+
+def simulate_drift_band_rebalancing(
+    prices: pd.DataFrame,
+    band: float = 0.05,
+    train_bars: int = 300,
+    max_holding_bars: int = 100,
+    fee_rate: float = 0.001,
+    model_choice: str = "Equal Weight",
+    target_weights: dict[str, float] | None = None,
+) -> dict[str, object]:
+    """Corridor-based portfolio rebalancing engine.
+
+    Rebalancing is only triggered when weight drift exceeds the corridor band
+    or when elapsed time exceeds max_holding_bars.
+    """
+    if not isinstance(prices, pd.DataFrame) or prices.shape[1] < 2 or len(prices) < 2:
+        raise ValueError("Drift band rebalancing requires at least two assets and two price rows.")
+    if band <= 0 or band >= 1:
+        raise ValueError("Band threshold must be strictly between 0 and 1.")
+    if train_bars < 2:
+        raise ValueError("Training window must be at least 2 bars.")
+    if max_holding_bars <= 0:
+        raise ValueError("Max holding bars must be positive.")
+
+    returns = prices.pct_change().dropna()
+    assets = list(returns.columns)
+    n_bars = len(returns)
+
+    if n_bars <= train_bars + 1:
+        raise ValueError(f"Insufficient data: {n_bars} bars available, need at least {train_bars + 1}")
+
+    test_start = train_bars
+    test_dates = returns.index[test_start:]
+
+    if target_weights is not None:
+        target_vec = np.array([target_weights.get(a, 1.0 / len(assets)) for a in assets], dtype=float)
+        target_vec = target_vec / np.sum(target_vec)
+    else:
+        target_vec = np.ones(len(assets)) / len(assets)
+
+    current_weights = target_vec.copy()
+    nav_portfolio = [1.0]
+    nav_eq = [1.0]
+    eq_weights = np.ones(len(assets)) / len(assets)
+
+    rebalance_dates: list[pd.Timestamp] = []
+    turnover_history: list[float] = []
+    max_drift_observed = 0.0
+    bars_since_rebalance = 0
+
+    for idx, current_t in enumerate(range(test_start, n_bars)):
+        date = returns.index[current_t]
+        bar_ret = returns.iloc[current_t].values
+
+        drift = calculate_weight_drift(current_weights, target_vec)
+        max_drift_observed = max(max_drift_observed, drift)
+
+        should_rebalance = (drift >= band) or (bars_since_rebalance >= max_holding_bars) or (idx == 0)
+
+        if should_rebalance:
+            rebalance_dates.append(date)
+            # Rebalance to target
+            turnover = float(np.sum(np.abs(target_vec - current_weights)))
+            turnover_history.append(turnover)
+            cost = turnover * fee_rate
+            nav_portfolio[-1] *= (1.0 - cost)
+            current_weights = target_vec.copy()
+            bars_since_rebalance = 0
+        else:
+            bars_since_rebalance += 1
+
+        # Realize portfolio return
+        port_ret = float(np.dot(current_weights, bar_ret))
+        next_nav = nav_portfolio[-1] * (1.0 + port_ret)
+        nav_portfolio.append(next_nav)
+
+        # Passive intra-period drift of actual holdings
+        current_weights = current_weights * (1.0 + bar_ret)
+        s = np.sum(current_weights)
+        if s > 0:
+            current_weights = current_weights / s
+
+        # Equal weight comparison
+        eq_ret = float(np.dot(eq_weights, bar_ret))
+        nav_eq.append(nav_eq[-1] * (1.0 + eq_ret))
+
+    nav_port_series = pd.Series(nav_portfolio[1:], index=test_dates, name=f"Corridor Band ({band*100:.1f}%)")
+    nav_eq_series = pd.Series(nav_eq[1:], index=test_dates, name="Benchmark (Equal Weight)")
+
+    port_mdd, _ = calculate_drawdown(nav_port_series)
+    total_ret = (nav_port_series.iloc[-1] - 1.0) * 100.0
+    eq_ret = (nav_eq_series.iloc[-1] - 1.0) * 100.0
+
+    peak = nav_port_series.cummax()
+    dd_pct = (nav_port_series - peak) / np.where(peak > 0, peak, 1e-9) * 100.0
+    ui = float(np.sqrt(np.mean(np.square(dd_pct))))
+
+    avg_turnover = float(np.mean(turnover_history)) if turnover_history else 0.0
+
+    summary = {
+        "Band (%)": round(band * 100.0, 2),
+        "Total Return (%)": round(total_ret, 2),
+        "Max Drawdown (%)": round(port_mdd * 100.0, 2),
+        "Ulcer Index (%)": round(ui, 2),
+        "Rebalance Triggers": len(rebalance_dates),
+        "Max Drift Observed (%)": round(max_drift_observed * 100.0, 2),
+        "Average Turnover (%)": round(avg_turnover * 100.0, 2),
+        "Equal Weight Return (%)": round(eq_ret, 2),
+    }
+
+    return {
+        "summary": summary,
+        "nav_port": nav_port_series,
+        "nav_eq": nav_eq_series,
+        "rebalance_dates": rebalance_dates,
+        "max_drift_observed": max_drift_observed,
     }
 
 

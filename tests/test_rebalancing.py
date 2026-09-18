@@ -5,7 +5,12 @@ import pandas as pd
 import numpy as np
 
 from scripts.crypto_portfolio_optimizer import generate_synthetic_crypto_data
-from scripts.crypto_rebalancing_backtest import calculate_drawdown, simulate_rebalancing
+from scripts.crypto_rebalancing_backtest import (
+    calculate_drawdown,
+    calculate_weight_drift,
+    simulate_drift_band_rebalancing,
+    simulate_rebalancing,
+)
 
 
 class RebalancingTests(unittest.TestCase):
@@ -170,6 +175,48 @@ class RebalancingTests(unittest.TestCase):
         for bad_guard in (-0.05, 0.0, 1.0, 1.2, "bad", True, float("nan")):
             with self.subTest(bad_guard=bad_guard), self.assertRaises(ValueError):
                 simulate_rebalancing(prices, drawdown_guard=bad_guard)
+
+    def test_calculate_weight_drift(self):
+        w1 = np.array([0.5, 0.3, 0.2])
+        w2 = np.array([0.45, 0.35, 0.20])
+        drift = calculate_weight_drift(w1, w2)
+        self.assertAlmostEqual(drift, 0.05, places=4)
+
+        with self.assertRaises(ValueError):
+            calculate_weight_drift(w1, np.array([0.5, 0.5]))
+
+    def test_simulate_drift_band_rebalancing(self):
+        prices = generate_synthetic_crypto_data(periods=150)
+        res = simulate_drift_band_rebalancing(
+            prices=prices,
+            band=0.05,
+            train_bars=50,
+            max_holding_bars=30,
+            fee_rate=0.001,
+        )
+        self.assertIn("summary", res)
+        s = res["summary"]
+        self.assertEqual(s["Band (%)"], 5.0)
+        self.assertIn("Ulcer Index (%)", s)
+        self.assertIn("Rebalance Triggers", s)
+        self.assertIn("Max Drift Observed (%)", s)
+        self.assertIsInstance(res["nav_port"], pd.Series)
+        self.assertGreater(len(res["nav_port"]), 0)
+
+    def test_rebalancing_summary_includes_ulcer_and_martin(self):
+        prices = generate_synthetic_crypto_data(periods=120)
+        res = simulate_rebalancing(
+            prices=prices,
+            train_bars=50,
+            rebalance_freq_bars=15,
+            fee_rate=0.001,
+            model_choice="Equal Weight",
+        )
+        s = res["summary"]
+        self.assertIn("Ulcer Index (%)", s)
+        self.assertIn("Martin Ratio", s)
+        self.assertIsInstance(s["Ulcer Index (%)"], float)
+        self.assertIsInstance(s["Martin Ratio"], float)
 
 
 if __name__ == "__main__":
