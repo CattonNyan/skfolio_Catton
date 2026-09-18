@@ -46,6 +46,11 @@ from scripts.crypto_risk_budget_calculator import (
     calculate_effective_number_of_bets,
     calculate_effective_number_of_constituents,
 )
+from scripts.crypto_vol_target_allocator import (
+    apply_volatility_targeting,
+    calculate_portfolio_realized_volatility,
+    simulate_vol_targeted_backtest,
+)
 
 # Optional skfolio optimization imports
 try:
@@ -234,6 +239,46 @@ def create_rebalancing_nav_chart(nav_port: pd.Series, nav_eq: pd.Series, nav_bh:
 
     fig.update_layout(
         title="주기적 리밸런싱 포트폴리오 자산 가치(NAV) 추이",
+        xaxis_title="일시",
+        yaxis_title="순자산 가치 (NAV, 초기값 = 1.0)",
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=20, r=20, t=40, b=20),
+        hovermode="x unified",
+    )
+    return fig
+
+
+def create_vol_target_chart(sim_res: dict[str, object]) -> go.Figure:
+    """Create comparison chart of unscaled vs volatility-targeted cumulative returns."""
+    fig = go.Figure()
+    if not isinstance(sim_res, dict) or "nav_unscaled" not in sim_res:
+        fig.update_layout(title="변동성 타겟팅 백테스트 시뮬레이션", template="plotly_dark")
+        return fig
+
+    nav_unscaled = sim_res["nav_unscaled"]
+    nav_target = sim_res["nav_vol_targeted"]
+    dates = nav_unscaled.index
+
+    fig.add_trace(go.Scatter(
+        x=dates,
+        y=nav_unscaled.values,
+        mode="lines",
+        name="기존 미조정 포트폴리오",
+        line=dict(color="#FF9100", width=2, dash="dot"),
+    ))
+
+    fig.add_trace(go.Scatter(
+        x=dates,
+        y=nav_target.values,
+        mode="lines",
+        name="🛡️ 변동성 타겟팅 포트폴리오",
+        line=dict(color="#00E676", width=2.5),
+    ))
+
+    fig.update_layout(
+        title="변동성 타겟팅 적용 전/후 누적 자산 가치(NAV) 비교",
         xaxis_title="일시",
         yaxis_title="순자산 가치 (NAV, 초기값 = 1.0)",
         template="plotly_dark",
@@ -507,7 +552,7 @@ def main():
         weights_dict = (inv_vols / inv_vols.sum()).to_dict()
 
     # 4. Tab Interface
-    tab_opt, tab_rebalance, tab_mc, tab_stress, tab_macro, tab_kimchi, tab_tax, tab_krw_fee, tab_travel, tab_factor = st.tabs([
+    tab_opt, tab_rebalance, tab_mc, tab_stress, tab_macro, tab_kimchi, tab_tax, tab_krw_fee, tab_travel, tab_factor, tab_vol_target = st.tabs([
         "📊 포트폴리오 최적화 & 자산배분",
         "🔄 주기적 리밸런싱 백테스트",
         "🎲 몬테카를로 미래 시뮬레이션",
@@ -518,6 +563,7 @@ def main():
         "💸 국내 거래소 수수료 & Fee Drag",
         "🛡️ 특금법 트래블룰 안전 분할 전송",
         "🎯 퀀트 멀티팩터 & 스마트 베타",
+        "🛡️ 변동성 타겟팅 & 동적 현금 버퍼",
     ])
 
     with tab_opt:
@@ -1092,6 +1138,88 @@ def main():
                     st.dataframe(tilt_table[tilt_table["배분 금액"] != "$0.00"], use_container_width=True, hide_index=True)
             except Exception as ex:
                 st.error(f"팩터 분석 오류: {ex}")
+
+    with tab_vol_target:
+        st.subheader("🛡️ 목표 변동성 타겟팅 & 동적 현금 버퍼 (Volatility Targeting)")
+        st.caption("포트폴리오의 실현 변동성에 반비례하여 위험 자산 비중을 조절하고, 급락/고변동성 장세에서 현금(USDT) 버퍼로 안전하게 대피합니다.")
+
+        realized_vol = calculate_portfolio_realized_volatility(returns, weights_dict) * 100.0
+
+        vt_col1, vt_col2, vt_col3 = st.columns(3)
+        with vt_col1:
+            target_vol = st.slider("목표 연환산 변동성 (%)", min_value=10.0, max_value=120.0, value=min(40.0, max(20.0, realized_vol)), step=5.0)
+        with vt_col2:
+            min_cash = st.slider("최소 현금 버퍼 비율 (%)", min_value=0.0, max_value=50.0, value=10.0, step=5.0)
+        with vt_col3:
+            max_lev = st.slider("최대 허용 레버리지 (배)", min_value=1.0, max_value=2.0, value=1.0, step=0.1)
+
+        vt_res = apply_volatility_targeting(
+            base_weights=weights_dict,
+            realized_vol_ann=realized_vol / 100.0,
+            target_vol_ann=target_vol / 100.0,
+            max_leverage=max_lev,
+            min_cash_buffer=min_cash / 100.0,
+        )
+
+        m_v1, m_v2, m_v3, m_v4 = st.columns(4)
+        m_v1.metric("현재 포트폴리오 실현 변동성", f"{realized_vol:.1f}%")
+        m_v2.metric("목표 변동성 스케일러 (k)", f"{vt_res.vol_scalar:.2f}x")
+        m_v3.metric("동적 현금/스테이블코인 비중", f"{vt_res.cash_weight * 100:.1f}%")
+        m_v4.metric("위험 자산 총 비중", f"{(1.0 - vt_res.cash_weight) * 100:.1f}%")
+
+        if vt_res.cash_weight > min_cash / 100.0:
+            st.warning(f"⚠️ 시장 변동성이 목표({target_vol:.1f}%)보다 높아 자산 비중을 축소하고 현금 버퍼를 {vt_res.cash_weight*100:.1f}%로 확대했습니다. (De-Risking 발동)")
+        else:
+            st.success(f"✅ 시장 변동성이 안정적입니다. 기본 자산 배분을 유지합니다.")
+
+        st.markdown("---")
+        col_vt_chart, col_vt_tbl = st.columns([3, 2])
+
+        with col_vt_chart:
+            chart_weights = dict(vt_res.scaled_weights)
+            if vt_res.cash_weight > 0:
+                chart_weights["💵 Cash (USDT)"] = vt_res.cash_weight
+            fig_vt_pie = create_pie_chart(chart_weights, title="변동성 타겟팅 적용 후 최종 자산 비중")
+            st.plotly_chart(fig_vt_pie, use_container_width=True)
+
+        with col_vt_tbl:
+            st.subheader("📋 변동성 조절 후 자산별 배분 금액")
+            vt_table_rows = []
+            for a, w in vt_res.scaled_weights.items():
+                vt_table_rows.append({
+                    "자산": a,
+                    "기존 비중": f"{weights_dict.get(a, 0.0)*100:.2f}%",
+                    "조정 비중": f"{w*100:.2f}%",
+                    "배분 금액": f"${w * wallet_size:,.2f}",
+                })
+            if vt_res.cash_weight > 0:
+                vt_table_rows.append({
+                    "자산": "💵 Cash (USDT)",
+                    "기존 비중": "0.00%",
+                    "조정 비중": f"{vt_res.cash_weight*100:.2f}%",
+                    "배분 금액": f"${vt_res.cash_weight * wallet_size:,.2f}",
+                })
+            st.dataframe(pd.DataFrame(vt_table_rows), use_container_width=True, hide_index=True)
+
+        if st.button("📈 변동성 타겟팅 백테스트 시뮬레이션 실행", key="btn_run_vt_backtest"):
+            try:
+                with st.spinner("시뮬레이션 실행 중..."):
+                    sim_vt = simulate_vol_targeted_backtest(
+                        returns_df=returns,
+                        base_weights=weights_dict,
+                        target_vol_ann=target_vol / 100.0,
+                        rolling_window=min(60, max(10, len(returns) // 2)),
+                        max_leverage=max_lev,
+                        min_cash_buffer=min_cash / 100.0,
+                    )
+                    fig_vt_sim = create_vol_target_chart(sim_vt)
+                    st.plotly_chart(fig_vt_sim, use_container_width=True)
+
+                    s_un = sim_vt["summary_unscaled"]
+                    s_vt = sim_vt["summary_vol_targeted"]
+                    st.info(f"📊 백테스트 결과: 기존 수익률 {s_un['total_return_pct']:.2f}% (MDD {s_un['max_drawdown_pct']:.2f}%) ➔ 타겟팅 적용 후 수익률 {s_vt['total_return_pct']:.2f}% (MDD {s_vt['max_drawdown_pct']:.2f}%, 평균 현금 비중 {s_vt['avg_cash_buffer_pct']:.1f}%)")
+            except Exception as ex:
+                st.error(f"변동성 타겟팅 백테스트 오류: {ex}")
 
 
 if __name__ == "__main__":

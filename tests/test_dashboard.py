@@ -190,6 +190,21 @@ class DashboardTests(unittest.TestCase):
         empty_fig = create_factor_bar_chart(pd.DataFrame())
         self.assertIsInstance(empty_fig, go.Figure)
 
+    @unittest.skipUnless(HAS_DASHBOARD_DEPS, "plotly or streamlit not installed")
+    def test_create_vol_target_chart(self):
+        from app_dashboard import create_vol_target_chart
+        dates = pd.date_range("2026-01-01", periods=10, freq="15min")
+        sim_res = {
+            "nav_unscaled": pd.Series([1.0 + 0.01 * i for i in range(10)], index=dates),
+            "nav_vol_targeted": pd.Series([1.0 + 0.008 * i for i in range(10)], index=dates),
+        }
+        fig = create_vol_target_chart(sim_res)
+        self.assertIsInstance(fig, go.Figure)
+        self.assertEqual(len(fig.data), 2)
+
+        empty_fig = create_vol_target_chart({})
+        self.assertIsInstance(empty_fig, go.Figure)
+
 
 if __name__ == "__main__":
     unittest.main()
