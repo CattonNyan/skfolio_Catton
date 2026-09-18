@@ -219,6 +219,34 @@ class DashboardTests(unittest.TestCase):
         empty_fig = create_tail_dependence_heatmap(pd.DataFrame(), "Empty Matrix")
         self.assertIsInstance(empty_fig, go.Figure)
 
+    @unittest.skipUnless(HAS_DASHBOARD_DEPS, "plotly or streamlit not installed")
+    def test_create_kelly_growth_chart(self):
+        from app_dashboard import create_kelly_growth_chart
+        fig = create_kelly_growth_chart(win_rate=0.55, payoff_ratio=1.8, current_fraction=0.5)
+        self.assertIsInstance(fig, go.Figure)
+        self.assertGreaterEqual(len(fig.data), 1)
+
+        empty_fig = create_kelly_growth_chart(win_rate=-0.1, payoff_ratio=1.8)
+        self.assertIsInstance(empty_fig, go.Figure)
+
+    @unittest.skipUnless(HAS_DASHBOARD_DEPS, "plotly or streamlit not installed")
+    def test_dashboard_kelly_integration(self):
+        from scripts.crypto_kelly_sizer import calculate_portfolio_kelly, calculate_discrete_kelly
+        dates = pd.date_range("2026-01-01", periods=10, freq="15min")
+        returns = pd.DataFrame(
+            {"BTC": [0.01, 0.02, -0.01, 0.015, -0.005, 0.02, 0.01, -0.01, 0.005, 0.01],
+             "ETH": [0.015, 0.01, -0.02, 0.02, -0.01, 0.015, 0.02, -0.015, 0.01, 0.015]},
+            index=dates,
+        )
+        k_w = calculate_portfolio_kelly(returns, fraction=0.5, max_total_weight=1.0)
+        self.assertIn("BTC", k_w)
+        self.assertIn("ETH", k_w)
+        self.assertLessEqual(k_w.sum(), 1.0 + 1e-6)
+
+        k_disc = calculate_discrete_kelly(0.6, 2.0, fraction=0.5)
+        self.assertTrue(k_disc.is_positive_edge)
+        self.assertGreater(k_disc.full_kelly, 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

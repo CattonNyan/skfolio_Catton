@@ -55,6 +55,12 @@ from scripts.crypto_tail_dependence import (
     compute_bivariate_tail_dependence,
     compute_tail_dependence_matrix,
 )
+from scripts.crypto_kelly_sizer import (
+    calculate_continuous_kelly,
+    calculate_discrete_kelly,
+    calculate_portfolio_kelly,
+)
+from scripts.crypto_drawdown_metrics import compute_drawdown_metrics_summary
 
 # Optional skfolio optimization imports
 try:
@@ -309,6 +315,83 @@ def create_tail_dependence_heatmap(matrix: pd.DataFrame, title: str, colorscale:
         title=title,
     )
     fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=20, r=20, t=40, b=20),
+    )
+    return fig
+
+
+def create_kelly_growth_chart(
+    win_rate: float,
+    payoff_ratio: float,
+    current_fraction: float = 0.5,
+) -> go.Figure:
+    """Create interactive capital growth curve g(f) vs leverage fraction f."""
+    if not (0.0 < win_rate < 1.0) or payoff_ratio <= 0:
+        fig = go.Figure()
+        fig.update_layout(title="켈리 기하성장률 곡선", template="plotly_dark")
+        return fig
+
+    f_vals = np.linspace(0.01, 0.98, 100)
+    loss_rate = 1.0 - win_rate
+    growth_vals = [
+        float(win_rate * np.log(1.0 + payoff_ratio * f) + loss_rate * np.log(max(1e-9, 1.0 - f)))
+        for f in f_vals
+    ]
+
+    full_k = (win_rate * payoff_ratio - loss_rate) / payoff_ratio
+    full_k_clamped = max(0.0, min(float(full_k), 0.98))
+    full_growth = (
+        float(win_rate * np.log(1.0 + payoff_ratio * full_k_clamped) + loss_rate * np.log(max(1e-9, 1.0 - full_k_clamped)))
+        if full_k_clamped > 0
+        else 0.0
+    )
+
+    cur_k = max(0.0, min(float(full_k * current_fraction), 0.98))
+    cur_growth = (
+        float(win_rate * np.log(1.0 + payoff_ratio * cur_k) + loss_rate * np.log(max(1e-9, 1.0 - cur_k)))
+        if cur_k > 0
+        else 0.0
+    )
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=f_vals * 100,
+        y=np.array(growth_vals) * 100,
+        mode="lines",
+        name="기하 성장률 g(f)",
+        line=dict(color="#29B6F6", width=2.5),
+    ))
+
+    fig.add_hline(y=0.0, line_dash="dash", line_color="gray", annotation_text="손익분기(Edge=0)")
+
+    if full_k > 0:
+        fig.add_trace(go.Scatter(
+            x=[full_k_clamped * 100],
+            y=[full_growth * 100],
+            mode="markers+text",
+            marker=dict(color="#FF5252", size=11, symbol="diamond"),
+            name="Full Kelly (1.0x)",
+            text=["Full Kelly (최대 성장)"],
+            textposition="top center",
+        ))
+
+        fig.add_trace(go.Scatter(
+            x=[cur_k * 100],
+            y=[cur_growth * 100],
+            mode="markers+text",
+            marker=dict(color="#00E676", size=11, symbol="circle"),
+            name=f"선택 분할({current_fraction:.2f}x)",
+            text=[f"선택 배분 ({current_fraction:.2f}x)"],
+            textposition="bottom center",
+        ))
+
+    fig.update_layout(
+        title="켈리 기준(Kelly Criterion) 포지션 비율별 기하 자산 성장률 곡선",
+        xaxis_title="투자 비중 / 레버리지 (%)",
+        yaxis_title="거래당 기하 성장률 (%)",
         template="plotly_dark",
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
@@ -579,7 +662,7 @@ def main():
         weights_dict = (inv_vols / inv_vols.sum()).to_dict()
 
     # 4. Tab Interface
-    tab_opt, tab_rebalance, tab_mc, tab_stress, tab_macro, tab_kimchi, tab_tax, tab_krw_fee, tab_travel, tab_factor, tab_vol_target, tab_tail = st.tabs([
+    tab_opt, tab_rebalance, tab_mc, tab_stress, tab_macro, tab_kimchi, tab_tax, tab_krw_fee, tab_travel, tab_factor, tab_vol_target, tab_tail, tab_kelly = st.tabs([
         "📊 포트폴리오 최적화 & 자산배분",
         "🔄 주기적 리밸런싱 백테스트",
         "🎲 몬테카를로 미래 시뮬레이션",
@@ -592,6 +675,7 @@ def main():
         "🎯 퀀트 멀티팩터 & 스마트 베타",
         "🛡️ 변동성 타겟팅 & 동적 현금 버퍼",
         "📉 꼬리 위험 & 극단 붕괴 의존성",
+        "🎯 켈리 기준(Kelly) 최적 포지션 사이징",
     ])
 
     with tab_opt:
@@ -605,13 +689,19 @@ def main():
         enb_res = calculate_effective_number_of_bets(w_vec, returns.cov().values)
         enb = enb_res["enb_entropy"]
 
-        col1, col2, col3, col4, col5, col6 = st.columns(6)
+        dd_metrics = compute_drawdown_metrics_summary(port_ret)
+        ui = dd_metrics["ulcer_index"]
+        upi = dd_metrics["martin_ratio"]
+
+        col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
         col1.metric("선택 모델", model_type.split("(")[0].strip())
         col2.metric("기대 수익률", f"{mean_ret:.4f}%")
         col3.metric("변동성(위험)", f"{vol:.4f}%")
         col4.metric("샤프 지수", f"{sharpe:.3f}")
-        col5.metric("유효 자산(ENC)", f"{enc:.2f}개")
-        col6.metric("유효 베팅(ENB)", f"{enb:.2f}개")
+        col5.metric("얼서 지수(UI)", f"{ui:.2f}%")
+        col6.metric("마틴 비율(UPI)", f"{upi:.2f}")
+        col7.metric("유효 자산(ENC)", f"{enc:.2f}개")
+        col8.metric("유효 베팅(ENB)", f"{enb:.2f}개")
 
         st.markdown("---")
 
@@ -1288,6 +1378,75 @@ def main():
                 st.warning(f"⚠️ **최고 동반 폭락 위험 페어**: `{max_pair_idx[0]}` ↔ `{max_pair_idx[1]}` (동반 폭락 확률: {max_val*100:.1f}%). 두 자산을 동시에 과다 편입 시 분산투자 효과가 급락할 수 있습니다.")
         except Exception as ex:
             st.error(f"꼬리 의존성 분석 오류: {ex}")
+
+    with tab_kelly:
+        st.subheader("🎯 켈리 기준(Kelly Criterion) 최적 포지션 사이징")
+        st.caption("기하 급수적 자산 증식을 위한 최적 베팅 비율을 산출합니다. 암호화폐의 팻 테일(Fat-tail) 위험을 고려하여 통상 Half-Kelly(0.5x) 또는 Fractional Kelly가 권장됩니다.")
+
+        kelly_mode = st.radio(
+            "사이징 모드 선택",
+            options=["포트폴리오 다중 자산 연속 켈리(Multi-Asset Continuous Kelly)", "단일 전략 이산 켈리(Discrete Trade-level Kelly)"],
+            horizontal=True,
+        )
+
+        if "다중 자산" in kelly_mode:
+            k_frac = st.slider("켈리 분할 배율 (Fractional Kelly Multiplier)", min_value=0.1, max_value=1.0, value=0.5, step=0.05, help="1.0은 Full Kelly(최대 성장, 극심한 변동성), 0.5는 Half Kelly(성장률 75% 유지 및 변동성 50% 감축)")
+            max_tot = st.slider("총 투자 비중 상한(Max Total Leverage)", min_value=0.2, max_value=1.0, value=1.0, step=0.05)
+
+            try:
+                k_weights = calculate_portfolio_kelly(returns, fraction=k_frac, max_total_weight=max_tot)
+
+                col_k1, col_k2 = st.columns([3, 2])
+                with col_k1:
+                    fig_k = px.bar(
+                        x=k_weights.index,
+                        y=k_weights.values * 100,
+                        labels={"x": "자산", "y": "켈리 권장 비중 (%)"},
+                        title=f"다중 자산 켈리 최적 비중 ({k_frac:.2f}x Kelly)",
+                        text_auto=".1f",
+                    )
+                    fig_k.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+                    st.plotly_chart(fig_k, use_container_width=True)
+
+                with col_k2:
+                    st.write("##### 📋 켈리 비중 vs 현재 모델 비중")
+                    comp_df = pd.DataFrame({
+                        "자산": k_weights.index,
+                        "켈리 비중": [f"{w*100:.2f}%" for w in k_weights.values],
+                        "현재 모델": [f"{weights_dict.get(a, 0)*100:.2f}%" for a in k_weights.index],
+                        "켈리 배분액": [f"{w * wallet_size:,.2f}" for w in k_weights.values],
+                    })
+                    st.dataframe(comp_df, use_container_width=True, hide_index=True)
+                    st.info(f"💡 총 켈리 익스포저: **{k_weights.sum()*100:.1f}%** (현금 버퍼: **{max(0.0, 1.0 - k_weights.sum())*100:.1f}%**)")
+            except Exception as ex:
+                st.error(f"다중 자산 켈리 계산 오류: {ex}")
+        else:
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                win_rate = st.slider("전략 승률 (Win Rate %)", min_value=10.0, max_value=90.0, value=55.0, step=1.0) / 100.0
+            with c2:
+                payoff = st.number_input("손익비 (Payoff Ratio, 평균수익/평균손실)", min_value=0.1, max_value=10.0, value=1.8, step=0.1)
+            with c3:
+                frac = st.slider("적용 켈리 분할 배율", min_value=0.1, max_value=1.0, value=0.5, step=0.05)
+
+            try:
+                k_res = calculate_discrete_kelly(win_rate, payoff, fraction=frac)
+
+                m1, m2, m3, m4 = st.columns(4)
+                m1.metric("풀 켈리(f*)", f"{k_res.full_kelly*100:.1f}%")
+                m2.metric("하프 켈리(0.5x)", f"{k_res.half_kelly*100:.1f}%")
+                m3.metric(f"선택 비중({frac:.2f}x)", f"{k_res.fractional_kelly*100:.1f}%")
+                m4.metric("거래당 기하 성장률", f"{k_res.expected_growth_rate*100:.3f}%")
+
+                fig_growth = create_kelly_growth_chart(win_rate, payoff, current_fraction=frac)
+                st.plotly_chart(fig_growth, use_container_width=True)
+
+                if not k_res.is_positive_edge:
+                    st.error("⚠️ 해당 승률 및 손익비 조건에서는 수학적 엣지(Edge)가 없어 베팅 시 원금 손실이 발생합니다. 진입 금지를 권장합니다.")
+                else:
+                    st.success(f"✅ 전략 엣지가 유효합니다. 권장 단일 진입 비중은 총 자산의 **{k_res.fractional_kelly*100:.1f}%** 입니다.")
+            except Exception as ex:
+                st.error(f"이산 켈리 계산 오류: {ex}")
 
 
 if __name__ == "__main__":
