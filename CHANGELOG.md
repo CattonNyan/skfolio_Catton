@@ -9,14 +9,19 @@
 - **coinbase**: Level 2 order book depth fetcher and market impact slippage calculator (`scripts/fetch_coinbase_crypto.py`)
   - Adds `fetch_coinbase_orderbook` supporting levels 1, 2, and 3 from Coinbase Exchange API
   - Adds `calculate_market_impact_slippage` to simulate walking the book, computing VWAP, bid-ask spread in bps, and market depth slippage
-- **dashboard**: Streamlit dashboard Tab 13 for Kelly Criterion and KPI Ulcer/Martin metrics (`app_dashboard.py`)
+- **bithumb**: Order book depth fetcher and KRW spread analyzer (`scripts/fetch_bithumb_crypto.py`)
+  - Adds `fetch_bithumb_orderbook` and `compute_bithumb_spread` with retry resilience for live order book monitoring
+- **metrics**: Underwater drawdown duration and episode recovery statistics (`scripts/crypto_drawdown_metrics.py`)
+  - Implements `compute_drawdown_duration_stats` to track maximum duration, average duration, and current duration underwater
+- **dashboard**: Streamlit dashboard Tab 13 for Kelly Criterion and Drift Band Rebalancing mode (`app_dashboard.py`)
   - Tab 13: "🎯 켈리 기준(Kelly) 최적 포지션 사이징" supporting both multi-asset continuous Kelly and discrete trade-level Kelly with interactive capital growth curves
+  - Tab 2: Added Drift Band tolerance threshold rebalancing backtest mode alongside calendar periodic rebalancing
   - Enhanced top KPI summary cards with Peter Martin's Ulcer Index (UI) and Martin Ratio (UPI)
 - **verification**: Registered `crypto_drawdown_metrics` and `http_retry_helper` in `scripts/verify_environment.py`
 
 ### Testing & Verification
 
-- Expanded test suite to **253 unit tests passing across 36 test modules** (`tests/test_crypto_suite.py`)
+- Expanded test suite to **257 unit tests passing across 36 test modules** (`tests/test_crypto_suite.py`)
 - Verified environment and Korean quant tool suite on Python 3.14.6
 
 ## v1.6.0 (2026-09-18)
