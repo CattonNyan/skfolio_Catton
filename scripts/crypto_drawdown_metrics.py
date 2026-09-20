@@ -236,14 +236,17 @@ def compute_drawdown_duration_stats(
             "avg_drawdown_duration": 0.0,
             "current_drawdown_duration": 0.0,
             "drawdown_episodes_count": 0.0,
+            "time_underwater_pct": 0.0,
         }
 
     durations: list[int] = []
     current_len = 0
+    underwater_bars = 0
 
     for val in dd:
         if val < -1e-6:
             current_len += 1
+            underwater_bars += 1
         else:
             if current_len > 0:
                 durations.append(current_len)
@@ -256,12 +259,14 @@ def compute_drawdown_duration_stats(
 
     max_dur = max(all_episodes) if all_episodes else 0
     avg_dur = (sum(durations) / len(durations)) if durations else (float(current_len) if current_len > 0 else 0.0)
+    time_underwater_pct = round((underwater_bars / len(dd)) * 100.0, 2) if len(dd) > 0 else 0.0
 
     return {
         "max_drawdown_duration": float(max_dur),
         "avg_drawdown_duration": round(float(avg_dur), 2),
         "current_drawdown_duration": float(current_dd_dur),
         "drawdown_episodes_count": float(len(all_episodes)),
+        "time_underwater_pct": time_underwater_pct,
     }
 
 
@@ -295,6 +300,7 @@ def compute_drawdown_metrics_summary(
         "avg_drawdown_duration": dur_stats["avg_drawdown_duration"],
         "current_drawdown_duration": dur_stats["current_drawdown_duration"],
         "drawdown_episodes_count": dur_stats["drawdown_episodes_count"],
+        "time_underwater_pct": dur_stats["time_underwater_pct"],
     }
 
 

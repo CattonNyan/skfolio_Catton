@@ -106,11 +106,14 @@ class DrawdownMetricsTests(unittest.TestCase):
         self.assertEqual(stats["max_drawdown_duration"], 2.0)
         self.assertEqual(stats["current_drawdown_duration"], 0.0)
         self.assertEqual(stats["drawdown_episodes_count"], 2.0)
+        self.assertIn("time_underwater_pct", stats)
+        self.assertGreater(stats["time_underwater_pct"], 0.0)
 
         # Monotonic positive series has 0 duration
         mono_stats = compute_drawdown_duration_stats([100.0, 101.0, 102.0], is_returns=False)
         self.assertEqual(mono_stats["max_drawdown_duration"], 0.0)
         self.assertEqual(mono_stats["drawdown_episodes_count"], 0.0)
+        self.assertEqual(mono_stats["time_underwater_pct"], 0.0)
 
 
 if __name__ == "__main__":
