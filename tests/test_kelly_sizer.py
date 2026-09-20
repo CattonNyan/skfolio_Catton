@@ -52,7 +52,17 @@ class KellySizerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             calculate_discrete_kelly(0.5, -1.0)
         with self.assertRaises(ValueError):
+            calculate_discrete_kelly(0.5, 1.5, max_allocation=0.0)
+        with self.assertRaises(ValueError):
             calculate_continuous_kelly(0.1, -0.05)
+        with self.assertRaises(ValueError):
+            calculate_continuous_kelly(0.1, 0.2, fraction=-0.1)
+        with self.assertRaises(ValueError):
+            calculate_continuous_kelly(0.1, 0.2, max_allocation=0.0)
+        with self.assertRaises(ValueError):
+            calculate_portfolio_kelly(pd.DataFrame({"A": [0.01, 0.02]}), fraction=-0.5)
+        with self.assertRaises(ValueError):
+            calculate_portfolio_kelly(pd.DataFrame({"A": [0.01, 0.02]}), max_total_weight=0.0)
 
 
 if __name__ == "__main__":

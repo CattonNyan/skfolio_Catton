@@ -61,6 +61,8 @@ def calculate_discrete_kelly(
         raise ValueError("Payoff ratio must be strictly positive.")
     if fraction <= 0.0:
         raise ValueError("Fraction must be strictly positive.")
+    if max_allocation <= 0.0:
+        raise ValueError("Max allocation must be strictly positive.")
 
     loss_rate = 1.0 - win_rate
     full_k = (win_rate * payoff_ratio - loss_rate) / payoff_ratio
@@ -109,6 +111,10 @@ def calculate_continuous_kelly(
     """
     if volatility <= 0.0:
         raise ValueError("Volatility must be strictly positive.")
+    if fraction <= 0.0:
+        raise ValueError("Fraction must be strictly positive.")
+    if max_allocation <= 0.0:
+        raise ValueError("Max allocation must be strictly positive.")
 
     excess = mean_return - risk_free_rate
     variance = volatility ** 2
@@ -143,6 +149,10 @@ def calculate_portfolio_kelly(
     """
     if returns_df.empty or len(returns_df) < 2:
         raise ValueError("Returns DataFrame must have at least 2 observations.")
+    if fraction <= 0.0:
+        raise ValueError("Fraction must be strictly positive.")
+    if max_total_weight <= 0.0:
+        raise ValueError("Max total weight must be strictly positive.")
 
     mu = returns_df.mean().to_numpy()
     sigma = returns_df.cov().to_numpy()
