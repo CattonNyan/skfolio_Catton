@@ -6,6 +6,7 @@ import pandas as pd
 from scripts.fetch_bithumb_crypto import (
     normalize_bithumb_symbol,
     fetch_bithumb_candlestick,
+    fetch_bithumb_spot_price,
     fetch_bithumb_multi_assets,
     fetch_bithumb_orderbook,
     compute_bithumb_spread,
@@ -102,6 +103,25 @@ class BithumbFetcherTests(unittest.TestCase):
         self.assertGreater(spread_info["spread_bps"], 0.0)
         self.assertGreater(spread_info["bid_depth_krw"], 0.0)
         self.assertGreater(spread_info["ask_depth_krw"], 0.0)
+
+    @patch("urllib.request.urlopen")
+    def test_fetch_bithumb_spot_price_mock(self, mock_urlopen):
+        mock_data = {
+            "status": "0000",
+            "data": {
+                "closing_price": "95000000",
+            },
+        }
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = json.dumps(mock_data).encode("utf-8")
+        mock_resp.__enter__.return_value = mock_resp
+        mock_urlopen.return_value = mock_resp
+
+        price = fetch_bithumb_spot_price("BTC")
+        self.assertEqual(price, 95000000.0)
+
+        with self.assertRaises(ValueError):
+            fetch_bithumb_candlestick("BTC", count=0)
 
 
 if __name__ == "__main__":

@@ -71,12 +71,15 @@ def fetch_bithumb_candlestick(
     if chart_interval not in VALID_BITHUMB_INTERVALS:
         raise ValueError(f"Invalid chart_interval '{chart_interval}'. Must be one of {VALID_BITHUMB_INTERVALS}")
 
+    if count <= 0:
+        raise ValueError("count must be strictly positive.")
+
     order_curr, pay_curr = normalize_bithumb_symbol(symbol, payment_currency)
     url = f"{BITHUMB_API_BASE}/candlestick/{order_curr}_{pay_curr}/{chart_interval}"
 
     req = urllib.request.Request(
         url,
-        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) skfolio-catton/1.6.1"},
+        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) skfolio-catton/1.6.2"},
     )
     data = fetch_json_with_retry(req, timeout=timeout)
 
@@ -99,8 +102,30 @@ def fetch_bithumb_candlestick(
             "volume": float(bar[5]),
         })
 
-    df = pd.DataFrame(records).sort_values("date").reset_index(drop=True)
+    df = pd.DataFrame(records).drop_duplicates(subset=["date"]).sort_values("date").reset_index(drop=True)
     return df
+
+
+def fetch_bithumb_spot_price(
+    symbol: str,
+    payment_currency: str = "KRW",
+    timeout: float = 5.0,
+) -> float:
+    """Fetch real-time spot closing price from Bithumb public ticker API."""
+    order_curr, pay_curr = normalize_bithumb_symbol(symbol, payment_currency)
+    url = f"{BITHUMB_API_BASE}/ticker/{order_curr}_{pay_curr}"
+    req = urllib.request.Request(
+        url,
+        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) skfolio-catton/1.6.2"},
+    )
+    data = fetch_json_with_retry(req, timeout=timeout)
+    if data.get("status") != "0000" or "data" not in data:
+        raise RuntimeError(f"Bithumb API error for {order_curr}_{pay_curr}: {data.get('message', 'Unknown error')}")
+
+    closing_price = float(data["data"].get("closing_price", 0.0))
+    if closing_price <= 0.0:
+        raise ValueError(f"Invalid closing price {closing_price} for {order_curr}_{pay_curr}")
+    return closing_price
 
 
 def fetch_bithumb_multi_assets(
