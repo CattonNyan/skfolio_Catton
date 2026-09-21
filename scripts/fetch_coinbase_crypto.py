@@ -216,6 +216,8 @@ def calculate_market_impact_slippage(
     for lvl in levels:
         price = float(lvl[0])
         qty = float(lvl[1])
+        if price <= 0.0 or qty <= 0.0:
+            continue
         level_usd = price * qty
 
         if level_usd <= remaining_usd:

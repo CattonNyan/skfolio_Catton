@@ -114,6 +114,12 @@ class CoinbaseFetcherTests(unittest.TestCase):
         self.assertAlmostEqual(res_buy_small["price_impact_bps"], 0.0, places=4)
         self.assertGreater(res_buy_small["slippage_bps"], 0.0)
 
+        # Test with corrupted zero-price level in orderbook
+        corrupt_asks = [["0.0", "1.0"], ["60100.0", "1.0"]]
+        res_corrupt = calculate_market_impact_slippage(30050.0, bids, corrupt_asks, side="buy")
+        self.assertTrue(res_corrupt["fully_filled"])
+        self.assertAlmostEqual(res_corrupt["vwap_price"], 60100.0, places=4)
+
         # 2. Buy order larger than level 1 ask (needs 60100 USD + 60200 USD = 120,300 USD)
         res_buy_large = calculate_market_impact_slippage(120300.0, bids, asks, side="buy")
         self.assertTrue(res_buy_large["fully_filled"])
