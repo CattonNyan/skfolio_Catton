@@ -120,20 +120,29 @@ def scan_triangular_pairs(
     - 'ETH/BTC': 0.051
     """
     opportunities: list[ArbitrageOpportunity] = []
+    # Normalize pair delimiters to standard BASE/QUOTE format
+    norm_prices: dict[str, float] = {}
+    for k, v in prices_dict.items():
+        clean_k = str(k).strip().upper().replace("-", "/").replace("_", "/")
+        norm_prices[clean_k] = float(v)
+
     # Identify cross pairs with '/'
-    cross_pairs = [k for k in prices_dict if "/" in k and not k.endswith("/USDT") and not k.endswith("/KRW")]
+    cross_pairs = [k for k in norm_prices if "/" in k and not k.endswith("/USDT") and not k.endswith("/KRW")]
 
     for cross in cross_pairs:
-        base, quote = cross.split("/")
-        p_cross = prices_dict[cross]
+        parts = cross.split("/")
+        if len(parts) != 2:
+            continue
+        base, quote = parts
+        p_cross = norm_prices[cross]
 
         for settlement in ["USDT", "KRW"]:
             pair_base = f"{base}/{settlement}"
             pair_quote = f"{quote}/{settlement}"
-            if pair_base in prices_dict and pair_quote in prices_dict:
+            if pair_base in norm_prices and pair_quote in norm_prices:
                 # p_b_quote is pair_base (base/settlement), p_a_quote is pair_quote (quote/settlement)
-                p_base = prices_dict[pair_base]
-                p_quote = prices_dict[pair_quote]
+                p_base = norm_prices[pair_base]
+                p_quote = norm_prices[pair_quote]
                 opps = calculate_triangular_arbitrage(
                     p_a_quote=p_quote,
                     p_b_quote=p_base,

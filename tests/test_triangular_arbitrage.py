@@ -48,6 +48,16 @@ class TriangularArbitrageTests(unittest.TestCase):
         self.assertGreater(len(opps), 0)
         self.assertTrue(any(o.is_profitable for o in opps))
 
+    def test_scan_triangular_pairs_with_custom_delimiters(self):
+        prices = {
+            "BTC-USDT": 60000.0,
+            "ETH_USDT": 3000.0,
+            "ETH-BTC": 0.045,
+        }
+        opps = scan_triangular_pairs(prices, fee_rate=0.0005)
+        self.assertGreater(len(opps), 0)
+        self.assertTrue(any(o.is_profitable for o in opps))
+
     def test_validation_errors(self):
         with self.assertRaises(ValueError):
             calculate_triangular_arbitrage(0, 3000, 0.05)
