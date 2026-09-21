@@ -20,7 +20,8 @@
 
 ### Testing & Verification
 
-- Expanded test suite to **259 unit tests passing across 36 test modules** (`tests/test_crypto_suite.py`)
+- Added programmatic quiet mode and CLI return code to environment verification runner (`scripts/verify_environment.py`)
+- Expanded test suite to **262 unit tests passing across 37 test modules** (`tests/test_crypto_suite.py`)
 
 ## v1.6.1 (2026-09-18)
 

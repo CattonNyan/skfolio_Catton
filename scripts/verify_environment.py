@@ -11,8 +11,9 @@ for p in [root_dir, src_dir]:
         sys.path.insert(0, p)
 
 
-def verify():
-    print("Python version:", sys.version)
+def verify(verbose: bool = True) -> bool:
+    if verbose:
+        print("Python version:", sys.version)
     modules = [
         ("numpy", "NumPy"),
         ("scipy", "SciPy"),
@@ -31,12 +32,15 @@ def verify():
         try:
             mod = __import__(module_name)
             ver = getattr(mod, "__version__", "installed")
-            print(f"[OK] {display_name:<20}: {ver}")
+            if verbose:
+                print(f"[OK] {display_name:<20}: {ver}")
         except ImportError as err:
-            print(f"[FAILED] {display_name:<20}: {err}")
+            if verbose:
+                print(f"[FAILED] {display_name:<20}: {err}")
             all_passed = False
 
-    print("\n--- Korean Crypto Quant Tools Verification ---")
+    if verbose:
+        print("\n--- Korean Crypto Quant Tools Verification ---")
     korean_tools = [
         ("scripts.fetch_upbit_crypto", "Upbit Price Fetcher"),
         ("scripts.crypto_krw_fee_calculator", "KRW Fee Drag Simulator"),
@@ -62,16 +66,22 @@ def verify():
     for module_name, display_name in korean_tools:
         try:
             __import__(module_name)
-            print(f"[OK] {display_name:<25}: loaded")
+            if verbose:
+                print(f"[OK] {display_name:<25}: loaded")
         except Exception as err:
-            print(f"[FAILED] {display_name:<25}: {err}")
+            if verbose:
+                print(f"[FAILED] {display_name:<25}: {err}")
             all_passed = False
 
-    if all_passed:
-        print("\nAll core dependencies and Korean quant tools are correctly verified!")
-    else:
-        print("\nSome modules failed to load. Please verify scripts and virtual environment.")
+    if verbose:
+        if all_passed:
+            print("\nAll core dependencies and Korean quant tools are correctly verified!")
+        else:
+            print("\nSome modules failed to load. Please verify scripts and virtual environment.")
+
+    return all_passed
 
 
 if __name__ == "__main__":
-    verify()
+    success = verify(verbose=True)
+    sys.exit(0 if success else 1)

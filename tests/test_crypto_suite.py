@@ -40,6 +40,7 @@ from tests.test_vol_target_allocator import VolTargetAllocatorTests
 from tests.test_tail_dependence import TailDependenceTests
 from tests.test_drawdown_metrics import DrawdownMetricsTests
 from tests.test_http_retry import HttpRetryTests
+from tests.test_verify_environment import VerifyEnvironmentTests
 
 
 def suite():
@@ -80,6 +81,7 @@ def suite():
     s.addTests(loader.loadTestsFromTestCase(TailDependenceTests))
     s.addTests(loader.loadTestsFromTestCase(DrawdownMetricsTests))
     s.addTests(loader.loadTestsFromTestCase(HttpRetryTests))
+    s.addTests(loader.loadTestsFromTestCase(VerifyEnvironmentTests))
     return s
 
 
