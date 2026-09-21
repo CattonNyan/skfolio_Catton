@@ -2,6 +2,26 @@
 
 <!-- version list -->
 
+## v1.6.2 (2026-09-21)
+
+### Features & Improvements
+
+- **bithumb**: Spot price fetcher and candlestick timestamp deduplication (`scripts/fetch_bithumb_crypto.py`)
+  - Added `fetch_bithumb_spot_price` to fetch real-time closing prices directly from Bithumb public ticker endpoint
+  - Deduplicated timestamp index in candlestick history records to ensure clean monotonic time series
+- **metrics**: Underwater time ratio (Time Under Water %) in drawdown engine (`scripts/crypto_drawdown_metrics.py`)
+  - Added `time_underwater_pct` to `compute_drawdown_duration_stats` and `compute_drawdown_metrics_summary`
+- **kelly**: Parameter boundary validation for position sizing (`scripts/crypto_kelly_sizer.py`)
+  - Added strict positive validation for `max_allocation`, `fraction`, and `max_total_weight` in discrete, continuous, and portfolio Kelly models
+- **arbitrage**: Symbol delimiter normalization in triangular arbitrage scanner (`scripts/crypto_triangular_arbitrage.py`)
+  - Standardized cross and settlement pair lookup to seamlessly handle hyphen (`-`), underscore (`_`), and slash (`/`) delimiters across exchanges
+- **coinbase**: Resilient order book walking in market impact slippage (`scripts/fetch_coinbase_crypto.py`)
+  - Filtered out non-positive price or quantity levels to prevent divide-by-zero on malformed exchange ticks
+
+### Testing & Verification
+
+- Expanded test suite to **259 unit tests passing across 36 test modules** (`tests/test_crypto_suite.py`)
+
 ## v1.6.1 (2026-09-18)
 
 ### Features
