@@ -9,10 +9,12 @@ Provides empirical liquidity screening tools for crypto portfolio optimization:
 from __future__ import annotations
 
 import argparse
+import json
+import math
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Sequence
 
 import numpy as np
 import pandas as pd
@@ -34,7 +36,21 @@ class LiquidityMetrics:
     amihud_illiquidity: float
     estimated_spread_pct: float
     is_liquid: bool
+    estimated_slippage_pct: float = 0.0
     rejection_reason: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert liquidity metrics to serializable dictionary."""
+        return {
+            "symbol": self.symbol,
+            "mean_volume_usd": self.mean_volume_usd,
+            "median_volume_usd": self.median_volume_usd,
+            "amihud_illiquidity": None if (math.isinf(self.amihud_illiquidity) or math.isnan(self.amihud_illiquidity)) else self.amihud_illiquidity,
+            "estimated_spread_pct": self.estimated_spread_pct,
+            "estimated_slippage_pct": self.estimated_slippage_pct,
+            "is_liquid": self.is_liquid,
+            "rejection_reason": self.rejection_reason,
+        }
 
 
 def compute_amihud_illiquidity(
@@ -108,6 +124,8 @@ def filter_crypto_universe(
     min_mean_volume_usd: float = 10000.0,
     max_amihud: float = 5.0,
     max_spread_pct: float = 2.0,
+    trade_size_usd: float = 10000.0,
+    max_slippage_pct: float | None = None,
 ) -> tuple[list[str], dict[str, LiquidityMetrics]]:
     """Screen an OHLCV asset universe by liquidity thresholds.
 
@@ -121,6 +139,10 @@ def filter_crypto_universe(
         Maximum allowed Amihud illiquidity ratio.
     max_spread_pct : float
         Maximum allowed estimated effective spread %.
+    trade_size_usd : float
+        Trade size in USD for estimating price impact and execution slippage.
+    max_slippage_pct : float | None
+        Optional maximum allowed estimated total slippage (half-spread + price impact).
 
     Returns
     -------
@@ -144,6 +166,7 @@ def filter_crypto_universe(
                 amihud_illiquidity=float("inf"),
                 estimated_spread_pct=100.0,
                 is_liquid=False,
+                estimated_slippage_pct=100.0,
                 rejection_reason="Insufficient data bars or missing required OHLCV columns.",
             )
             continue
@@ -163,6 +186,9 @@ def filter_crypto_universe(
         else:
             spread = 0.0
 
+        # Estimated one-way slippage = half spread + price impact (Amihud * trade_size / 1e6)
+        estimated_slippage = (spread / 2.0) + (amihud * (trade_size_usd / 1e6)) if math.isfinite(amihud) else float("inf")
+
         # Evaluate filter criteria
         reasons = []
         if mean_vol < min_mean_volume_usd:
@@ -171,6 +197,8 @@ def filter_crypto_universe(
             reasons.append(f"Amihud {amihud:.3f} > {max_amihud:.3f}")
         if spread > max_spread_pct:
             reasons.append(f"Spread {spread:.2f}% > {max_spread_pct:.2f}%")
+        if max_slippage_pct is not None and estimated_slippage > max_slippage_pct:
+            reasons.append(f"Est. slippage {estimated_slippage:.2f}% > {max_slippage_pct:.2f}% (for ${trade_size_usd:,.0f} trade)")
 
         is_liq = len(reasons) == 0
         metrics_dict[sym] = LiquidityMetrics(
@@ -180,6 +208,7 @@ def filter_crypto_universe(
             amihud_illiquidity=amihud,
             estimated_spread_pct=spread,
             is_liquid=is_liq,
+            estimated_slippage_pct=round(estimated_slippage, 4) if math.isfinite(estimated_slippage) else 999.0,
             rejection_reason="; ".join(reasons) if reasons else None,
         )
         if is_liq:
@@ -192,7 +221,10 @@ def main():
     parser = argparse.ArgumentParser(description="Cryptocurrency Liquidity Risk Filter and Screener.")
     parser.add_argument("--min-volume", type=float, default=50000.0, help="Minimum mean dollar volume per bar.")
     parser.add_argument("--max-amihud", type=float, default=2.0, help="Maximum allowed Amihud illiquidity.")
-    parser.add_argument("--max-spread", type=float, default=1.5, help="Maximum allowed estimated spread (%).")
+    parser.add_argument("--max-spread", type=float, default=1.5, help="Maximum allowed estimated spread percentage.")
+    parser.add_argument("--trade-size", type=float, default=10000.0, help="Trade size in USD for slippage estimation.")
+    parser.add_argument("--max-slippage", type=float, default=None, help="Maximum allowed estimated total slippage percentage.")
+    parser.add_argument("--export-json", type=str, default=None, help="Export liquidity screening results to JSON file.")
     args = parser.parse_args()
 
     # Create dummy synthetic data for demonstration
@@ -215,12 +247,25 @@ def main():
         min_mean_volume_usd=args.min_volume,
         max_amihud=args.max_amihud,
         max_spread_pct=args.max_spread,
+        trade_size_usd=args.trade_size,
+        max_slippage_pct=args.max_slippage,
     )
 
     print(f"[*] Evaluated {len(demo_data)} assets. Liquid: {len(liquid_syms)}")
     for sym, m in report.items():
         status = "[PASS]" if m.is_liquid else "[FAIL]"
-        print(f"  {status} {sym:<12}: Vol=${m.mean_volume_usd:,.0f} | Amihud={m.amihud_illiquidity:.4f} | Spread={m.estimated_spread_pct:.2f}% | Note: {m.rejection_reason or 'OK'}")
+        print(f"  {status} {sym:<12}: Vol=${m.mean_volume_usd:,.0f} | Amihud={m.amihud_illiquidity:.4f} | Spread={m.estimated_spread_pct:.2f}% | Slippage={m.estimated_slippage_pct:.2f}% | Note: {m.rejection_reason or 'OK'}")
+
+    if args.export_json:
+        out_path = Path(args.export_json)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        export_payload = {
+            "liquid_symbols": liquid_syms,
+            "metrics": {sym: m.to_dict() for sym, m in report.items()},
+        }
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(export_payload, f, indent=2, ensure_ascii=False)
+        print(f"[+] Liquidity report exported to: {out_path}")
 
 
 if __name__ == "__main__":
