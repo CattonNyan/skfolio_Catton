@@ -175,6 +175,23 @@ def compare_exchange_fee_drag(
     return pd.DataFrame(rows).sort_values("total_annual_fees_krw").reset_index(drop=True)
 
 
+def format_exchange_fee_table(df: pd.DataFrame) -> str:
+    """Format multi-exchange fee comparison DataFrame into readable text table."""
+    lines = [
+        "=========================================================================================",
+        "                    KOREAN CRYPTO EXCHANGE FEE COMPARISON MATRIX                         ",
+        "=========================================================================================",
+        f"{'Exchange':<32} | {'Fee Rate':<10} | {'Trading Fees':<14} | {'Total Fees':<14} | {'Fee Drag'}",
+        "-----------------------------------------------------------------------------------------",
+    ]
+    for _, r in df.iterrows():
+        lines.append(
+            f"{r['exchange']:<32} | {r['weighted_fee_rate_pct']:>8.4f}% | ₩{r['annual_trading_fees_krw']:>12,.0f} | ₩{r['total_annual_fees_krw']:>12,.0f} | {r['fee_drag_pct']:>7.2f}%/yr"
+        )
+    lines.append("=========================================================================================")
+    return "\n".join(lines)
+
+
 def print_krw_fee_report(res: dict[str, object], exchange_name: str = "Custom"):
     """Print formatted terminal report of fee analysis."""
     print("================================================================================")
@@ -207,8 +224,24 @@ def main():
     parser.add_argument("--turnover", type=float, default=4.0, help="Annual turnover multiplier (default: 4.0)")
     parser.add_argument("--maker-ratio", type=float, default=0.5, help="Proportion of maker orders (0.0 to 1.0)")
     parser.add_argument("--withdrawals", type=int, default=12, help="Annual KRW bank withdrawals (default: 12)")
+    parser.add_argument("--compare", action="store_true", help="Compare all Korean exchanges side-by-side")
     parser.add_argument("--export-json", type=str, default="", help="Path to export results JSON")
     args = parser.parse_args()
+
+    if args.compare:
+        cmp_df = compare_exchange_fee_drag(
+            portfolio_value_krw=args.capital,
+            annual_turnover=args.turnover,
+            maker_ratio=args.maker_ratio,
+            annual_withdrawals=args.withdrawals,
+        )
+        print(format_exchange_fee_table(cmp_df))
+        if args.export_json:
+            out_path = Path(args.export_json)
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(cmp_df.to_json(orient="records", indent=2, force_ascii=False), encoding="utf-8")
+            print(f"[+] Multi-exchange comparison exported to: {out_path}")
+        return
 
     preset = get_korean_exchange_preset(args.exchange)
     res = compute_krw_fee_drag(
