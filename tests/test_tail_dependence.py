@@ -1,10 +1,15 @@
+import json
+import tempfile
 import unittest
+from pathlib import Path
 import numpy as np
 import pandas as pd
 
 from scripts.crypto_tail_dependence import (
+    TailDependenceResult,
     compute_bivariate_tail_dependence,
     compute_tail_dependence_matrix,
+    main as tail_main,
 )
 
 
@@ -47,6 +52,36 @@ class TailDependenceTests(unittest.TestCase):
             compute_bivariate_tail_dependence([1] * 20, [1] * 20, quantile=0.6)
         with self.assertRaises(ValueError):
             compute_tail_dependence_matrix(pd.DataFrame({"A": [1, 2, 3]}))
+
+    def test_tail_dependence_result_to_dict(self):
+        result = TailDependenceResult(
+            lower_tail=0.75,
+            upper_tail=0.82,
+            tail_asymmetry=-0.07,
+            quantile=0.05,
+        )
+        d = result.to_dict()
+        self.assertIsInstance(d, dict)
+        self.assertEqual(d["lower_tail"], 0.75)
+        self.assertEqual(d["upper_tail"], 0.82)
+        self.assertEqual(d["tail_asymmetry"], -0.07)
+        self.assertEqual(d["quantile"], 0.05)
+
+    def test_json_export_cli(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "sub" / "tail_test.json"
+            from unittest.mock import patch
+            test_args = ["crypto_tail_dependence.py", "--quantile", "0.05", "--export-json", str(out_file)]
+            with patch("sys.argv", test_args):
+                tail_main()
+
+            self.assertTrue(out_file.exists())
+            with open(out_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            self.assertEqual(data["quantile"], 0.05)
+            self.assertIn("lower_tail_matrix", data)
+            self.assertIn("upper_tail_matrix", data)
+            self.assertIn("systemic_crash_vulnerability", data)
 
 
 if __name__ == "__main__":

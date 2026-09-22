@@ -1,7 +1,10 @@
 """Tests for historical crypto stress tester module."""
 
 import unittest
-from scripts.crypto_stress_tester import evaluate_stress_test
+from scripts.crypto_stress_tester import (
+    evaluate_stress_test,
+    summarize_stress_test_results,
+)
 
 
 class StressTesterTests(unittest.TestCase):
@@ -115,6 +118,26 @@ class StressTesterTests(unittest.TestCase):
             loss_pct = abs(metrics["portfolio_loss_pct"]) / 100.0
             expected_rec = (loss_pct / (1.0 - loss_pct)) * 100
             self.assertAlmostEqual(metrics["recovery_required_pct"], expected_rec, places=1)
+
+    def test_summarize_stress_test_results(self):
+        # Empty results handling
+        empty_summary = summarize_stress_test_results({})
+        self.assertEqual(empty_summary["scenarios_tested"], 0)
+        self.assertEqual(empty_summary["worst_scenario"], "")
+
+        # Standard stress test evaluation summary
+        weights = {"BTC/USDT": 0.6, "ETH/USDT": 0.4}
+        wallet = 10000.0
+        results = evaluate_stress_test(weights, total_wallet=wallet)
+        summary = summarize_stress_test_results(results)
+
+        self.assertGreater(summary["scenarios_tested"], 0)
+        self.assertIn("worst_scenario", summary)
+        self.assertLess(summary["worst_loss_pct"], 0.0)
+        self.assertGreater(summary["worst_dollar_loss"], 0.0)
+        self.assertLess(summary["avg_loss_pct"], 0.0)
+        self.assertLessEqual(summary["worst_loss_pct"], summary["avg_loss_pct"])
+        self.assertIn(summary["overall_resilience"], ["A (High Resilience)", "B (Moderate Resilience)", "C (Significant Impact)", "D (Severe Vulnerability)"])
 
 
 if __name__ == "__main__":

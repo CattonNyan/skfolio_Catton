@@ -47,7 +47,26 @@ class VolTargetAllocatorTests(unittest.TestCase):
         )
         self.assertIn("nav_targeted", res)
         self.assertIn("mdd_targeted_pct", res)
+        self.assertIn("sharpe_targeted", res)
+        self.assertIn("calmar_targeted", res)
+        self.assertIn("sharpe_static", res)
+        self.assertIn("calmar_static", res)
+        self.assertIn("return_targeted_pct", res)
+        self.assertIn("return_static_pct", res)
         self.assertGreater(len(res["nav_targeted"]), 0)
+
+    def test_vol_target_result_to_dict(self):
+        base_w = {"BTC/USDT": 0.60, "ETH/USDT": 0.40}
+        res = apply_volatility_targeting(base_w, realized_vol_ann=0.50, target_vol_ann=0.25)
+        d = res.to_dict()
+        self.assertIsInstance(d, dict)
+        self.assertEqual(d["vol_scalar"], 0.5)
+        self.assertEqual(d["target_vol_ann"], 0.25)
+        self.assertEqual(d["realized_vol_ann"], 0.50)
+        self.assertEqual(d["cash_weight"], 0.50)
+        self.assertEqual(d["scaled_weights"]["BTC/USDT"], 0.30)
+        self.assertEqual(d["scaled_weights"]["ETH/USDT"], 0.20)
+        self.assertFalse(d["is_leveraged"])
 
     def test_validation_errors(self):
         with self.assertRaises(ValueError):
