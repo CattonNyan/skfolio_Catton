@@ -151,6 +151,25 @@ def fetch_upbit_ticker(markets: list[str], timeout: float = 3.0) -> dict[str, fl
         return {m: fallback_map.get(m, 1000.0) for m in normalized_markets}
 
 
+def fetch_upbit_spot_price(symbol: str, quote: str = "KRW", timeout: float = 3.0) -> float:
+    """
+    Fetch the real-time spot trade price for a single Upbit symbol.
+
+    Parameters:
+    - symbol: Asset symbol (e.g. 'BTC', 'ETH', 'KRW-BTC')
+    - quote: Target quote currency (default 'KRW')
+    - timeout: Request timeout in seconds
+
+    Returns:
+    - Current spot trade price in quote currency as float
+    """
+    market_code = normalize_upbit_symbol(symbol, quote=quote)
+    ticker_dict = fetch_upbit_ticker([market_code], timeout=timeout)
+    if market_code not in ticker_dict:
+        raise ValueError(f"Unable to retrieve trade price for {market_code}")
+    return float(ticker_dict[market_code])
+
+
 def fetch_upbit_candles(
     market: str,
     count: int = 200,
@@ -199,7 +218,12 @@ def fetch_upbit_candles(
                     "candle_acc_trade_volume": "volume",
                 }
             )
-            df = df[["date", "open", "high", "low", "close", "volume"]].sort_values("date").reset_index(drop=True)
+            df = (
+                df[["date", "open", "high", "low", "close", "volume"]]
+                .drop_duplicates(subset=["date"])
+                .sort_values("date")
+                .reset_index(drop=True)
+            )
             return df
     except Exception:
         # Generate synthetic realistic random walk fallback
@@ -218,6 +242,7 @@ def fetch_upbit_candles(
                 "volume": np.random.uniform(10, 500, size=count),
             }
         )
+        df = df.drop_duplicates(subset=["date"]).sort_values("date").reset_index(drop=True)
         return df
 
 
