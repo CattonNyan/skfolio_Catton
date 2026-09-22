@@ -9,9 +9,11 @@ Measures nonlinear co-movement during market extremes:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -31,6 +33,15 @@ class TailDependenceResult:
     upper_tail: float
     tail_asymmetry: float
     quantile: float
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert tail dependence result to serializable dictionary."""
+        return {
+            "lower_tail": self.lower_tail,
+            "upper_tail": self.upper_tail,
+            "tail_asymmetry": self.tail_asymmetry,
+            "quantile": self.quantile,
+        }
 
 
 def compute_bivariate_tail_dependence(
@@ -126,7 +137,8 @@ def compute_tail_dependence_matrix(
 
 def main():
     parser = argparse.ArgumentParser(description="Crypto Tail Dependence Analyzer.")
-    parser.add_argument("--quantile", type=float, default=0.05, help="Tail quantile cutoff (default 0.05 = 5%).")
+    parser.add_argument("--quantile", type=float, default=0.05, help="Tail quantile cutoff (default 0.05 = 5%%).")
+    parser.add_argument("--export-json", type=str, default=None, help="Path to export tail dependence results to JSON file.")
     args = parser.parse_args()
 
     # Create synthetic demonstration
@@ -143,6 +155,19 @@ def main():
     print(f"\n[*] Upper Tail Dependence Matrix (Rally Co-movement):")
     print(df_u.round(3))
     print(f"\n[*] Systemic Crash Vulnerability Ranking:\n{scores}")
+
+    if args.export_json:
+        out_path = Path(args.export_json)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        export_payload = {
+            "quantile": args.quantile,
+            "lower_tail_matrix": df_l.to_dict(),
+            "upper_tail_matrix": df_u.to_dict(),
+            "systemic_crash_vulnerability": scores.to_dict(),
+        }
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(export_payload, f, indent=2, ensure_ascii=False)
+        print(f"[+] Tail dependence results exported to: {out_path}")
 
 
 if __name__ == "__main__":
