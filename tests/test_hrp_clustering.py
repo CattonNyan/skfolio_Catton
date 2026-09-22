@@ -41,6 +41,32 @@ class HrpClusteringTests(unittest.TestCase):
         for w in schur_weights.values():
             self.assertGreaterEqual(w, -1e-5)
 
+    def test_hrp_json_export_and_serialization(self):
+        from scripts.crypto_hrp_clustering import export_hrp_json, to_dict_hrp_result
+        import tempfile
+        import json
+        from pathlib import Path
+
+        prices = generate_synthetic_crypto_data(periods=60)
+        results = run_hrp_analysis(prices)
+        returns = prices.pct_change().dropna()
+        corr = compute_correlation_matrix(returns)
+
+        serialized = to_dict_hrp_result(results, corr_matrix=corr)
+        self.assertIn("models", serialized)
+        self.assertIn("correlation_matrix", serialized)
+        self.assertIn("HRP (Variance)", serialized["models"])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "hrp_test.json"
+            export_hrp_json(results, out_file, corr_matrix=corr)
+            self.assertTrue(out_file.exists())
+            with open(out_file, encoding="utf-8") as f:
+                loaded = json.load(f)
+            self.assertIn("models", loaded)
+            self.assertIn("correlation_matrix", loaded)
+            self.assertIn("BTC/USDT", loaded["correlation_matrix"])
+
 
 if __name__ == "__main__":
     unittest.main()

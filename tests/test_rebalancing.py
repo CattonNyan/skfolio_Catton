@@ -218,6 +218,36 @@ class RebalancingTests(unittest.TestCase):
         self.assertIsInstance(s["Ulcer Index (%)"], float)
         self.assertIsInstance(s["Martin Ratio"], float)
 
+    def test_rebalancing_json_export_and_serialization(self):
+        from scripts.crypto_rebalancing_backtest import export_rebalancing_json, to_dict_rebalancing_result
+        import tempfile
+        import json
+        from pathlib import Path
+
+        prices = generate_synthetic_crypto_data(periods=120)
+        res = simulate_rebalancing(
+            prices=prices,
+            train_bars=50,
+            rebalance_freq_bars=15,
+            fee_rate=0.001,
+            model_choice="Equal Weight",
+        )
+        data_dict = to_dict_rebalancing_result(res)
+        self.assertIn("summary", data_dict)
+        self.assertIn("rebalance_count", data_dict)
+        self.assertIn("portfolio_nav", data_dict)
+        self.assertIn("final", data_dict["portfolio_nav"])
+        self.assertIsInstance(data_dict["rebalance_dates"], list)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "rebal_test.json"
+            export_rebalancing_json(res, out_file)
+            self.assertTrue(out_file.exists())
+            with open(out_file, encoding="utf-8") as f:
+                loaded = json.load(f)
+            self.assertEqual(loaded["summary"]["Model"], "Equal Weight")
+            self.assertIn("portfolio_nav", loaded)
+
 
 if __name__ == "__main__":
     unittest.main()
