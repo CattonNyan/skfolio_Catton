@@ -3,7 +3,9 @@
 import unittest
 from scripts.crypto_tax_calculator import (
     calculate_tax_loss_harvesting_target,
+    compare_tax_allowance_tiers,
     compute_crypto_tax_impact,
+    format_allowance_comparison_table,
 )
 
 
@@ -58,6 +60,15 @@ class TaxCalculatorTests(unittest.TestCase):
         self.assertEqual(res["taxable_base"], 0.0)
         self.assertEqual(res["estimated_tax_krw"], 0.0)
         self.assertFalse(res["is_taxable"])
+
+    def test_compare_tax_allowance_tiers(self):
+        trades = [15000000.0]
+        df = compare_tax_allowance_tiers(trades, tiers=[2500000.0, 50000000.0])
+        self.assertEqual(len(df), 2)
+        self.assertGreater(df.iloc[0]["estimated_tax_krw"], 0.0)
+        self.assertEqual(df.iloc[1]["estimated_tax_krw"], 0.0)
+        table = format_allowance_comparison_table(df)
+        self.assertIn("ALLOWANCE TIER COMPARISON", table)
 
     def test_invalid_tax_rate_rejected(self):
         with self.assertRaises(ValueError):

@@ -21,6 +21,10 @@
 - **monte-carlo**: Path-level maximum drawdown metrics (`scripts/crypto_monte_carlo.py`)
   - Added `expected_max_drawdown_pct` and `worst_max_drawdown_95pct` to quantify path drawdown risk
 
+### Testing & Verification
+
+- Expanded test suite to **265 unit tests passing across 37 test modules** (`tests/test_crypto_suite.py`)
+
 ## v1.6.2 (2026-09-21)
 
 ### Features & Improvements

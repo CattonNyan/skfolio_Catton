@@ -8,6 +8,7 @@ from scripts.fetch_upbit_crypto import (
     fetch_upbit_candles,
     fetch_upbit_historical_prices,
     fetch_upbit_market_list,
+    fetch_upbit_spot_price,
     fetch_upbit_ticker,
     normalize_upbit_symbol,
     validate_upbit_market_code,
@@ -59,6 +60,14 @@ class UpbitFetcherTests(unittest.TestCase):
         for m in markets:
             self.assertIn(m, ticker)
             self.assertGreater(ticker[m], 0)
+
+    def test_fetch_upbit_spot_price(self):
+        price = fetch_upbit_spot_price("BTC", timeout=2.0)
+        self.assertIsInstance(price, float)
+        self.assertGreater(price, 0)
+        price_eth = fetch_upbit_spot_price("KRW-ETH", timeout=2.0)
+        self.assertIsInstance(price_eth, float)
+        self.assertGreater(price_eth, 0)
 
     def test_fetch_upbit_candles_basic(self):
         df = fetch_upbit_candles("KRW-BTC", count=10, timeframe="days", timeout=2.0)

@@ -38,6 +38,18 @@ class KimchiHedgingTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             simulate_kimchi_hedging(binance_fee=-0.01)
 
+    def test_hedging_result_to_dict_and_validation(self):
+        res = simulate_kimchi_hedging(capital_krw=10_000_000.0)
+        d = res.to_dict()
+        self.assertIsInstance(d, dict)
+        self.assertIn("capital_krw", d)
+        self.assertIn("annualized_apr_pct", d)
+
+        with self.assertRaises(ValueError):
+            simulate_kimchi_hedging(network_fee_krw=-500)
+        with self.assertRaises(ValueError):
+            simulate_kimchi_hedging(daily_funding_rate=float("nan"))
+
 
 if __name__ == "__main__":
     unittest.main()

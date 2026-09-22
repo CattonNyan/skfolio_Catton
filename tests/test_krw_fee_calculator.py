@@ -7,6 +7,7 @@ from scripts.crypto_krw_fee_calculator import (
     KOREAN_EXCHANGE_PRESETS,
     compare_exchange_fee_drag,
     compute_krw_fee_drag,
+    format_exchange_fee_table,
     get_korean_exchange_preset,
 )
 
@@ -28,6 +29,12 @@ class KrwFeeCalculatorTests(unittest.TestCase):
         self.assertTrue((df["total_annual_fees_krw"] > 0).all())
         # Check ascending sort
         self.assertTrue(df["total_annual_fees_krw"].is_monotonic_increasing)
+
+        # Test format_exchange_fee_table
+        table_output = format_exchange_fee_table(df)
+        self.assertIn("KOREAN CRYPTO EXCHANGE FEE COMPARISON MATRIX", table_output)
+        self.assertIn("Upbit", table_output)
+        self.assertIn("Bithumb", table_output)
 
         # Invalid exchange name
         with self.assertRaises(ValueError):
