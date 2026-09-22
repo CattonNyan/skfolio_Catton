@@ -2,6 +2,25 @@
 
 <!-- version list -->
 
+## v1.6.3 (2026-09-22)
+
+### Features & Improvements
+
+- **upbit**: Single-symbol spot price fetcher and candlestick timestamp deduplication (`scripts/fetch_upbit_crypto.py`)
+  - Added `fetch_upbit_spot_price` supporting both direct symbols (`BTC`) and full pairs (`KRW-BTC`)
+  - Deduplicated timestamp index in candlestick history records ensuring distinct monotonic time series
+- **fees**: Multi-exchange fee comparison table and CLI comparison matrix (`scripts/crypto_krw_fee_calculator.py`)
+  - Added `format_exchange_fee_table` and `--compare` CLI flag to evaluate Upbit, Bithumb, Korbit, Coinone, and GOPAX fee drags side-by-side
+- **tax**: Multi-tier basic allowance comparison matrix (`scripts/crypto_tax_calculator.py`)
+  - Added `compare_tax_allowance_tiers` and `--compare-tiers` to model statutory 2.5M KRW vs proposed 50M KRW allowance tiers
+- **hedging**: Input validation and JSON export in Kimchi hedging simulator (`scripts/crypto_kimchi_hedging.py`)
+  - Added `to_dict()` and `--export-json` options, plus boundary validation for network fees and funding rates
+  - Fixed unescaped percent tokens in argparse help strings for Python 3.14 compatibility
+- **synthetic**: Boundary validation on jump parameters and CSV export (`scripts/crypto_synthetic_data.py`)
+  - Added `jump_std` non-negative validation and `--export-csv` CLI export
+- **monte-carlo**: Path-level maximum drawdown metrics (`scripts/crypto_monte_carlo.py`)
+  - Added `expected_max_drawdown_pct` and `worst_max_drawdown_95pct` to quantify path drawdown risk
+
 ## v1.6.2 (2026-09-21)
 
 ### Features & Improvements
