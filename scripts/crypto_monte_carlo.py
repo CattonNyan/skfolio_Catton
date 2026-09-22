@@ -147,6 +147,13 @@ def simulate_monte_carlo_paths(
     prob_severe_loss = float(np.mean(final_wealth < initial_capital * 0.70) * 100)
     prob_doubling = float(np.mean(final_wealth >= initial_capital * 2.0) * 100)
 
+    # Path-level maximum drawdown calculation
+    running_max = np.maximum.accumulate(paths, axis=1)
+    dd_matrix = (paths - running_max) / (running_max + 1e-9)
+    mdd_per_path = np.abs(np.min(dd_matrix, axis=1)) * 100.0
+    expected_mdd_pct = float(np.mean(mdd_per_path))
+    worst_mdd_95_pct = float(np.percentile(mdd_per_path, 95))
+
     gains = net_profits[net_profits > 0]
     losses_abs = np.abs(net_profits[net_profits < 0])
     plr = round(float(np.sum(gains) / (np.sum(losses_abs) + 1e-9)), 2) if len(losses_abs) > 0 else 999.0
@@ -171,6 +178,8 @@ def simulate_monte_carlo_paths(
         "var_95_dollar": round(max(0.0, var_95), 2),
         "var_99_dollar": round(max(0.0, var_99), 2),
         "cvar_95_dollar": round(max(0.0, cvar_95), 2),
+        "expected_max_drawdown_pct": round(expected_mdd_pct, 2),
+        "worst_max_drawdown_95pct": round(worst_mdd_95_pct, 2),
         "prob_loss_pct": round(prob_loss, 2),
         "prob_severe_loss_pct": round(prob_severe_loss, 2),
         "prob_doubling_pct": round(prob_doubling, 2),
@@ -201,6 +210,8 @@ def print_monte_carlo_report(res: dict[str, object]):
     print(f"{'Value at Risk (VaR 95%)':<26}: ${res['var_95_dollar']:,.2f} (최대 5% 확률 손실액)")
     print(f"{'Value at Risk (VaR 99%)':<26}: ${res['var_99_dollar']:,.2f} (최대 1% 극단 손실액)")
     print(f"{'Conditional VaR (CVaR 95%)':<26}: ${res['cvar_95_dollar']:,.2f} (95% 초과 손실 시 평균 손실액)")
+    print(f"{'경로 평균 최대낙폭 (Exp MDD)':<24}: {res.get('expected_max_drawdown_pct', 0.0):.2f}%")
+    print(f"{'경로 95% 최대낙폭 (Worst MDD)':<23}: {res.get('worst_max_drawdown_95pct', 0.0):.2f}%")
     print(f"{'원금 손실 확률 (Prob Loss)':<24}: {res['prob_loss_pct']:.2f}%")
     print(f"{'원금 30% 이상 폭락 확률':<24}: {res['prob_severe_loss_pct']:.2f}%")
     print(f"{'원금 2배 달성 확률':<25}: {res['prob_doubling_pct']:.2f}%")
