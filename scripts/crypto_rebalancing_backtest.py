@@ -11,6 +11,7 @@ Simulates walk-forward rolling window portfolio rebalancing:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -476,6 +477,44 @@ def print_backtest_report(summary: dict[str, object]):
     print("================================================================================\n")
 
 
+def to_dict_rebalancing_result(result: dict[str, object]) -> dict[str, object]:
+    """Convert simulate_rebalancing results to a JSON-serializable dictionary."""
+    summary = result.get("summary", {})
+    rebalance_dates = [
+        d.isoformat() if hasattr(d, "isoformat") else str(d)
+        for d in result.get("rebalance_dates", [])
+    ]
+    turnover_history = [
+        round(float(t), 4) for t in result.get("turnover_history", [])
+    ]
+
+    out: dict[str, object] = {
+        "summary": summary,
+        "rebalance_count": len(rebalance_dates),
+        "rebalance_dates": rebalance_dates,
+        "turnover_history": turnover_history,
+    }
+
+    nav_port = result.get("nav_port")
+    if isinstance(nav_port, pd.Series) and len(nav_port) > 0:
+        out["portfolio_nav"] = {
+            "initial": round(float(nav_port.iloc[0]), 4),
+            "final": round(float(nav_port.iloc[-1]), 4),
+            "peak": round(float(nav_port.max()), 4),
+            "trough": round(float(nav_port.min()), 4),
+        }
+    return out
+
+
+def export_rebalancing_json(result: dict[str, object], output_path: Path | str, indent: int = 2) -> None:
+    """Export rebalancing results to a JSON file."""
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = to_dict_rebalancing_result(result)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=indent, ensure_ascii=False)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Crypto Portfolio Rebalancing Backtest")
     parser.add_argument("--data-dir", type=str, default="", help="Directory with Freqtrade feather files")
@@ -492,6 +531,7 @@ def main():
     parser.add_argument("--fee", type=float, default=0.001, help="Transaction fee rate (0.001 = 0.1%%)")
     parser.add_argument("--tolerance-band", type=float, default=None, help="Drift threshold to execute rebalancing (e.g. 0.05 for 5%%)")
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic data")
+    parser.add_argument("--export-json", type=str, default=None, help="Path to export rebalancing backtest summary to JSON file.")
     args = parser.parse_args()
 
     try:
@@ -520,6 +560,10 @@ def main():
     )
 
     print_backtest_report(res["summary"])
+
+    if args.export_json:
+        export_rebalancing_json(res, args.export_json)
+        print(f"[+] Rebalancing backtest results exported to: {args.export_json}")
 
 
 if __name__ == "__main__":
