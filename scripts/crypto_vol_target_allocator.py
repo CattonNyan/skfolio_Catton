@@ -9,9 +9,11 @@ Implements institutional constant volatility targeting:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -33,6 +35,17 @@ class VolTargetResult:
     scaled_weights: dict[str, float]
     cash_weight: float
     is_leveraged: bool
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert volatility target result to serializable dictionary."""
+        return {
+            "target_vol_ann": self.target_vol_ann,
+            "realized_vol_ann": self.realized_vol_ann,
+            "vol_scalar": self.vol_scalar,
+            "scaled_weights": dict(self.scaled_weights),
+            "cash_weight": self.cash_weight,
+            "is_leveraged": self.is_leveraged,
+        }
 
 
 def calculate_portfolio_realized_volatility(
@@ -140,21 +153,44 @@ def simulate_vol_targeted_backtest(
         peak = series.cummax()
         return float(((series - peak) / peak).min() * 100.0)
 
+    ret_static_daily = s_static.pct_change().dropna()
+    ret_targeted_daily = s_targeted.pct_change().dropna()
+
+    vol_static = float(ret_static_daily.std() * np.sqrt(annual_factor)) if len(ret_static_daily) > 1 else 0.0
+    vol_targeted = float(ret_targeted_daily.std() * np.sqrt(annual_factor)) if len(ret_targeted_daily) > 1 else 0.0
+
+    ret_static_pct = (s_static.iloc[-1] - 1.0) * 100.0
+    ret_targeted_pct = (s_targeted.iloc[-1] - 1.0) * 100.0
+
+    mdd_static = abs(mdd(s_static))
+    mdd_targeted = abs(mdd(s_targeted))
+
+    sharpe_static = (float(ret_static_daily.mean() * annual_factor) / vol_static) if vol_static > 1e-6 else 0.0
+    sharpe_targeted = (float(ret_targeted_daily.mean() * annual_factor) / vol_targeted) if vol_targeted > 1e-6 else 0.0
+
+    calmar_static = (ret_static_pct / mdd_static) if mdd_static > 1e-6 else 0.0
+    calmar_targeted = (ret_targeted_pct / mdd_targeted) if mdd_targeted > 1e-6 else 0.0
+
     return {
         "nav_static": s_static,
         "nav_targeted": s_targeted,
         "mdd_static_pct": round(mdd(s_static), 2),
         "mdd_targeted_pct": round(mdd(s_targeted), 2),
-        "return_static_pct": round((s_static.iloc[-1] - 1.0) * 100.0, 2),
-        "return_targeted_pct": round((s_targeted.iloc[-1] - 1.0) * 100.0, 2),
+        "return_static_pct": round(ret_static_pct, 2),
+        "return_targeted_pct": round(ret_targeted_pct, 2),
+        "sharpe_static": round(sharpe_static, 3),
+        "sharpe_targeted": round(sharpe_targeted, 3),
+        "calmar_static": round(calmar_static, 3),
+        "calmar_targeted": round(calmar_targeted, 3),
         "mean_scalar": round(float(np.mean(scalars)), 3),
     }
 
 
 def main():
     parser = argparse.ArgumentParser(description="Volatility Targeting Allocator.")
-    parser.add_argument("--target-vol", type=float, default=0.30, help="Target annualized volatility (e.g. 0.30 = 30%).")
-    parser.add_argument("--realized-vol", type=float, default=0.60, help="Current realized volatility (e.g. 0.60 = 60%).")
+    parser.add_argument("--target-vol", type=float, default=0.30, help="Target annualized volatility (e.g. 0.30 = 30%%).")
+    parser.add_argument("--realized-vol", type=float, default=0.60, help="Current realized volatility (e.g. 0.60 = 60%%).")
+    parser.add_argument("--export-json", type=str, default=None, help="Export volatility targeting results to JSON file.")
     args = parser.parse_args()
 
     base_w = {"BTC/USDT": 0.60, "ETH/USDT": 0.40}
@@ -167,6 +203,13 @@ def main():
     print(f"  Cash / USDT Buffer   : {res.cash_weight * 100:.1f}%")
     print(f"  Scaled Asset Weights : {res.scaled_weights}")
     print("================================================================")
+
+    if args.export_json:
+        out_path = Path(args.export_json)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(res.to_dict(), f, indent=2, ensure_ascii=False)
+        print(f"[+] Volatility targeting result exported to: {out_path}")
 
 
 if __name__ == "__main__":
