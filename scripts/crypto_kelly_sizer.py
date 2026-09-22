@@ -10,9 +10,11 @@ Provides optimal capital growth position sizing:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -34,6 +36,17 @@ class KellyResult:
     expected_growth_rate: float
     half_kelly: float
     is_positive_edge: bool
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert Kelly calculation result to a serializable dictionary."""
+        return {
+            "full_kelly": round(float(self.full_kelly), 4),
+            "fractional_kelly": round(float(self.fractional_kelly), 4),
+            "fraction": round(float(self.fraction), 4),
+            "expected_growth_rate": round(float(self.expected_growth_rate), 6),
+            "half_kelly": round(float(self.half_kelly), 4),
+            "is_positive_edge": self.is_positive_edge,
+        }
 
 
 def calculate_discrete_kelly(
@@ -181,6 +194,8 @@ def main():
     parser.add_argument("--win-rate", type=float, default=0.55, help="Strategy win rate (e.g. 0.55)")
     parser.add_argument("--payoff", type=float, default=1.8, help="Payoff ratio (win/loss ratio)")
     parser.add_argument("--fraction", type=float, default=0.5, help="Fractional Kelly multiplier (default 0.5)")
+    parser.add_argument("--capital", type=float, default=None, help="Total account capital for position sizing in USD.")
+    parser.add_argument("--export-json", type=str, default=None, help="Path to export Kelly sizing results to JSON file.")
     args = parser.parse_args()
 
     res = calculate_discrete_kelly(args.win_rate, args.payoff, fraction=args.fraction)
@@ -192,7 +207,30 @@ def main():
     print(f"  Chosen Frac ({args.fraction}x): {res.fractional_kelly * 100:.2f}%")
     print(f"  Exp. Growth Rate   : {res.expected_growth_rate * 100:.3f}% per trade")
     print(f"  Positive Edge      : {'YES' if res.is_positive_edge else 'NO'}")
+    if args.capital:
+        print(f"  Capital            : ${args.capital:,.2f}")
+        print(f"  Full Kelly Stake   : ${res.full_kelly * args.capital:,.2f}")
+        print(f"  Half Kelly Stake   : ${res.half_kelly * args.capital:,.2f}")
+        print(f"  Fractional Stake   : ${res.fractional_kelly * args.capital:,.2f}")
     print("================================================================")
+
+    if args.export_json:
+        out_path = Path(args.export_json)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "win_rate": args.win_rate,
+            "payoff_ratio": args.payoff,
+            "fraction": args.fraction,
+            **res.to_dict(),
+        }
+        if args.capital:
+            payload["capital"] = args.capital
+            payload["full_kelly_dollars"] = round(res.full_kelly * args.capital, 2)
+            payload["half_kelly_dollars"] = round(res.half_kelly * args.capital, 2)
+            payload["fractional_kelly_dollars"] = round(res.fractional_kelly * args.capital, 2)
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2, ensure_ascii=False)
+        print(f"[+] Kelly sizing results exported to: {out_path}")
 
 
 if __name__ == "__main__":
