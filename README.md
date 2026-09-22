@@ -455,6 +455,22 @@ python scripts/crypto_liquidity_filter.py --min-volume 50000 --max-amihud 2.0 --
 python scripts/crypto_triangular_arbitrage.py --p-btc-usdt 65000 --p-eth-usdt 3500 --p-eth-btc 0.0545 --export-json reports/triangular_arb.json
 ```
 
+### 34. 목표 변동성 타겟팅(Vol-Targeting) 및 동적 현금 배분기
+
+포트폴리오의 실현 변동성(Realized Volatility)을 실시간 추적하여, 목표 변동성(Target Volatility, 예: 25%)에 맞추어 포트폴리오의 총 익스포저를 동적으로 스케일링하고 안전자산(USDT 현금) 비중을 조절합니다. 고변동 장세에서는 디리스킹(De-risking)을 실행하고 샤프 지수 및 칼마 비율(Calmar Ratio)을 극대화합니다:
+
+```powershell
+python scripts/crypto_vol_target_allocator.py --target-vol 0.25 --lookback 30 --max-leverage 1.0
+```
+
+### 35. 가상자산 꼬리 의존성(Tail Dependence) 및 동반 급락 분석기
+
+비선형 극단 상황(하위 5% 폭락 또는 상위 5% 급등)에서의 자산 간 동조화 계수(Tail Dependence Coefficient)를 추정하여, 일반 선형 상관계수로는 포착할 수 없는 시장 붕괴 시의 동반 급락 위험 및 시스템적 취약도(Systemic Crash Vulnerability)를 계산하고 정형 JSON 보고서로 내보냅니다:
+
+```powershell
+python scripts/crypto_tail_dependence.py --quantile 0.05 --export-json reports/tail_dependence.json
+```
+
 ---
 
 ## 📁 프로젝트 구조
@@ -487,6 +503,8 @@ skfolio_Catton/
 │   ├── crypto_factor_analyzer.py      # 퀀트 멀티 팩터 분석 및 스마트 베타 스크리너
 │   ├── crypto_correlation_breakdown.py # 상관계수 붕괴 & 디커플링 감지기
 │   ├── crypto_tax_calculator.py       # 가상자산 세후 순수익률 & 세금 시뮬레이터
+│   ├── crypto_vol_target_allocator.py # 목표 변동성 타겟팅 및 현금 동적 배분기
+│   ├── crypto_tail_dependence.py      # 극단 꼬리 의존성 및 동반 급락 분석기
 │   ├── freqtrade_stake_allocator.py   # Freqtrade 전략 동적 주문금액 연동 브릿지
 │   ├── fetch_live_crypto.py           # 거래소(바이낸스/업비트) 실시간 시세 수집기
 │   └── verify_environment.py          # 환경 검증 스크립트

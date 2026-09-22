@@ -2,6 +2,27 @@
 
 <!-- version list -->
 
+## v1.6.5 (2026-09-22)
+
+### Features & Improvements
+
+- **vol-target**: `to_dict()` serialization and Sharpe/Calmar performance metrics (`scripts/crypto_vol_target_allocator.py`)
+  - Added `to_dict()` serialization to `VolTargetResult` for API integration and pipeline reporting
+  - Added `sharpe_ratio_targeted`, `calmar_ratio_targeted`, and unhedged comparative metrics to `simulate_vol_targeted_backtest()`
+  - Fixed Python 3.14 single-percent formatting in argparse CLI help strings
+- **stress-test**: Aggregate stress metrics and structured dictionary summaries (`scripts/crypto_stress_tester.py`)
+  - Added `summarize_stress_test_results()` calculating worst historical scenario, average drawdown across scenarios, and total capital at risk
+  - Added `--summary` CLI flag to print aggregate stress metrics table
+  - Added Python 3.14 percent escaping in CLI parser
+- **tail-dependence**: Serialization and JSON export in tail dependence analyzer (`scripts/crypto_tail_dependence.py`)
+  - Added `to_dict()` serialization to `TailDependenceResult`
+  - Added `--export-json` CLI parameter to export lower and upper tail matrices and systemic vulnerability scores
+  - Fixed Python 3.14 argparse formatting
+
+### Testing & Verification
+
+- Maintained full test suite compatibility across Python 3.10 ~ 3.14 (`tests/test_crypto_suite.py`)
+
 ## v1.6.4 (2026-09-22)
 
 ### Features & Improvements
