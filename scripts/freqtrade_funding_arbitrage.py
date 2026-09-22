@@ -116,8 +116,9 @@ def export_funding_config(config: dict[str, object], output_path: Path | str) ->
 
 def main():
     parser = argparse.ArgumentParser(description="Freqtrade Funding Rate Config Generator.")
-    parser.add_argument("--min-apr", type=float, default=12.0, help="Minimum funding APR % threshold.")
+    parser.add_argument("--min-apr", type=float, default=12.0, help="Minimum funding APR %% threshold.")
     parser.add_argument("--stake", type=float, default=500.0, help="Stake per pair in USDT.")
+    parser.add_argument("--export-json", type=str, default=None, help="Path to export generated Freqtrade funding config JSON.")
     args = parser.parse_args()
 
     sample_rates = {
@@ -135,6 +136,10 @@ def main():
 
     config = generate_freqtrade_funding_config(filtered, stake_per_pair=args.stake)
     print(f"[+] Successfully prepared Freqtrade futures config with {len(config['exchange']['pair_whitelist'])} pairs.")
+
+    if args.export_json:
+        export_funding_config(config, args.export_json)
+        print(f"[+] Freqtrade funding config exported to: {args.export_json}")
 
 
 if __name__ == "__main__":
