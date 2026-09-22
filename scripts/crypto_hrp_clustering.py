@@ -124,12 +124,52 @@ def run_hrp_analysis(prices: pd.DataFrame) -> dict[str, dict[str, float]]:
     return results
 
 
+def to_dict_hrp_result(
+    results: dict[str, dict[str, float]],
+    corr_matrix: pd.DataFrame | None = None,
+) -> dict[str, object]:
+    """Serialize HRP allocation results and correlation matrix to a dictionary."""
+    out: dict[str, object] = {
+        "models": {
+            model_name: {
+                asset: round(float(weight), 6)
+                for asset, weight in asset_weights.items()
+            }
+            for model_name, asset_weights in results.items()
+        }
+    }
+    if corr_matrix is not None:
+        out["correlation_matrix"] = {
+            str(col): {
+                str(row): round(float(corr_matrix.loc[row, col]), 4)
+                for row in corr_matrix.index
+            }
+            for col in corr_matrix.columns
+        }
+    return out
+
+
+def export_hrp_json(
+    results: dict[str, dict[str, float]],
+    output_path: Path | str,
+    corr_matrix: pd.DataFrame | None = None,
+    indent: int = 2,
+) -> None:
+    """Export HRP analysis results and correlation matrix to JSON file."""
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = to_dict_hrp_result(results, corr_matrix=corr_matrix)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=indent, ensure_ascii=False)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Crypto HRP & Clustering Optimizer")
     parser.add_argument("--data-dir", type=str, default="", help="Directory containing Freqtrade feather files")
     parser.add_argument("--timeframe", type=str, default="15m", help="Candle timeframe (e.g., 5m, 15m)")
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic sample crypto data")
     parser.add_argument("--export-freqtrade", type=str, default="", help="Path to export Freqtrade config or allocation JSON")
+    parser.add_argument("--export-json", type=str, default=None, help="Path to export HRP allocations and correlation matrix to JSON file.")
     args = parser.parse_args()
 
     print("==========================================================")
@@ -164,6 +204,12 @@ def main():
             model_name="HRP (Variance)",
             data_source=data_source,
         )
+
+    if args.export_json and results:
+        returns = prices_to_returns(prices)
+        corr = compute_correlation_matrix(returns)
+        export_hrp_json(results, args.export_json, corr_matrix=corr)
+        print(f"[+] HRP clustering results exported to: {args.export_json}")
 
 
 if __name__ == "__main__":
