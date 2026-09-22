@@ -1,11 +1,17 @@
+import json
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 import numpy as np
 import pandas as pd
 
 from scripts.crypto_kelly_sizer import (
+    KellyResult,
     calculate_discrete_kelly,
     calculate_continuous_kelly,
     calculate_portfolio_kelly,
+    main as kelly_main,
 )
 
 
@@ -63,6 +69,43 @@ class KellySizerTests(unittest.TestCase):
             calculate_portfolio_kelly(pd.DataFrame({"A": [0.01, 0.02]}), fraction=-0.5)
         with self.assertRaises(ValueError):
             calculate_portfolio_kelly(pd.DataFrame({"A": [0.01, 0.02]}), max_total_weight=0.0)
+
+    def test_kelly_result_to_dict(self):
+        res = KellyResult(
+            full_kelly=0.3333,
+            fractional_kelly=0.1667,
+            fraction=0.5,
+            expected_growth_rate=0.061,
+            half_kelly=0.1667,
+            is_positive_edge=True,
+        )
+        d = res.to_dict()
+        self.assertIsInstance(d, dict)
+        self.assertEqual(d["full_kelly"], 0.3333)
+        self.assertEqual(d["half_kelly"], 0.1667)
+        self.assertEqual(d["is_positive_edge"], True)
+
+    def test_cli_and_json_export(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "sub" / "kelly_res.json"
+            test_args = [
+                "crypto_kelly_sizer.py",
+                "--win-rate", "0.60",
+                "--payoff", "1.5",
+                "--capital", "10000.0",
+                "--export-json", str(out_file),
+            ]
+            with patch("sys.argv", test_args):
+                kelly_main()
+
+            self.assertTrue(out_file.exists())
+            with open(out_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            self.assertEqual(data["capital"], 10000.0)
+            self.assertIn("full_kelly_dollars", data)
+            self.assertIn("half_kelly_dollars", data)
+            self.assertEqual(data["is_positive_edge"], True)
 
 
 if __name__ == "__main__":

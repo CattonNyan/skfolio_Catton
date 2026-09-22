@@ -2,11 +2,13 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from scripts.freqtrade_funding_arbitrage import (
     filter_funding_rate_pairs,
     generate_freqtrade_funding_config,
     export_funding_config,
+    main as funding_main,
 )
 
 
@@ -51,6 +53,28 @@ class FundingArbitrageTests(unittest.TestCase):
             generate_freqtrade_funding_config([], stake_per_pair=100.0)
         with self.assertRaises(ValueError):
             generate_freqtrade_funding_config(["BTC/USDT"], stake_per_pair=-50.0)
+
+    def test_cli_main_and_export_json(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "sub" / "funding_cfg.json"
+            test_args = [
+                "freqtrade_funding_arbitrage.py",
+                "--min-apr", "20.0",
+                "--stake", "750.0",
+                "--export-json", str(out_file),
+            ]
+            with patch("sys.argv", test_args):
+                funding_main()
+
+            self.assertTrue(out_file.exists())
+            with open(out_file, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+
+            self.assertEqual(cfg["stake_amount"], 750.0)
+            self.assertEqual(cfg["trading_mode"], "futures")
+            self.assertIn("DOGE/USDT:USDT", cfg["exchange"]["pair_whitelist"])
+            self.assertIn("SOL/USDT:USDT", cfg["exchange"]["pair_whitelist"])
+            self.assertIn("ETH/USDT:USDT", cfg["exchange"]["pair_whitelist"])
 
 
 if __name__ == "__main__":

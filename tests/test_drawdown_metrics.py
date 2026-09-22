@@ -1,4 +1,8 @@
+import json
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 import numpy as np
 import pandas as pd
 
@@ -14,6 +18,7 @@ from scripts.crypto_drawdown_metrics import (
     compute_pain_index,
     compute_pain_ratio,
     compute_ulcer_index,
+    main as drawdown_main,
 )
 
 
@@ -114,6 +119,24 @@ class DrawdownMetricsTests(unittest.TestCase):
         self.assertEqual(mono_stats["max_drawdown_duration"], 0.0)
         self.assertEqual(mono_stats["drawdown_episodes_count"], 0.0)
         self.assertEqual(mono_stats["time_underwater_pct"], 0.0)
+
+    def test_cli_and_json_export(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "sub" / "metrics_test.json"
+            test_args = ["crypto_drawdown_metrics.py", "--rf", "2.5", "--export-json", str(out_file)]
+            with patch("sys.argv", test_args):
+                drawdown_main()
+
+            self.assertTrue(out_file.exists())
+            with open(out_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            self.assertIn("cagr_pct", data)
+            self.assertIn("max_drawdown_pct", data)
+            self.assertIn("ulcer_index", data)
+            self.assertIn("pain_index", data)
+            self.assertIn("martin_ratio", data)
+            self.assertIn("time_underwater_pct", data)
 
 
 if __name__ == "__main__":
