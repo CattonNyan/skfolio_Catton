@@ -68,6 +68,10 @@ def generate_correlated_crypto_paths(
         raise ValueError("assets cannot be empty.")
     if jump_intensity < 0.0 or jump_intensity > 1.0:
         raise ValueError("jump_intensity must be between 0.0 and 1.0.")
+    if jump_std < 0.0 or not np.isfinite(jump_std):
+        raise ValueError("jump_std must be a non-negative finite number.")
+    if not np.isfinite(jump_mean):
+        raise ValueError("jump_mean must be a finite number.")
 
     rng = np.random.default_rng(seed)
 
@@ -142,12 +146,19 @@ def main():
     parser = argparse.ArgumentParser(description="Correlated Synthetic Crypto Generator.")
     parser.add_argument("--bars", type=int, default=150, help="Number of bars.")
     parser.add_argument("--jump-prob", type=float, default=0.03, help="Flash crash jump probability.")
+    parser.add_argument("--export-csv", type=str, default="", help="Path to export generated prices to CSV.")
     args = parser.parse_args()
 
     df = generate_correlated_crypto_paths(n_bars=args.bars, jump_intensity=args.jump_prob)
     print(f"[+] Generated synthetic crypto data: {df.shape}")
     print(f"[*] Correlation matrix:\n{df.pct_change().dropna().corr().round(3)}")
     print(f"[*] Summary Statistics:\n{df.describe().round(2)}")
+
+    if args.export_csv:
+        out_path = Path(args.export_csv)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        df.to_csv(out_path)
+        print(f"[+] Synthetic price paths exported to: {out_path}")
 
 
 if __name__ == "__main__":
