@@ -11,8 +11,10 @@ Simulates institutional basis trading and carry arbitrage between global and Kor
 from __future__ import annotations
 
 import argparse
+import json
+import math
 import sys
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 # Ensure local skfolio source and scripts are discovered
@@ -38,6 +40,10 @@ class HedgingSimulationResult:
     annualized_apr_pct: float
     break_even_spread_pct: float
     is_profitable: bool
+
+    def to_dict(self) -> dict[str, object]:
+        """Convert result dataclass to dictionary."""
+        return asdict(self)
 
 
 def simulate_kimchi_hedging(
@@ -77,6 +83,10 @@ def simulate_kimchi_hedging(
         raise ValueError("Holding days must be a strictly positive integer.")
     if binance_fee < 0 or upbit_fee < 0:
         raise ValueError("Fee rates must be non-negative.")
+    if network_fee_krw < 0:
+        raise ValueError("Network fee must be non-negative.")
+    if not math.isfinite(daily_funding_rate):
+        raise ValueError("Daily funding rate must be a finite number.")
 
     # 1. Spread profit: delta in Kimchi Premium on spot capital
     spread_delta = (exit_kp_pct - entry_kp_pct) / 100.0
@@ -119,10 +129,11 @@ def simulate_kimchi_hedging(
 def main():
     parser = argparse.ArgumentParser(description="Kimchi Premium Arbitrage & Hedging Simulator.")
     parser.add_argument("--capital", type=float, default=50_000_000.0, help="Capital in KRW.")
-    parser.add_argument("--entry-kp", type=float, default=1.0, help="Entry KP %.")
-    parser.add_argument("--exit-kp", type=float, default=4.0, help="Exit KP %.")
+    parser.add_argument("--entry-kp", type=float, default=1.0, help="Entry Kimchi Premium percentage (e.g. 1.0).")
+    parser.add_argument("--exit-kp", type=float, default=4.0, help="Exit Kimchi Premium percentage (e.g. 4.0).")
     parser.add_argument("--days", type=int, default=30, help="Holding duration (days).")
-    parser.add_argument("--daily-funding", type=float, default=0.0003, help="Daily funding rate (0.0003 = 0.03%).")
+    parser.add_argument("--daily-funding", type=float, default=0.0003, help="Daily funding rate (0.0003 for 0.03%%).")
+    parser.add_argument("--export-json", type=str, default="", help="Path to export results JSON.")
     args = parser.parse_args()
 
     res = simulate_kimchi_hedging(
@@ -144,6 +155,12 @@ def main():
     print(f"  Annualized APR      : {res.annualized_apr_pct:+.2f}%")
     print(f"  Break-Even Spread   : {res.break_even_spread_pct:.3f}%")
     print("====================================================================")
+
+    if args.export_json:
+        out_path = Path(args.export_json)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(res.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
+        print(f"[+] Hedging simulation exported to: {out_path}")
 
 
 if __name__ == "__main__":
