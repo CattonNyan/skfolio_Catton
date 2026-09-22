@@ -64,6 +64,17 @@ class TriangularArbitrageTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             calculate_triangular_arbitrage(50000, 3000, 0.05, fee_rate=-0.01)
 
+    def test_arbitrage_to_dict_serialization(self):
+        opps = calculate_triangular_arbitrage(50000.0, 3000.0, 0.055)
+        d = opps[0].to_dict()
+        self.assertIn("cycle", d)
+        self.assertIn("gross_return_pct", d)
+        self.assertIn("fee_drag_pct", d)
+        self.assertIn("net_return_pct", d)
+        self.assertIn("is_profitable", d)
+        self.assertIn("legs", d)
+        self.assertEqual(len(d["legs"]), 3)
+
 
 if __name__ == "__main__":
     unittest.main()

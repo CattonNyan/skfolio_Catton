@@ -116,6 +116,9 @@ class TravelRuleAdvisorTests(unittest.TestCase):
         self.assertEqual(res["recommended_batches"], 3)
         self.assertEqual(res["batch_interval_minutes"], 15)
         self.assertEqual(res["total_duration_minutes"], 30)
+        self.assertEqual(res["total_duration_hours"], 0.5)
+        self.assertIn("fee_pct_of_transfer", res)
+        self.assertGreaterEqual(res["fee_pct_of_transfer"], 0.0)
         self.assertFalse(res["anti_structuring_alert"])
 
         # High amount (6M KRW) should trigger anti-structuring alert

@@ -59,6 +59,40 @@ class LiquidityFilterTests(unittest.TestCase):
         self.assertFalse(report["ILLIQUID/USDT"].is_liquid)
         self.assertIsNotNone(report["ILLIQUID/USDT"].rejection_reason)
 
+    def test_filter_with_slippage_threshold(self):
+        data = {
+            "LIQUID/USDT": self.liquid_df,
+            "ILLIQUID/USDT": self.illiquid_df,
+        }
+        liquid_syms, report = filter_crypto_universe(
+            data,
+            min_mean_volume_usd=1000.0,
+            max_amihud=10.0,
+            trade_size_usd=10000.0,
+            max_slippage_pct=5.0,
+        )
+        self.assertIn("LIQUID/USDT", liquid_syms)
+        self.assertIn("estimated_slippage_pct", report["LIQUID/USDT"].to_dict())
+
+        strict_syms, strict_report = filter_crypto_universe(
+            data,
+            max_slippage_pct=0.000001,
+        )
+        self.assertEqual(len(strict_syms), 0)
+        self.assertIn("Est. slippage", strict_report["LIQUID/USDT"].rejection_reason)
+
+    def test_liquidity_metrics_to_dict(self):
+        data = {"LIQUID/USDT": self.liquid_df}
+        _, report = filter_crypto_universe(data)
+        d = report["LIQUID/USDT"].to_dict()
+        self.assertEqual(d["symbol"], "LIQUID/USDT")
+        self.assertIn("mean_volume_usd", d)
+        self.assertIn("median_volume_usd", d)
+        self.assertIn("amihud_illiquidity", d)
+        self.assertIn("estimated_spread_pct", d)
+        self.assertIn("estimated_slippage_pct", d)
+        self.assertIn("is_liquid", d)
+
 
 if __name__ == "__main__":
     unittest.main()
