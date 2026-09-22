@@ -12,6 +12,7 @@ Provides institutional downside risk metrics:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -308,7 +309,8 @@ def main():
     """CLI test runner demonstration."""
     parser = argparse.ArgumentParser(description="Cryptocurrency Drawdown & Ulcer Index Calculator")
     parser.add_argument("--synthetic", action="store_true", default=True, help="Use synthetic dataset for test")
-    parser.add_argument("--rf", type=float, default=2.0, help="Annualized risk-free rate percentage (default: 2.0%)")
+    parser.add_argument("--rf", type=float, default=2.0, help="Annualized risk-free rate percentage (default: 2.0%%)")
+    parser.add_argument("--export-json", type=str, default=None, help="Path to export drawdown metrics summary to JSON file.")
     args = parser.parse_args()
 
     # Generate test returns
@@ -319,6 +321,13 @@ def main():
     print("=== Advanced Drawdown & Downside Risk Summary ===")
     for k, v in summary.items():
         print(f"  {k:20s}: {v}")
+
+    if args.export_json:
+        out_path = Path(args.export_json)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(summary, f, indent=2, ensure_ascii=False)
+        print(f"[+] Drawdown metrics exported to: {out_path}")
 
 
 if __name__ == "__main__":
