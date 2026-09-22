@@ -11,9 +11,11 @@ Calculates:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 # Ensure local skfolio source and scripts are discovered
 root_dir = str(Path(__file__).resolve().parents[1])
@@ -32,6 +34,17 @@ class ArbitrageOpportunity:
     net_return_pct: float
     is_profitable: bool
     legs: list[str]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert arbitrage opportunity to serializable dictionary."""
+        return {
+            "cycle": self.cycle,
+            "gross_return_pct": self.gross_return_pct,
+            "fee_drag_pct": self.fee_drag_pct,
+            "net_return_pct": self.net_return_pct,
+            "is_profitable": self.is_profitable,
+            "legs": list(self.legs),
+        }
 
 
 def calculate_triangular_arbitrage(
@@ -163,7 +176,8 @@ def main():
     parser.add_argument("--p-btc-usdt", type=float, default=65000.0, help="BTC/USDT price")
     parser.add_argument("--p-eth-usdt", type=float, default=3500.0, help="ETH/USDT price")
     parser.add_argument("--p-eth-btc", type=float, default=0.0545, help="ETH/BTC price")
-    parser.add_argument("--fee", type=float, default=0.00075, help="Fee per leg (default 0.075%)")
+    parser.add_argument("--fee", type=float, default=0.00075, help="Fee per leg (default 0.075%%)")
+    parser.add_argument("--export-json", type=str, default=None, help="Export identified opportunities to JSON file")
     args = parser.parse_args()
 
     opps = calculate_triangular_arbitrage(
@@ -183,6 +197,13 @@ def main():
         print(f"  Gross Return: {o.gross_return_pct:+.3f}% | Fee Drag: -{o.fee_drag_pct:.3f}% | Net: {o.net_return_pct:+.3f}%")
         for idx, leg in enumerate(o.legs, 1):
             print(f"    Leg {idx}: {leg}")
+
+    if args.export_json:
+        out_path = Path(args.export_json)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump([o.to_dict() for o in opps], f, indent=2, ensure_ascii=False)
+        print(f"[+] Opportunities exported to {out_path}")
 
 
 if __name__ == "__main__":
