@@ -447,12 +447,36 @@ Amihud 비유동성 비율, Corwin-Schultz 고저가 실효 스프레드, 주문
 python scripts/crypto_liquidity_filter.py --min-volume 50000 --max-amihud 2.0 --trade-size 10000 --max-slippage 1.5 --export-json reports/liquidity_report.json
 ```
 
+### 26. 켈리 공식 및 하프 켈리 포지션 사이징 계산기
+
+과거 백테스트 승률과 손익비(Payoff Ratio)를 바탕으로 기하급수적 계좌 성장을 달성하는 이산/연속 켈리 비중(f*) 및 암호화폐 변동성 하방 리스크를 50% 완화한 하프 켈리(Half-Kelly) 투자 비중을 계산하고, 자본금 기준 달러 주문 금액을 정형 JSON으로 내보냅니다:
+
+```powershell
+python scripts/crypto_kelly_sizer.py --win-rate 0.58 --payoff 1.75 --capital 20000 --export-json reports/kelly_sizing.json
+```
+
 ### 28. 3각 차익거래 기회 탐색 및 수수료 잠식 분석기
 
 3개 레그(Quote -> A -> B -> Quote) 환율 경로의 순환 불일치를 탐색하고 거래소 수수료(Fee Drag)와 슬리피지 버퍼를 감안한 무위험 차익 기회를 정형 JSON 데이터로 내보냅니다:
 
 ```powershell
 python scripts/crypto_triangular_arbitrage.py --p-btc-usdt 65000 --p-eth-usdt 3500 --p-eth-btc 0.0545 --export-json reports/triangular_arb.json
+```
+
+### 31. Freqtrade 선물 펀딩비 차익 화이트리스트 & 설정 생성기
+
+거래소 선물 무기한 계약의 실시간 펀딩비(Funding Rate)를 분석하여 연환산 APR 기준 고수익 페어 목록을 선별하고, Freqtrade 선물 봇 설정(`config.json`)을 자동으로 생성 및 JSON으로 내보냅니다:
+
+```powershell
+python scripts/freqtrade_funding_arbitrage.py --min-apr 15.0 --stake 1000 --export-json config/funding_arbitrage.json
+```
+
+### 33. 오메가 비율(Omega) 및 고도화 하방 리스크(Drawdown) 분석기
+
+궤양지수(Ulcer Index), 마틴 비율(Martin Ratio), 페인 지수(Pain Index), 버크 비율(Burke Ratio), 최대 침체 기간(Duration) 등 기관 수준의 하방 리스크를 종합 계산하고 정형 JSON 보고서로 내보냅니다:
+
+```powershell
+python scripts/crypto_drawdown_metrics.py --rf 2.0 --export-json reports/drawdown_metrics.json
 ```
 
 ### 34. 목표 변동성 타겟팅(Vol-Targeting) 및 동적 현금 배분기

@@ -2,6 +2,25 @@
 
 <!-- version list -->
 
+## v1.6.6 (2026-09-23)
+
+### Features & Improvements
+
+- **drawdown-metrics**: Fix Python 3.14 argparse percent escaping and add JSON export (`scripts/crypto_drawdown_metrics.py`)
+  - Fixed `ValueError: badly formed help string` on Python 3.14 by escaping percent tokens in CLI help string
+  - Added `--export-json` CLI argument to export complete drawdown and Ulcer Index summary metrics
+- **funding-arbitrage**: Fix Python 3.14 argparse help string and add JSON export (`scripts/freqtrade_funding_arbitrage.py`)
+  - Escaped percent token in `--min-apr` help string for Python 3.14 compatibility
+  - Added `--export-json` CLI parameter to write generated Freqtrade futures configuration directly to JSON
+- **kelly-sizer**: Capital sizing in USD, `to_dict()` serialization and JSON export (`scripts/crypto_kelly_sizer.py`)
+  - Added `KellyResult.to_dict()` for programmatic pipeline serialization
+  - Added `--capital` CLI parameter for dollar-denominated Full/Half/Fractional Kelly position sizing
+  - Added `--export-json` CLI exporter
+
+### Testing & Verification
+
+- Maintained full test suite compatibility across Python 3.10 ~ 3.14 (`tests/test_crypto_suite.py`)
+
 ## v1.6.5 (2026-09-22)
 
 ### Features & Improvements
