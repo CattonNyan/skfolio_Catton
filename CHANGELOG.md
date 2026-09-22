@@ -2,6 +2,25 @@
 
 <!-- version list -->
 
+## v1.6.4 (2026-09-22)
+
+### Features & Improvements
+
+- **arbitrage**: Serialization and JSON export in triangular arbitrage scanner (`scripts/crypto_triangular_arbitrage.py`)
+  - Added `to_dict()` on `ArbitrageOpportunity` for full opportunity data serialization
+  - Added `--export-json` CLI argument to export identified 3-legged triangular arbitrage loops to JSON
+  - Fixed Python 3.14 single-percent formatting in argparse CLI help strings
+- **travel-rule**: Batch duration in hours and total fee percentage in Travel Rule advisor (`scripts/crypto_travel_rule_advisor.py`)
+  - Added `total_duration_hours` and `fee_pct_of_transfer` to `calculate_travel_rule_plan` and terminal reports
+- **liquidity**: Trade-size execution slippage threshold check and JSON export (`scripts/crypto_liquidity_filter.py`)
+  - Added `trade_size_usd` and `max_slippage_pct` parameters combining Corwin-Schultz half-spread with Amihud price impact modeling
+  - Added `estimated_slippage_pct` and `to_dict()` serialization to `LiquidityMetrics`
+  - Added `--trade-size`, `--max-slippage`, and `--export-json` flags to CLI screener
+
+### Testing & Verification
+
+- Expanded test suite to **268 unit tests passing across 37 test modules** (`tests/test_crypto_suite.py`)
+
 ## v1.6.3 (2026-09-22)
 
 ### Features & Improvements

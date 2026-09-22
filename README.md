@@ -431,11 +431,28 @@ python scripts/crypto_kimchi_regime.py --premium 6.5 --export-json reports/kimch
 
 ### 24. 한국 특금법 트래블룰 준수 & 100만원 안전 분할 전송 어드바이저
 
-대한민국 특정 금융거래정보법(특금법)에 따른 100만원 이상 가상자산 전송 시의 VASP 트래블룰 규제 적용 여부를 판별하고, 미지원 해외 거래소나 개인 지갑 송금 시 입출금 정지를 방지하기 위한 1회 안전 전송선(KRW 950,000 안전 버퍼) 기준 최적 분할 전송 횟수와 수수료 누적액을 계산합니다:
+대한민국 특정 금융거래정보법(특금법)에 따른 100만원 이상 가상자산 전송 시의 VASP 트래블룰 규제 적용 여부를 판별하고, 미지원 해외 거래소나 개인 지갑 송금 시 입출금 정지를 방지하기 위한 1회 안전 전송선(KRW 950,000 안전 버퍼) 기준 최적 분할 전송 횟수, 총 소요 시간 및 수수료 누적액을 계산합니다:
 
 ```powershell
 # 3,000 XRP 전송 시 100만원 임계점 대비 안전 분할 전송 계획 도출
-python scripts/crypto_travel_rule_advisor.py --coin XRP --amount 3000 --price-krw 1900
+python scripts/crypto_travel_rule_advisor.py --coin XRP --amount 3000 --price-krw 1900 --export-json reports/travel_rule.json
+```
+
+### 25. 유동성 리스크 필터 및 Amihud/Corwin-Schultz 측정기
+
+Amihud 비유동성 비율, Corwin-Schultz 고저가 실효 스프레드, 주문 규모별 시장 충격 슬리피지를 복합 평가하여 호가가 얇은 알트코인을 포트폴리오 유니버스에서 안전하게 필터링합니다:
+
+```powershell
+# 최소 거래대금 $50k, Amihud 2.0 이하, $10,000 주문 기준 최대 슬리피지 1.5% 이하 스크리닝
+python scripts/crypto_liquidity_filter.py --min-volume 50000 --max-amihud 2.0 --trade-size 10000 --max-slippage 1.5 --export-json reports/liquidity_report.json
+```
+
+### 28. 3각 차익거래 기회 탐색 및 수수료 잠식 분석기
+
+3개 레그(Quote -> A -> B -> Quote) 환율 경로의 순환 불일치를 탐색하고 거래소 수수료(Fee Drag)와 슬리피지 버퍼를 감안한 무위험 차익 기회를 정형 JSON 데이터로 내보냅니다:
+
+```powershell
+python scripts/crypto_triangular_arbitrage.py --p-btc-usdt 65000 --p-eth-usdt 3500 --p-eth-btc 0.0545 --export-json reports/triangular_arb.json
 ```
 
 ---
