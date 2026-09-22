@@ -173,6 +173,48 @@ def evaluate_stress_test(
     return results
 
 
+def summarize_stress_test_results(
+    results: dict[str, dict[str, float | str]],
+) -> dict[str, float | str | int]:
+    """Compute aggregate worst-case loss, average drawdown, and stress summary."""
+    if not results:
+        return {
+            "worst_scenario": "",
+            "worst_loss_pct": 0.0,
+            "worst_dollar_loss": 0.0,
+            "avg_loss_pct": 0.0,
+            "scenarios_tested": 0,
+            "overall_resilience": "A (High Resilience)",
+        }
+
+    scenarios = list(results.items())
+    worst_item = min(scenarios, key=lambda s: float(s[1]["portfolio_loss_pct"]))
+    worst_scenario_name, worst_metrics = worst_item
+    worst_loss_pct = float(worst_metrics["portfolio_loss_pct"])
+    worst_dollar = float(worst_metrics["dollar_loss"])
+
+    avg_loss = sum(float(s[1]["portfolio_loss_pct"]) for s in scenarios) / len(scenarios)
+
+    abs_worst = abs(worst_loss_pct) / 100.0
+    if abs_worst <= 0.20:
+        overall_grade = "A (High Resilience)"
+    elif abs_worst <= 0.30:
+        overall_grade = "B (Moderate Resilience)"
+    elif abs_worst <= 0.40:
+        overall_grade = "C (Significant Impact)"
+    else:
+        overall_grade = "D (Severe Vulnerability)"
+
+    return {
+        "worst_scenario": worst_scenario_name,
+        "worst_loss_pct": round(worst_loss_pct, 2),
+        "worst_dollar_loss": round(worst_dollar, 2),
+        "avg_loss_pct": round(avg_loss, 2),
+        "scenarios_tested": len(results),
+        "overall_resilience": overall_grade,
+    }
+
+
 def print_stress_test_report(
     results: dict[str, dict[str, float | str]],
     total_wallet: float,
@@ -195,6 +237,10 @@ def print_stress_test_report(
         rec = f"+{m['recovery_required_pct']:.1f}%"
         print(f"{name:<32} | {pct:>8} | {loss:>10} | {rem:>10} | {rec:>12} | {m['resilience_grade']}")
 
+    summary = summarize_stress_test_results(results)
+    print("---------------------------------------------------------------------------------------------------------")
+    print(f"Worst Scenario: {summary['worst_scenario']} ({summary['worst_loss_pct']:+.2f}% / -${summary['worst_dollar_loss']:,.2f})")
+    print(f"Average Stress Loss: {summary['avg_loss_pct']:+.2f}% | Overall Portfolio Resilience: {summary['overall_resilience']}")
     print("=========================================================================================================\n")
 
 
@@ -229,7 +275,11 @@ def main():
     if args.export_json:
         out_path = Path(args.export_json)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
+        export_payload = {
+            "scenarios": results,
+            "summary": summarize_stress_test_results(results),
+        }
+        out_path.write_text(json.dumps(export_payload, indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"[+] Stress test results exported to: {out_path}")
 
 
