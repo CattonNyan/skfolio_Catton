@@ -140,6 +140,57 @@ def calculate_tax_loss_harvesting_target(
     }
 
 
+def compare_tax_allowance_tiers(
+    realized_profits: list[float],
+    tiers: list[float] | None = None,
+    tax_rate: float = 0.22,
+    initial_capital_krw: float = 50000000.0,
+    carried_forward_loss_krw: float = 0.0,
+) -> pd.DataFrame:
+    """
+    Compare tax liabilities, tax drag, and after-tax profits across different basic deduction allowance tiers.
+    E.g. standard KRW 2,500,000 vs proposed KRW 50,000,000 allowance.
+    """
+    if tiers is None:
+        tiers = [2500000.0, 5000000.0, 10000000.0, 50000000.0]
+
+    rows = []
+    for allowance in tiers:
+        res = compute_crypto_tax_impact(
+            realized_profits=realized_profits,
+            annual_allowance_krw=float(allowance),
+            tax_rate=tax_rate,
+            initial_capital_krw=initial_capital_krw,
+            carried_forward_loss_krw=carried_forward_loss_krw,
+        )
+        rows.append({
+            "annual_allowance_krw": res["annual_allowance_krw"],
+            "taxable_base": res["taxable_base"],
+            "estimated_tax_krw": res["estimated_tax_krw"],
+            "after_tax_profit_krw": res["after_tax_profit_krw"],
+            "after_tax_return_pct": res["after_tax_return_pct"],
+            "tax_drag_pct": res["tax_drag_pct"],
+        })
+    return pd.DataFrame(rows)
+
+
+def format_allowance_comparison_table(df: pd.DataFrame) -> str:
+    """Format multi-tier allowance comparison DataFrame into readable text table."""
+    lines = [
+        "=========================================================================================",
+        "                 KOREA CRYPTO TAX ALLOWANCE TIER COMPARISON MATRIX                       ",
+        "=========================================================================================",
+        f"{'Basic Allowance':<20} | {'Taxable Base':<16} | {'Estimated Tax':<16} | {'After-Tax Return'} | {'Tax Drag'}",
+        "-----------------------------------------------------------------------------------------",
+    ]
+    for _, r in df.iterrows():
+        lines.append(
+            f"₩{r['annual_allowance_krw']:>17,.0f} | ₩{r['taxable_base']:>14,.0f} | ₩{r['estimated_tax_krw']:>14,.0f} | {r['after_tax_return_pct']:>16.2f}% | -{r['tax_drag_pct']:>6.2f}%p"
+        )
+    lines.append("=========================================================================================")
+    return "\n".join(lines)
+
+
 def print_tax_report(res: dict[str, object]):
     """Print terminal report of capital gains tax simulation."""
     print("================================================================================")
@@ -171,6 +222,7 @@ def main():
     parser.add_argument("--allowance", type=float, default=2500000.0, help="Basic allowance in KRW (default: 2,500,000)")
     parser.add_argument("--carried-loss", type=float, default=0.0, help="Prior year carried-forward loss in KRW")
     parser.add_argument("--tax-rate", type=float, default=0.22, help="Effective tax rate (default: 0.22)")
+    parser.add_argument("--compare-tiers", action="store_true", help="Compare tax burden across multiple basic allowance tiers")
     parser.add_argument("--export-json", type=str, default="", help="Path to export JSON metrics")
     args = parser.parse_args()
 
@@ -180,6 +232,21 @@ def main():
         args.profit * 0.50,
         -args.profit * 0.20,
     ]
+
+    if args.compare_tiers:
+        tier_df = compare_tax_allowance_tiers(
+            realized_profits=sample_trades,
+            tax_rate=args.tax_rate,
+            initial_capital_krw=args.capital,
+            carried_forward_loss_krw=args.carried_loss,
+        )
+        print(format_allowance_comparison_table(tier_df))
+        if args.export_json:
+            out_path = Path(args.export_json)
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(tier_df.to_json(orient="records", indent=2, force_ascii=False), encoding="utf-8")
+            print(f"[+] Allowance tiers comparison exported to: {out_path}")
+        return
 
     res = compute_crypto_tax_impact(
         realized_profits=sample_trades,
