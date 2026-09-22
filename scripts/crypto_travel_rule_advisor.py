@@ -153,6 +153,7 @@ def calculate_travel_rule_plan(
         "recommended_batches": num_batches,
         "batch_interval_minutes": interval_minutes,
         "total_duration_minutes": total_duration_minutes,
+        "total_duration_hours": round(total_duration_minutes / 60.0, 2),
         "anti_structuring_alert": anti_structuring_alert,
         "anti_structuring_note": aml_note,
         "per_batch_coins": round(per_batch_coins, 6),
@@ -160,6 +161,7 @@ def calculate_travel_rule_plan(
         "max_safe_single_amount": round(max_safe_coin_per_tx, 6),
         "total_network_fee_coins": round(total_fee_coins, 6),
         "total_network_fee_krw": round(total_fee_krw, 2),
+        "fee_pct_of_transfer": round((total_fee_krw / total_value_krw) * 100.0, 4) if total_value_krw > 0 else 0.0,
         "compliance_advice": advice,
     }
 
@@ -180,7 +182,9 @@ def print_travel_rule_report(res: dict[str, object]):
     print(f"안전 버퍼 기준 (Safe Buffer)       : KRW {res['safe_buffer_krw']:,.0f} (변동성 대비)")
     print(f"권장 분할 전송 횟수 (Batches)      : {res['recommended_batches']}회")
     print(f"1회당 분할 전송 수량               : {res['per_batch_coins']:,.4f} {res['coin_symbol']} (~KRW {res['per_batch_krw']:,.0f})")
-    print(f"예상 누적 전송 수수료             : KRW {res['total_network_fee_krw']:,.0f}")
+    print(f"예상 누적 전송 수수료             : KRW {res['total_network_fee_krw']:,.0f} ({res['fee_pct_of_transfer']:.4f}%)")
+    if res.get("total_duration_minutes", 0) > 0:
+        print(f"예상 소요 시간 (Estimated Time)    : 약 {res['total_duration_minutes']}분 ({res['total_duration_hours']:.2f}시간)")
     print("--------------------------------------------------------------------------------")
     print(f"준수 가이드                        : {res['compliance_advice']}")
     print("================================================================================\n")
