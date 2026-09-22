@@ -143,6 +143,9 @@ python scripts/fetch_live_crypto.py --exchange binance --pairs BTC/USDT ETH/USDT
 
 ```powershell
 python scripts/crypto_hrp_clustering.py --timeframe 1h
+
+# HRP 모델 최적 비중 및 상관계수 행렬을 JSON 파일로 내보내기
+python scripts/crypto_hrp_clustering.py --use-synthetic --export-json reports/hrp_allocation.json
 ```
 
 ---
@@ -237,8 +240,8 @@ streamlit run app_dashboard.py
 # 리스크 패리티 모델 기반 롤링 리밸런싱 백테스트 실행 (거래 수수료 0.1% 반영)
 python scripts/crypto_rebalancing_backtest.py --model "Risk Parity" --timeframe 15m --fee 0.001
 
-# 합성 데이터로 빠른 검증 실행
-python scripts/crypto_rebalancing_backtest.py --use-synthetic --model "Equal Weight"
+# 합성 데이터로 빠른 검증 실행 및 결과 JSON 파일 내보내기
+python scripts/crypto_rebalancing_backtest.py --use-synthetic --model "Equal Weight" --export-json reports/rebalancing_results.json
 ```
 - **산출 지표**: 누적 수익률(Total Return), 최대 낙폭(MDD), 연환산 샤프 지수, 회전율(Turnover Rate), 리밸런싱 횟수 비교 요약표 출력
 

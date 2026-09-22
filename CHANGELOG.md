@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## v1.6.7 (2026-09-23)
+
+### Features & Improvements
+
+- **rebalancing**: Add `to_dict_rebalancing_result` serialization and `--export-json` to rolling rebalancer (`scripts/crypto_rebalancing_backtest.py`)
+  - Added structured dictionary conversion for walk-forward rolling rebalancing summaries, rebalance timestamp lists, turnover histories, and portfolio NAV tracking
+  - Added `--export-json` CLI argument to export backtest results for pipeline automation
+- **hrp**: Add `to_dict_hrp_result` serialization and `--export-json` to HRP clustering optimizer (`scripts/crypto_hrp_clustering.py`)
+  - Added programmatic dictionary serialization covering HRP, HERC, Schur optimal weight allocations and full pairwise asset correlation matrices
+  - Added `--export-json` CLI parameter for allocation persistence and risk reporting
+
+### Testing & Verification
+
+- Maintained full test suite compatibility across Python 3.10 ~ 3.14 (`tests/test_crypto_suite.py`)
+
 ## v1.6.6 (2026-09-23)
 
 ### Features & Improvements
