@@ -140,6 +140,17 @@ class MonteCarloTests(unittest.TestCase):
             with self.subTest(bad_df=bad_df), self.assertRaises(ValueError):
                 simulate_monte_carlo_paths(prices, weights, distribution="student_t", df=bad_df)
 
+    def test_to_dict_monte_carlo_result(self):
+        from scripts.crypto_monte_carlo import to_dict_monte_carlo_result
+        prices = generate_synthetic_crypto_data(periods=50)
+        res = simulate_monte_carlo_paths(prices, weights={"BTC/USDT": 1.0}, days=10, num_simulations=50)
+        d = to_dict_monte_carlo_result(res)
+        self.assertIn("expected_final_wealth", d)
+        self.assertIn("var_95_dollar", d)
+        self.assertIn("path_p50", d)
+        d_no_paths = to_dict_monte_carlo_result(res, include_paths=False)
+        self.assertNotIn("path_p50", d_no_paths)
+
 
 if __name__ == "__main__":
     unittest.main()

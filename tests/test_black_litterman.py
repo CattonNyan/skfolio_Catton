@@ -146,6 +146,33 @@ class BlackLittermanTests(unittest.TestCase):
             with self.subTest(bad_conf=bad_conf), self.assertRaises(ValueError):
                 compute_black_litterman_weights(prices, views=views, view_confidences=bad_conf)
 
+    def test_black_litterman_json_export_and_serialization(self):
+        from scripts.crypto_black_litterman import export_black_litterman_json, to_dict_black_litterman_result
+        import tempfile
+        import json
+        from pathlib import Path
+
+        prices = generate_synthetic_crypto_data(periods=60)
+        views = ["BTC/USDT>ETH/USDT:0.02"]
+        res = compute_black_litterman_weights(prices, views=views, tau=0.05, risk_aversion=2.5)
+
+        data = to_dict_black_litterman_result(res)
+        self.assertIn("prior_weights", data)
+        self.assertIn("posterior_weights", data)
+        self.assertIn("implied_returns", data)
+        self.assertIn("posterior_returns", data)
+        self.assertIsInstance(data["fallback_to_prior"], bool)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "bl_test.json"
+            export_black_litterman_json(res, out_file, views=views, tau=0.05, risk_aversion=2.5)
+            self.assertTrue(out_file.exists())
+            with open(out_file, encoding="utf-8") as f:
+                loaded = json.load(f)
+            self.assertIn("posterior_weights", loaded)
+            self.assertEqual(loaded["views"], views)
+            self.assertEqual(loaded["tau"], 0.05)
+
 
 if __name__ == "__main__":
     unittest.main()

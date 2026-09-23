@@ -116,6 +116,17 @@ class RiskCalculatorTests(unittest.TestCase):
         # ENB should be significantly less than 3 because asset 3 dominates risk
         self.assertLess(res_skew["enb_entropy"], 2.0)
 
+    def test_to_dict_risk_budget_result(self):
+        from scripts.crypto_risk_budget_calculator import to_dict_risk_budget_result
+        sample = {
+            "BTC/USDT": {"recommended_stoploss": -0.04, "recommended_take_profit": 0.08, "weight": 0.5, "semi_dev": 1.2, "risk_reward_ratio": 2.0}
+        }
+        res = to_dict_risk_budget_result(sample, data_source="unit-test")
+        self.assertEqual(res["data_source"], "unit-test")
+        self.assertIn("assets", res)
+        self.assertEqual(res["assets"]["BTC/USDT"]["recommended_stoploss"], -0.04)
+        self.assertIn("generated_at", res)
+
 
 if __name__ == "__main__":
     unittest.main()
