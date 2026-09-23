@@ -7,6 +7,7 @@ using Bayesian statistics to compute robust, stabilized portfolio weights.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -207,6 +208,44 @@ def compute_black_litterman_weights(
         "posterior_returns": dict(zip(assets, er_posterior)),
         "fallback_to_prior": fallback_used,
     }
+
+
+def to_dict_black_litterman_result(res: dict[str, object]) -> dict[str, object]:
+    """Serialize Black-Litterman optimization results to a JSON-compatible dictionary."""
+    def _round_dict(d: object, decimals: int = 6) -> dict[str, float]:
+        if not isinstance(d, dict):
+            return {}
+        return {str(k): round(float(v), decimals) for k, v in d.items()}
+
+    return {
+        "prior_weights": _round_dict(res.get("prior_weights")),
+        "posterior_weights": _round_dict(res.get("posterior_weights")),
+        "implied_returns": _round_dict(res.get("implied_returns")),
+        "posterior_returns": _round_dict(res.get("posterior_returns")),
+        "fallback_to_prior": bool(res.get("fallback_to_prior", False)),
+    }
+
+
+def export_black_litterman_json(
+    res: dict[str, object],
+    output_path: Path | str,
+    views: list[str] | None = None,
+    tau: float | None = None,
+    risk_aversion: float | None = None,
+    indent: int = 2,
+) -> None:
+    """Export Black-Litterman results to a JSON file."""
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = to_dict_black_litterman_result(res)
+    if views is not None:
+        payload["views"] = views
+    if tau is not None:
+        payload["tau"] = tau
+    if risk_aversion is not None:
+        payload["risk_aversion"] = risk_aversion
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=indent, ensure_ascii=False)
 
 
 def print_black_litterman_report(res: dict[str, object]):
