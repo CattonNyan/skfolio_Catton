@@ -2,6 +2,23 @@
 
 <!-- version list -->
 
+## v1.6.8 (2026-09-23)
+
+### Features & Improvements
+
+- **black-litterman**: Add `to_dict_black_litterman_result` serialization and `--export-json` option (`scripts/crypto_black_litterman.py`)
+  - Added Bayesian optimization dictionary serialization covering prior/posterior expected returns, implied equilibrium returns, and optimal portfolio weights
+  - Added `--export-json` CLI argument to export Bayesian allocations directly to JSON
+- **risk-budget**: Add `to_dict_risk_budget_result` serialization and explicit Sequence typing (`scripts/crypto_risk_budget_calculator.py`)
+  - Added structured dictionary conversion for dynamic volatility guidelines, recommended stoplosses, and take-profit targets
+  - Added `Sequence` import from `collections.abc` for strict type annotation consistency
+- **monte-carlo**: Add `to_dict_monte_carlo_result` serialization and `export_monte_carlo_json` helper (`scripts/crypto_monte_carlo.py`)
+  - Added structured dictionary export for forward-looking GBM simulation percentiles (P05/P50/P95), VaR, CVaR, and probability of capital loss
+
+### Testing & Verification
+
+- Maintained full test suite compatibility across Python 3.10 ~ 3.14 (`tests/test_crypto_suite.py`)
+
 ## v1.6.7 (2026-09-23)
 
 ### Features & Improvements
