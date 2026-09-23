@@ -309,10 +309,11 @@ python scripts/crypto_risk_budget_calculator.py `
 시장 균형 수익률(Prior)과 트레이더의 주관적 시장 전망(Views)을 베이지안 통계로 결합하여 안정적이고 극단값 없는 최적 비중을 계산합니다:
 
 ```powershell
-# 상대적 뷰(BTC가 ETH보다 +2% 초과 상승)와 절대적 뷰(SOL +5% 상승) 반영
+# 상대적 뷰(BTC가 ETH보다 +2% 초과 상승)와 절대적 뷰(SOL +5% 상승) 반영 및 최적 비중 JSON 내보내기
 python scripts/crypto_black_litterman.py `
   --views "BTC/USDT>ETH/USDT:0.02" "SOL/USDT:0.05" `
-  --risk-aversion 2.5
+  --risk-aversion 2.5 `
+  --export-json reports/black_litterman.json
 ```
 
 ---
@@ -354,7 +355,8 @@ python scripts/freqtrade_strategy_optimizer.py --capital 10000 --model "Risk Par
 기하 브라운 운동(GBM)을 기반으로 향후 90일간 발생 가능한 1,000개의 가상 가격 경로를 시뮬레이션하여 95% 신뢰구간 콘 차트와 최대 손실액(VaR, CVaR), 원금 손실 확률을 계산합니다:
 
 ```powershell
-python scripts/crypto_monte_carlo.py --days 90 --sims 1000 --capital 10000
+# 향후 90일 1,000개 경로 시뮬레이션 및 VaR/CVaR 신뢰구간 JSON 내보내기
+python scripts/crypto_monte_carlo.py --days 90 --sims 1000 --capital 10000 --export-json reports/monte_carlo.json
 ```
 
 ---
