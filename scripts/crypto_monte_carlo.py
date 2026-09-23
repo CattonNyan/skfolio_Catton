@@ -218,6 +218,36 @@ def print_monte_carlo_report(res: dict[str, object]):
     print("================================================================================\n")
 
 
+def to_dict_monte_carlo_result(res: dict[str, object], include_paths: bool = True) -> dict[str, object]:
+    """Serialize Monte Carlo simulation result to a structured dictionary."""
+    def _clean_val(v: object) -> object:
+        if isinstance(v, (np.floating, float)):
+            return round(float(v), 4)
+        if isinstance(v, (np.integer, int)):
+            return int(v)
+        return v
+
+    out = {k: _clean_val(v) for k, v in res.items() if not k.startswith("path_")}
+    if include_paths:
+        for k in ("path_p05", "path_p50", "path_p95"):
+            if k in res and isinstance(res[k], (list, tuple)):
+                out[k] = [round(float(x), 2) for x in res[k]]
+    return out
+
+
+def export_monte_carlo_json(
+    res: dict[str, object],
+    output_path: Path | str,
+    include_paths: bool = True,
+    indent: int = 2,
+) -> None:
+    """Export Monte Carlo simulation results to a JSON file."""
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = to_dict_monte_carlo_result(res, include_paths=include_paths)
+    path.write_text(json.dumps(payload, indent=indent, ensure_ascii=False), encoding="utf-8")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Crypto Monte Carlo Portfolio Simulator")
     parser.add_argument("--days", type=int, default=90, help="Future simulation horizon in days")
@@ -255,10 +285,8 @@ def main():
     print_monte_carlo_report(res)
 
     if args.export_json:
-        out_path = Path(args.export_json)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(res, indent=2, ensure_ascii=False), encoding="utf-8")
-        print(f"[+] Monte Carlo metrics exported to: {out_path}")
+        export_monte_carlo_json(res, args.export_json)
+        print(f"[+] Monte Carlo metrics exported to: {args.export_json}")
 
 
 if __name__ == "__main__":
