@@ -300,6 +300,7 @@ def main():
     parser.add_argument("--prior-weights", nargs="+", default=None, help="커스텀 사전 비중 리스트 (예: BTC/USDT:0.6 ETH/USDT:0.4)")
     parser.add_argument("--config-file", type=str, default="", help="비중을 불러올 config.json 또는 allocation JSON 파일 경로")
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic sample data")
+    parser.add_argument("--export-json", type=str, default=None, help="Path to export Black-Litterman results to JSON file.")
     args = parser.parse_args()
 
     try:
@@ -335,6 +336,16 @@ def main():
     )
 
     print_black_litterman_report(res)
+
+    if args.export_json:
+        export_black_litterman_json(
+            res,
+            args.export_json,
+            views=args.views,
+            tau=args.tau,
+            risk_aversion=args.risk_aversion,
+        )
+        print(f"[+] Black-Litterman results exported to: {args.export_json}")
 
 
 if __name__ == "__main__":
