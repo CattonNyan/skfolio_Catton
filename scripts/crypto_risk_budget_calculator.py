@@ -13,6 +13,7 @@ import json
 import os
 import sys
 import tempfile
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -203,17 +204,31 @@ def print_risk_report(guidelines: dict[str, dict[str, float]], total_wallet: flo
     print("==========================================================================================\n")
 
 
+def to_dict_risk_budget_result(
+    guidelines: dict[str, dict[str, float]],
+    data_source: str = "unspecified",
+) -> dict[str, object]:
+    """Serialize risk budget guidelines to a structured dictionary."""
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "data_source": data_source,
+        "assets": {
+            pair: {
+                metric: round(float(val), 6)
+                for metric, val in metrics.items()
+            }
+            for pair, metrics in guidelines.items()
+        },
+    }
+
+
 def export_risk_json(
     guidelines: dict[str, dict[str, float]],
     output_path: Path,
     data_source: str = "unspecified",
 ):
     """Export guidelines to JSON for easy loading in Freqtrade strategies."""
-    export_payload = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "data_source": data_source,
-        "assets": guidelines,
-    }
+    export_payload = to_dict_risk_budget_result(guidelines, data_source=data_source)
     _atomic_write_json(output_path, export_payload)
     print(f"[+] Risk guidelines exported to: {output_path}")
 
