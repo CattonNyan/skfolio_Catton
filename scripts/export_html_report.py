@@ -36,6 +36,7 @@ from scripts.crypto_portfolio_optimizer import (
     positive_float,
     run_optimization,
 )
+from scripts.crypto_drawdown_metrics import compute_drawdown_metrics_summary
 
 try:
     import plotly.graph_objects as go
@@ -113,6 +114,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }}
         .card-value.green {{ color: #3FB950; }}
         .card-value.blue {{ color: #58A6FF; }}
+        .card-value.red {{ color: #F85149; }}
         .section {{
             margin-bottom: 40px;
         }}
@@ -190,6 +192,22 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             <div class="card">
                 <div class="card-label">샤프 지수 (Return/Risk)</div>
                 <div class="card-value green">{sharpe_ratio:.3f}</div>
+            </div>
+            <div class="card">
+                <div class="card-label">최대 낙폭 (MDD)</div>
+                <div class="card-value red">-{max_drawdown:.2f}%</div>
+            </div>
+            <div class="card">
+                <div class="card-label">궤양지수 (Ulcer Index)</div>
+                <div class="card-value">{ulcer_index:.2f}%</div>
+            </div>
+            <div class="card">
+                <div class="card-label">마틴 비율 (Martin / UPI)</div>
+                <div class="card-value green">{martin_ratio:.3f}</div>
+            </div>
+            <div class="card">
+                <div class="card-label">스털링 비율 (Sterling)</div>
+                <div class="card-value green">{sterling_ratio:.3f}</div>
             </div>
         </div>
 
@@ -274,6 +292,12 @@ def generate_html_report(
     vol = float(port_ret.std() * 100)
     sharpe = float(port_ret.mean() / (port_ret.std() + 1e-9))
 
+    dd_summary = compute_drawdown_metrics_summary(port_ret, risk_free_rate=0.0, is_returns=True)
+    mdd = float(dd_summary.get("max_drawdown_pct", 0.0))
+    ulcer = float(dd_summary.get("ulcer_index", 0.0))
+    martin = float(dd_summary.get("martin_ratio", 0.0))
+    sterling = float(dd_summary.get("sterling_ratio", 0.0))
+
     # Table HTML
     table_rows = []
     for asset, w in weights.items():
@@ -315,6 +339,7 @@ def generate_html_report(
         "pair_whitelist": list(weights.keys()),
         "pair_weights": {k: round(float(v), 4) for k, v in weights.items()},
         "stake_amounts": {k: round(float(v) * total_wallet, 2) for k, v in weights.items()},
+        "downside_risk_metrics": dd_summary,
     }
     import json
     json_snippet = html.escape(json.dumps(snippet_dict, indent=2))
@@ -327,6 +352,10 @@ def generate_html_report(
         mean_return=mean_ret,
         volatility=vol,
         sharpe_ratio=sharpe,
+        max_drawdown=mdd,
+        ulcer_index=ulcer,
+        martin_ratio=martin,
+        sterling_ratio=sterling,
         total_wallet=total_wallet,
         pie_html=pie_html,
         table_html=table_html,
