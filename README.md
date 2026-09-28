@@ -323,8 +323,8 @@ python scripts/crypto_black_litterman.py `
 2020 코로나 빔, 2022 루나 폭락, FTX 파산, 2021 중국 채굴 금지 등 크립토 역사상 최악의 쇼크 시나리오를 현재 포트폴리오에 가상 주입하여 자산 방어력과 최대 낙폭을 평가합니다:
 
 ```powershell
-# 현재 포트폴리오 자본금 $10,000 기준 스트레스 테스트 시뮬레이션
-python scripts/crypto_stress_tester.py --wallet-size 10000 --export-json reports/stress_test.json
+# 현재 포트폴리오 자본금 $10,000 기준 스트레스 테스트 시뮬레이션 및 커스텀 블랙스완 쇼크 주입
+python scripts/crypto_stress_tester.py --wallet-size 10000 --custom-shock BTC:-0.20 ETH:-0.30 --export-json reports/stress_test.json
 ```
 
 ---
@@ -373,10 +373,10 @@ python scripts/crypto_macro_regime.py --wallet-size 10000
 
 ### 17. 퀀트 멀티 팩터 분석 및 스마트 베타 유니버스 스크리너
 
-모멘텀(Momentum), 저변동성(Low Volatility), 추세 강도(Trend Strength) 팩터를 Z-score로 정규화 합산하여 상위 우량 코인을 자동 선별(Smart Beta Universe)합니다:
+모멘텀(Momentum), 저변동성(Low Volatility), 추세 강도(Trend Strength) 팩터를 Z-score로 정규화 합산하여 상위 우량 코인을 자동 선별(Smart Beta Universe)하고 정형 JSON 보고서로 내보냅니다:
 
 ```powershell
-python scripts/crypto_factor_analyzer.py --lookback 60 --top-n 3
+python scripts/crypto_factor_analyzer.py --lookback 60 --top-n 3 --export-json reports/factor_ranking.json
 ```
 
 ---
@@ -391,10 +391,10 @@ python scripts/crypto_factor_analyzer.py --lookback 60 --top-n 3
 
 ### 19. 상관계수 붕괴 & 디커플링(Decoupling) 감지기
 
-비트코인(BTC)과 알트코인 간의 롤링 상관계수를 실시간 모니터링하여, 동조화가 깨지는 이상 현상(역상관, 상관계수 급락)과 분산 투자 강화 기회를 감지합니다:
+비트코인(BTC)과 알트코인 간의 롤링 상관계수를 실시간 모니터링하여, 동조화가 깨지는 이상 현상(역상관, 상관계수 급락), 포트폴리오 분산 비율(DR) 및 분산 투자 강화 기회를 감지하고 JSON으로 내보냅니다:
 
 ```powershell
-python scripts/crypto_correlation_breakdown.py --window 30 --threshold 1.8
+python scripts/crypto_correlation_breakdown.py --window 30 --threshold 1.8 --export-json reports/corr_breakdown.json
 ```
 
 ---
@@ -478,7 +478,7 @@ python scripts/freqtrade_funding_arbitrage.py --min-apr 15.0 --stake 1000 --expo
 
 ### 33. 오메가 비율(Omega) 및 고도화 하방 리스크(Drawdown) 분석기
 
-궤양지수(Ulcer Index), 마틴 비율(Martin Ratio), 페인 지수(Pain Index), 버크 비율(Burke Ratio), 최대 침체 기간(Duration) 등 기관 수준의 하방 리스크를 종합 계산하고 정형 JSON 보고서로 내보냅니다:
+궤양지수(Ulcer Index), 마틴 비율(Martin Ratio), 페인 지수(Pain Index), 버크 비율(Burke Ratio), 스털링 비율(Sterling Ratio), 최대 침체 기간(Duration) 등 기관 수준의 하방 리스크를 종합 계산하고 정형 JSON 보고서로 내보냅니다:
 
 ```powershell
 python scripts/crypto_drawdown_metrics.py --rf 2.0 --export-json reports/drawdown_metrics.json
@@ -489,7 +489,7 @@ python scripts/crypto_drawdown_metrics.py --rf 2.0 --export-json reports/drawdow
 포트폴리오의 실현 변동성(Realized Volatility)을 실시간 추적하여, 목표 변동성(Target Volatility, 예: 25%)에 맞추어 포트폴리오의 총 익스포저를 동적으로 스케일링하고 안전자산(USDT 현금) 비중을 조절합니다. 고변동 장세에서는 디리스킹(De-risking)을 실행하고 샤프 지수 및 칼마 비율(Calmar Ratio)을 극대화합니다:
 
 ```powershell
-python scripts/crypto_vol_target_allocator.py --target-vol 0.25 --lookback 30 --max-leverage 1.0
+python scripts/crypto_vol_target_allocator.py --target-vol 0.25 --realized-vol 0.50 --export-json reports/vol_target.json
 ```
 
 ### 35. 가상자산 꼬리 의존성(Tail Dependence) 및 동반 급락 분석기

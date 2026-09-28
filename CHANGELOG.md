@@ -2,6 +2,34 @@
 
 <!-- version list -->
 
+## v1.6.9 (2026-09-28)
+
+### Features & Improvements
+
+- **drawdown-metrics**: Add Sterling ratio and JSON export helper (`scripts/crypto_drawdown_metrics.py`)
+  - Added `compute_sterling_ratio` to measure CAGR excess return per unit of average drawdown depth
+  - Included `sterling_ratio` in comprehensive downside risk summary
+  - Added `export_drawdown_metrics_json` helper function
+- **vol-targeting**: Add backtest serialization and JSON export helper (`scripts/crypto_vol_target_allocator.py`)
+  - Added `to_dict_vol_target_backtest` to serialize walk-forward backtest metrics and NAV series
+  - Added `export_vol_target_json` helper function for allocation and backtest persistence
+- **stress-tester**: Add custom shock CLI option and JSON export helper (`scripts/crypto_stress_tester.py`)
+  - Added `--custom-shock` CLI argument (e.g. `--custom-shock BTC:-0.20 ETH:-0.30`) for user-defined black swan simulations
+  - Added `to_dict_stress_test_result` and `export_stress_test_json` helper functions
+- **tail-dependence**: Add dictionary serialization and JSON exporter (`scripts/crypto_tail_dependence.py`)
+  - Added `to_dict_tail_dependence_matrix` to convert lower/upper copula matrices and systemic vulnerability rankings
+  - Added `export_tail_dependence_json` helper function
+- **correlation-breakdown**: Add dictionary serialization, JSON exporter, and diversification ratio wiring (`scripts/crypto_correlation_breakdown.py`)
+  - Added `to_dict_correlation_breakdown` and `export_correlation_breakdown_json`
+  - Integrated Choueifaty Diversification Ratio (DR) calculation into CLI summary and exported JSON
+- **factor-analyzer**: Add smart beta ranking serialization and JSON exporter (`scripts/crypto_factor_analyzer.py`)
+  - Added `to_dict_factor_ranking` and `export_factor_ranking_json`
+  - Integrated score-tilted portfolio allocation weights into export payload
+
+### Testing & Verification
+
+- Maintained full test suite compatibility across Python 3.10 ~ 3.14 (`tests/test_crypto_suite.py`)
+
 ## v1.6.8 (2026-09-23)
 
 ### Features & Improvements
