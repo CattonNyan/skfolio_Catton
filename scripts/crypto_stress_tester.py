@@ -244,10 +244,41 @@ def print_stress_test_report(
     print("=========================================================================================================\n")
 
 
+def to_dict_stress_test_result(
+    results: dict[str, dict[str, float | str]],
+    total_wallet: float | None = None,
+    weights: dict[str, float] | None = None,
+) -> dict[str, Any]:
+    """Convert stress test results to a serializable dictionary payload."""
+    payload: dict[str, Any] = {
+        "scenarios": results,
+        "summary": summarize_stress_test_results(results),
+    }
+    if total_wallet is not None:
+        payload["total_wallet"] = total_wallet
+    if weights is not None:
+        payload["weights"] = weights
+    return payload
+
+
+def export_stress_test_json(
+    results: dict[str, dict[str, float | str]],
+    filepath: str | Path,
+    total_wallet: float | None = None,
+    weights: dict[str, float] | None = None,
+) -> None:
+    """Export stress test results dictionary to a JSON file."""
+    out_path = Path(filepath)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = to_dict_stress_test_result(results, total_wallet=total_wallet, weights=weights)
+    out_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Crypto Historical Stress Testing Engine")
     parser.add_argument("--wallet-size", "--wallet", dest="wallet_size", type=float, default=10000.0, help="Total wallet value in USDT (default: 10000.0)")
     parser.add_argument("--weights", nargs="+", default=None, help="Asset weights list (e.g. BTC/USDT:0.5 ETH/USDT:0.5)")
+    parser.add_argument("--custom-shock", nargs="+", default=None, help="Custom shock rates (e.g. BTC:-0.25 ETH:-0.35)")
     parser.add_argument("--config-file", type=str, default="", help="Path to allocation or config JSON to read weights from")
     parser.add_argument("--export-json", type=str, default="", help="Path to export results JSON file")
     args = parser.parse_args()
@@ -269,18 +300,23 @@ def main():
         except Exception as e:
             print(f"[!] Warning: Could not read {args.config_file}: {e}")
 
-    results = evaluate_stress_test(weights, total_wallet=args.wallet_size)
+    custom_shock = None
+    if args.custom_shock:
+        custom_shock = {}
+        for item in args.custom_shock:
+            if ":" in item:
+                coin, drop_str = item.split(":", 1)
+                try:
+                    custom_shock[coin.strip().upper()] = float(drop_str)
+                except ValueError:
+                    pass
+
+    results = evaluate_stress_test(weights, total_wallet=args.wallet_size, custom_shock=custom_shock)
     print_stress_test_report(results, total_wallet=args.wallet_size, weights=weights)
 
     if args.export_json:
-        out_path = Path(args.export_json)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        export_payload = {
-            "scenarios": results,
-            "summary": summarize_stress_test_results(results),
-        }
-        out_path.write_text(json.dumps(export_payload, indent=2, ensure_ascii=False), encoding="utf-8")
-        print(f"[+] Stress test results exported to: {out_path}")
+        export_stress_test_json(results, args.export_json, total_wallet=args.wallet_size, weights=weights)
+        print(f"[+] Stress test results exported to: {args.export_json}")
 
 
 if __name__ == "__main__":
