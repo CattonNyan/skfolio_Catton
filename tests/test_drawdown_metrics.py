@@ -17,7 +17,9 @@ from scripts.crypto_drawdown_metrics import (
     compute_nav_series,
     compute_pain_index,
     compute_pain_ratio,
+    compute_sterling_ratio,
     compute_ulcer_index,
+    export_drawdown_metrics_json,
     main as drawdown_main,
 )
 
@@ -83,6 +85,7 @@ class DrawdownMetricsTests(unittest.TestCase):
             "martin_ratio",
             "pain_ratio",
             "burke_ratio",
+            "sterling_ratio",
             "calmar_ratio",
         ]
         for k in required_keys:
@@ -136,7 +139,30 @@ class DrawdownMetricsTests(unittest.TestCase):
             self.assertIn("ulcer_index", data)
             self.assertIn("pain_index", data)
             self.assertIn("martin_ratio", data)
+            self.assertIn("sterling_ratio", data)
             self.assertIn("time_underwater_pct", data)
+
+    def test_sterling_ratio(self):
+        # Monotonic positive -> mdd is 0 -> ratio clamped to 999.0
+        pos_returns = np.array([0.01, 0.02, 0.015, 0.03, 0.005])
+        self.assertEqual(compute_sterling_ratio(pos_returns, risk_free_rate=0.0, is_returns=True), 999.0)
+
+        # Price trajectory: 100 -> 120 -> 90 -> 100 (net return 0%, max dd = 25%)
+        prices = np.array([100.0, 120.0, 90.0, 100.0])
+        sr = compute_sterling_ratio(prices, risk_free_rate=0.0, is_returns=False)
+        self.assertIsInstance(sr, float)
+        self.assertAlmostEqual(sr, 0.0, places=4)
+
+    def test_export_drawdown_metrics_json_direct(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "exported_metrics.json"
+            sample = {"cagr_pct": 14.5, "sterling_ratio": 1.25, "pain_index": 5.2}
+            export_drawdown_metrics_json(sample, out_file)
+            self.assertTrue(out_file.exists())
+            with open(out_file, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+            self.assertEqual(loaded["sterling_ratio"], 1.25)
+            self.assertEqual(loaded["cagr_pct"], 14.5)
 
 
 if __name__ == "__main__":

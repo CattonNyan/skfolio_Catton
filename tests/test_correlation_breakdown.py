@@ -1,5 +1,6 @@
-"""Tests for Correlation Breakdown & Decoupling detector module."""
-
+import json
+from pathlib import Path
+import tempfile
 import unittest
 import pandas as pd
 import numpy as np
@@ -8,6 +9,8 @@ from scripts.crypto_portfolio_optimizer import generate_synthetic_crypto_data
 from scripts.crypto_correlation_breakdown import (
     compute_diversification_ratio,
     detect_correlation_breakdown,
+    export_correlation_breakdown_json,
+    to_dict_correlation_breakdown,
 )
 
 
@@ -101,6 +104,24 @@ class CorrelationBreakdownTests(unittest.TestCase):
             compute_diversification_ratio(prices, weights={})
         with self.assertRaises(ValueError):
             compute_diversification_ratio(prices, weights={"BTC/USDT": -0.5})
+
+    def test_to_dict_and_export_json(self):
+        prices = generate_synthetic_crypto_data(periods=80)
+        res = detect_correlation_breakdown(prices, rolling_window=20)
+        dr = compute_diversification_ratio(prices)
+        payload = to_dict_correlation_breakdown(res, diversification_ratio=dr)
+        self.assertIn("assets", payload)
+        self.assertIn("diversification_ratio", payload)
+        self.assertAlmostEqual(payload["diversification_ratio"], dr, places=4)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "sub" / "corr_breakdown.json"
+            export_correlation_breakdown_json(res, out_file, diversification_ratio=dr)
+            self.assertTrue(out_file.exists())
+            with open(out_file, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+            self.assertIn("assets", loaded)
+            self.assertEqual(loaded["diversification_ratio"], round(dr, 4))
 
 
 if __name__ == "__main__":

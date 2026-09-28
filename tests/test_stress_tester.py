@@ -1,9 +1,13 @@
-"""Tests for historical crypto stress tester module."""
-
+import json
+from pathlib import Path
+import tempfile
 import unittest
+
 from scripts.crypto_stress_tester import (
     evaluate_stress_test,
+    export_stress_test_json,
     summarize_stress_test_results,
+    to_dict_stress_test_result,
 )
 
 
@@ -138,6 +142,26 @@ class StressTesterTests(unittest.TestCase):
         self.assertLess(summary["avg_loss_pct"], 0.0)
         self.assertLessEqual(summary["worst_loss_pct"], summary["avg_loss_pct"])
         self.assertIn(summary["overall_resilience"], ["A (High Resilience)", "B (Moderate Resilience)", "C (Significant Impact)", "D (Severe Vulnerability)"])
+
+    def test_to_dict_and_export_json(self):
+        weights = {"BTC/USDT": 0.6, "ETH/USDT": 0.4}
+        wallet = 10000.0
+        results = evaluate_stress_test(weights, total_wallet=wallet)
+        payload = to_dict_stress_test_result(results, total_wallet=wallet, weights=weights)
+        self.assertIn("scenarios", payload)
+        self.assertIn("summary", payload)
+        self.assertEqual(payload["total_wallet"], 10000.0)
+        self.assertEqual(payload["weights"]["BTC/USDT"], 0.6)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "sub" / "stress.json"
+            export_stress_test_json(results, out_file, total_wallet=wallet, weights=weights)
+            self.assertTrue(out_file.exists())
+            with open(out_file, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+            self.assertIn("scenarios", loaded)
+            self.assertIn("summary", loaded)
+            self.assertEqual(loaded["total_wallet"], 10000.0)
 
 
 if __name__ == "__main__":

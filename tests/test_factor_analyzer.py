@@ -1,5 +1,6 @@
-"""Tests for Quantitative Multi-Factor Analyzer module."""
-
+import json
+from pathlib import Path
+import tempfile
 import unittest
 import pandas as pd
 import numpy as np
@@ -7,7 +8,9 @@ import numpy as np
 from scripts.crypto_portfolio_optimizer import generate_synthetic_crypto_data
 from scripts.crypto_factor_analyzer import (
     compute_crypto_factors,
+    export_factor_ranking_json,
     select_smart_beta_universe,
+    to_dict_factor_ranking,
 )
 
 
@@ -131,6 +134,30 @@ class FactorAnalyzerTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             compute_gain_to_pain_ratio([])
+
+    def test_to_dict_and_export_factor_ranking_json(self):
+        from scripts.crypto_factor_analyzer import generate_factor_tilted_weights
+        prices = generate_synthetic_crypto_data(periods=100)
+        factors = compute_crypto_factors(prices, lookback_bars=50)
+        tilted = generate_factor_tilted_weights(factors, top_n=2, weighting="equal")
+        payload = to_dict_factor_ranking(factors, top_n=2, tilted_weights=tilted)
+        self.assertIn("rankings", payload)
+        self.assertIn("selected_universe", payload)
+        self.assertEqual(len(payload["selected_universe"]), 2)
+        self.assertEqual(len(payload["rankings"]), 2)
+        self.assertIn("tilted_weights", payload)
+        self.assertEqual(payload["rankings"][0]["rank"], 1)
+        self.assertIn("composite_score", payload["rankings"][0])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "sub" / "factor_ranking.json"
+            export_factor_ranking_json(factors, out_file, top_n=2, tilted_weights=tilted)
+            self.assertTrue(out_file.exists())
+            with open(out_file, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+            self.assertIn("rankings", loaded)
+            self.assertEqual(len(loaded["rankings"]), 2)
+            self.assertIn("tilted_weights", loaded)
 
 
 if __name__ == "__main__":

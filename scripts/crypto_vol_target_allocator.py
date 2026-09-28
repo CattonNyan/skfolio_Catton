@@ -192,15 +192,15 @@ def to_dict_vol_target_backtest(
 ) -> dict[str, Any]:
     """Convert volatility target backtest results dictionary to serializable format."""
     out: dict[str, Any] = {
-        "mdd_static_pct": backtest_res.get("mdd_static_pct", 0.0),
-        "mdd_targeted_pct": backtest_res.get("mdd_targeted_pct", 0.0),
-        "return_static_pct": backtest_res.get("return_static_pct", 0.0),
-        "return_targeted_pct": backtest_res.get("return_targeted_pct", 0.0),
-        "sharpe_static": backtest_res.get("sharpe_static", 0.0),
-        "sharpe_targeted": backtest_res.get("sharpe_targeted", 0.0),
-        "calmar_static": backtest_res.get("calmar_static", 0.0),
-        "calmar_targeted": backtest_res.get("calmar_targeted", 0.0),
-        "mean_scalar": backtest_res.get("mean_scalar", 1.0),
+        "mdd_static_pct": float(backtest_res.get("mdd_static_pct", 0.0)),
+        "mdd_targeted_pct": float(backtest_res.get("mdd_targeted_pct", 0.0)),
+        "return_static_pct": float(backtest_res.get("return_static_pct", 0.0)),
+        "return_targeted_pct": float(backtest_res.get("return_targeted_pct", 0.0)),
+        "sharpe_static": float(backtest_res.get("sharpe_static", 0.0)),
+        "sharpe_targeted": float(backtest_res.get("sharpe_targeted", 0.0)),
+        "calmar_static": float(backtest_res.get("calmar_static", 0.0)),
+        "calmar_targeted": float(backtest_res.get("calmar_targeted", 0.0)),
+        "mean_scalar": float(backtest_res.get("mean_scalar", 1.0)),
     }
     if include_nav:
         s_static = backtest_res.get("nav_static")
@@ -219,7 +219,12 @@ def export_vol_target_json(
     """Export volatility targeting result or backtest dict to a JSON file."""
     out_path = Path(filepath)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    payload = result.to_dict() if isinstance(result, VolTargetResult) else result
+    if isinstance(result, VolTargetResult):
+        payload = result.to_dict()
+    elif isinstance(result, dict) and ("nav_static" in result or "nav_targeted" in result):
+        payload = to_dict_vol_target_backtest(result)
+    else:
+        payload = result
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, ensure_ascii=False)
 

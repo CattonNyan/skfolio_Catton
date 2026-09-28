@@ -9,7 +9,9 @@ from scripts.crypto_tail_dependence import (
     TailDependenceResult,
     compute_bivariate_tail_dependence,
     compute_tail_dependence_matrix,
+    export_tail_dependence_json,
     main as tail_main,
+    to_dict_tail_dependence_matrix,
 )
 
 
@@ -82,6 +84,28 @@ class TailDependenceTests(unittest.TestCase):
             self.assertIn("lower_tail_matrix", data)
             self.assertIn("upper_tail_matrix", data)
             self.assertIn("systemic_crash_vulnerability", data)
+
+    def test_to_dict_and_direct_export_json(self):
+        rng = np.random.default_rng(42)
+        rets = pd.DataFrame({
+            "BTC": rng.normal(0, 0.02, 100),
+            "ETH": rng.normal(0, 0.03, 100),
+        })
+        df_l, df_u, scores = compute_tail_dependence_matrix(rets, quantile=0.05)
+        d = to_dict_tail_dependence_matrix(df_l, df_u, scores, quantile=0.05)
+        self.assertEqual(d["quantile"], 0.05)
+        self.assertIn("lower_tail_matrix", d)
+        self.assertIn("upper_tail_matrix", d)
+        self.assertIn("systemic_crash_vulnerability", d)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "sub" / "direct_tail.json"
+            export_tail_dependence_json(df_l, df_u, scores, out_file, quantile=0.05)
+            self.assertTrue(out_file.exists())
+            with open(out_file, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+            self.assertEqual(loaded["quantile"], 0.05)
+            self.assertIn("lower_tail_matrix", loaded)
 
 
 if __name__ == "__main__":

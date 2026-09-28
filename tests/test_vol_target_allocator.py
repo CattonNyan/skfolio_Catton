@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+import tempfile
 import unittest
 import numpy as np
 import pandas as pd
@@ -5,7 +8,9 @@ import pandas as pd
 from scripts.crypto_vol_target_allocator import (
     calculate_portfolio_realized_volatility,
     apply_volatility_targeting,
+    export_vol_target_json,
     simulate_vol_targeted_backtest,
+    to_dict_vol_target_backtest,
 )
 from scripts.crypto_portfolio_optimizer import generate_synthetic_crypto_data
 
@@ -73,6 +78,46 @@ class VolTargetAllocatorTests(unittest.TestCase):
             apply_volatility_targeting({"A": 1.0}, realized_vol_ann=0.2, target_vol_ann=-0.1)
         with self.assertRaises(ValueError):
             apply_volatility_targeting({"A": 1.0}, realized_vol_ann=0.2, max_leverage=-1.0)
+
+    def test_to_dict_vol_target_backtest_and_export_json(self):
+        prices = generate_synthetic_crypto_data(periods=60)
+        base_w = {"BTC/USDT": 0.5, "ETH/USDT": 0.5}
+        res = simulate_vol_targeted_backtest(
+            prices[["BTC/USDT", "ETH/USDT"]],
+            base_weights=base_w,
+            target_vol_ann=0.25,
+            lookback_bars=15,
+        )
+        data = to_dict_vol_target_backtest(res, include_nav=False)
+        self.assertIn("mdd_targeted_pct", data)
+        self.assertIn("sharpe_targeted", data)
+        self.assertIn("calmar_targeted", data)
+        self.assertIn("mean_scalar", data)
+        self.assertNotIn("nav_targeted", data)
+
+        data_with_nav = to_dict_vol_target_backtest(res, include_nav=True)
+        self.assertIn("nav_targeted", data_with_nav)
+        self.assertIn("nav_static", data_with_nav)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Test exporting backtest dict
+            out_file = Path(tmpdir) / "sub" / "vol_target.json"
+            export_vol_target_json(res, out_file)
+            self.assertTrue(out_file.exists())
+            with open(out_file, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+            self.assertIn("mdd_targeted_pct", loaded)
+            self.assertIn("sharpe_targeted", loaded)
+
+            # Test exporting VolTargetResult object
+            vt_obj = apply_volatility_targeting(base_w, realized_vol_ann=0.50, target_vol_ann=0.25)
+            obj_file = Path(tmpdir) / "sub" / "vt_obj.json"
+            export_vol_target_json(vt_obj, obj_file)
+            self.assertTrue(obj_file.exists())
+            with open(obj_file, "r", encoding="utf-8") as f:
+                obj_data = json.load(f)
+            self.assertEqual(obj_data["target_vol_ann"], 0.25)
+            self.assertEqual(obj_data["vol_scalar"], 0.5)
 
 
 if __name__ == "__main__":
