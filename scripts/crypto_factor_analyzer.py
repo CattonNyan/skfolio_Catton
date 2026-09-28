@@ -287,6 +287,51 @@ def print_factor_report(df: pd.DataFrame):
     print("================================================================================\n")
 
 
+def to_dict_factor_ranking(
+    factors_df: pd.DataFrame,
+    top_n: int | None = None,
+    tilted_weights: dict[str, float] | None = None,
+) -> dict[str, Any]:
+    """Convert factor ranking DataFrame to a serializable dictionary."""
+    df_to_export = factors_df.iloc[:top_n] if top_n else factors_df
+    records = []
+    for rank, (asset, row) in enumerate(df_to_export.iterrows(), start=1):
+        rec = {
+            "rank": rank,
+            "asset": str(asset),
+            "momentum": round(float(row["momentum"]), 4),
+            "volatility": round(float(row["volatility"]), 4),
+            "low_volatility": round(float(row["low_volatility"]), 4),
+            "trend_strength": round(float(row["trend_strength"]), 4),
+            "sortino_ratio": round(float(row["sortino_ratio"]), 4),
+            "omega_ratio": round(float(row["omega_ratio"]), 4) if np.isfinite(row["omega_ratio"]) else 999.0,
+            "gain_to_pain": round(float(row["gain_to_pain"]), 4) if np.isfinite(row["gain_to_pain"]) else 999.0,
+            "composite_score": round(float(row["composite_score"]), 4),
+        }
+        records.append(rec)
+
+    payload: dict[str, Any] = {
+        "rankings": records,
+        "selected_universe": list(df_to_export.index),
+    }
+    if tilted_weights is not None:
+        payload["tilted_weights"] = tilted_weights
+    return payload
+
+
+def export_factor_ranking_json(
+    factors_df: pd.DataFrame,
+    filepath: str | Path,
+    top_n: int | None = None,
+    tilted_weights: dict[str, float] | None = None,
+) -> None:
+    """Export factor ranking results to a JSON file."""
+    out_path = Path(filepath)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = to_dict_factor_ranking(factors_df, top_n=top_n, tilted_weights=tilted_weights)
+    out_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Crypto Quantitative Multi-Factor Analyzer")
     parser.add_argument("--lookback", type=int, default=60, help="Lookback bars for factor calculation")
@@ -311,14 +356,13 @@ def main():
     print_factor_report(factors_df)
 
     selected, _ = select_smart_beta_universe(prices, top_n=args.top_n, lookback_bars=args.lookback)
-    print(f"[+] Top {args.top_n} Smart Beta Universe Selected: {selected}\n")
+    tilted_w = generate_factor_tilted_weights(factors_df, top_n=args.top_n)
+    print(f"[+] Top {args.top_n} Smart Beta Universe Selected: {selected}")
+    print(f"[+] Smart Beta Tilted Allocation: {tilted_w}\n")
 
     if args.export_json:
-        out_path = Path(args.export_json)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_dict = factors_df.reset_index().to_dict(orient="records")
-        out_path.write_text(json.dumps(out_dict, indent=2, ensure_ascii=False), encoding="utf-8")
-        print(f"[+] Factor rankings exported to: {out_path}")
+        export_factor_ranking_json(factors_df, args.export_json, top_n=args.top_n, tilted_weights=tilted_w)
+        print(f"[+] Factor rankings exported to: {args.export_json}")
 
 
 if __name__ == "__main__":
