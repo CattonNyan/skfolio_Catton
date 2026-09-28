@@ -186,6 +186,44 @@ def simulate_vol_targeted_backtest(
     }
 
 
+def to_dict_vol_target_backtest(
+    backtest_res: dict[str, object],
+    include_nav: bool = False,
+) -> dict[str, Any]:
+    """Convert volatility target backtest results dictionary to serializable format."""
+    out: dict[str, Any] = {
+        "mdd_static_pct": backtest_res.get("mdd_static_pct", 0.0),
+        "mdd_targeted_pct": backtest_res.get("mdd_targeted_pct", 0.0),
+        "return_static_pct": backtest_res.get("return_static_pct", 0.0),
+        "return_targeted_pct": backtest_res.get("return_targeted_pct", 0.0),
+        "sharpe_static": backtest_res.get("sharpe_static", 0.0),
+        "sharpe_targeted": backtest_res.get("sharpe_targeted", 0.0),
+        "calmar_static": backtest_res.get("calmar_static", 0.0),
+        "calmar_targeted": backtest_res.get("calmar_targeted", 0.0),
+        "mean_scalar": backtest_res.get("mean_scalar", 1.0),
+    }
+    if include_nav:
+        s_static = backtest_res.get("nav_static")
+        s_targeted = backtest_res.get("nav_targeted")
+        if isinstance(s_static, pd.Series):
+            out["nav_static"] = {str(k): round(float(v), 4) for k, v in s_static.items()}
+        if isinstance(s_targeted, pd.Series):
+            out["nav_targeted"] = {str(k): round(float(v), 4) for k, v in s_targeted.items()}
+    return out
+
+
+def export_vol_target_json(
+    result: VolTargetResult | dict[str, Any],
+    filepath: str | Path,
+) -> None:
+    """Export volatility targeting result or backtest dict to a JSON file."""
+    out_path = Path(filepath)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = result.to_dict() if isinstance(result, VolTargetResult) else result
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2, ensure_ascii=False)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Volatility Targeting Allocator.")
     parser.add_argument("--target-vol", type=float, default=0.30, help="Target annualized volatility (e.g. 0.30 = 30%%).")
@@ -205,11 +243,8 @@ def main():
     print("================================================================")
 
     if args.export_json:
-        out_path = Path(args.export_json)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(out_path, "w", encoding="utf-8") as f:
-            json.dump(res.to_dict(), f, indent=2, ensure_ascii=False)
-        print(f"[+] Volatility targeting result exported to: {out_path}")
+        export_vol_target_json(res, args.export_json)
+        print(f"[+] Volatility targeting result exported to: {args.export_json}")
 
 
 if __name__ == "__main__":
