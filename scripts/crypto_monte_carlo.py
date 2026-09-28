@@ -248,6 +248,19 @@ def export_monte_carlo_json(
     path.write_text(json.dumps(payload, indent=indent, ensure_ascii=False), encoding="utf-8")
 
 
+def export_monte_carlo_csv(
+    res: dict[str, object],
+    output_path: Path | str,
+) -> None:
+    """Export scalar Monte Carlo simulation metrics to a CSV file."""
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    scalar_data = to_dict_monte_carlo_result(res, include_paths=False)
+    rows = [{"metric": k, "value": v} for k, v in scalar_data.items()]
+    df = pd.DataFrame(rows)
+    df.to_csv(path, index=False, encoding="utf-8")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Crypto Monte Carlo Portfolio Simulator")
     parser.add_argument("--days", type=int, default=90, help="Future simulation horizon in days")
@@ -256,6 +269,7 @@ def main():
     parser.add_argument("--dist", type=str, default="normal", choices=["normal", "student_t"], help="Distribution model")
     parser.add_argument("--df", type=float, default=4.0, help="Degrees of freedom for Student-t distribution")
     parser.add_argument("--export-json", type=str, default="", help="Path to export JSON metrics")
+    parser.add_argument("--export-csv", type=str, default="", help="Path to export CSV metrics")
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic data")
     args = parser.parse_args()
 
@@ -287,6 +301,10 @@ def main():
     if args.export_json:
         export_monte_carlo_json(res, args.export_json)
         print(f"[+] Monte Carlo metrics exported to: {args.export_json}")
+
+    if args.export_csv:
+        export_monte_carlo_csv(res, args.export_csv)
+        print(f"[+] Monte Carlo metrics exported to: {args.export_csv}")
 
 
 if __name__ == "__main__":
