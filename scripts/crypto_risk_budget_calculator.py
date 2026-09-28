@@ -233,6 +233,33 @@ def export_risk_json(
     print(f"[+] Risk guidelines exported to: {output_path}")
 
 
+def export_risk_csv(
+    guidelines: dict[str, dict[str, float]],
+    output_path: Path | str,
+    total_wallet: float = 10000.0,
+) -> None:
+    """Export risk guidelines to CSV format."""
+    out_path = Path(output_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for asset, g in guidelines.items():
+        weight = float(g.get("weight", 0.0))
+        rows.append({
+            "asset": asset,
+            "weight": weight,
+            "stake_dollars": round(weight * total_wallet, 2),
+            "semi_dev_pct": float(g.get("semi_dev", 0.0)),
+            "recommended_stoploss": float(g.get("recommended_stoploss", 0.0)),
+            "recommended_stoploss_pct": round(float(g.get("recommended_stoploss", 0.0)) * 100, 2),
+            "recommended_take_profit": float(g.get("recommended_take_profit", 0.0)),
+            "recommended_take_profit_pct": round(float(g.get("recommended_take_profit", 0.0)) * 100, 2),
+            "risk_reward_ratio": float(g.get("risk_reward_ratio", 0.0)),
+        })
+    df = pd.DataFrame(rows)
+    df.to_csv(out_path, index=False, encoding="utf-8")
+    print(f"[+] Risk guidelines exported to CSV: {out_path}")
+
+
 def _atomic_write_json(output_path: Path, payload: dict) -> None:
     """Durably replace a JSON file without exposing a partially written file."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -305,6 +332,7 @@ def main():
     parser.add_argument("--rr-ratio", type=positive_float, default=2.0, help="Risk-Reward ratio (default: 2.0)")
     parser.add_argument("--total-wallet", "--wallet", type=positive_float, default=10000.0, help="Total wallet size in USDT (default: 10000.0)")
     parser.add_argument("--export-json", type=str, default="", help="Path to export risk guideline JSON")
+    parser.add_argument("--export-csv", type=str, default="", help="Path to export risk guideline CSV")
     parser.add_argument("--freqtrade-config", type=str, default="", help="Existing Freqtrade config.json to update")
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic data")
     args = parser.parse_args()
@@ -340,6 +368,9 @@ def main():
 
     if args.export_json:
         export_risk_json(guidelines, Path(args.export_json), data_source=data_source)
+
+    if args.export_csv:
+        export_risk_csv(guidelines, Path(args.export_csv), total_wallet=args.total_wallet)
 
     if args.freqtrade_config:
         if not update_freqtrade_risk_config(
