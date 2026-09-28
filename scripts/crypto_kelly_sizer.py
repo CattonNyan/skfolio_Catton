@@ -189,6 +189,50 @@ def calculate_portfolio_kelly(
     return pd.Series(scaled_weights, index=returns_df.columns, name="Kelly_Weight")
 
 
+def to_dict_kelly_result(
+    result: KellyResult,
+    win_rate: float,
+    payoff_ratio: float,
+    fraction: float,
+    capital: float | None = None,
+) -> dict[str, Any]:
+    """Convert Kelly sizing result to a serializable dictionary."""
+    payload: dict[str, Any] = {
+        "win_rate": float(win_rate),
+        "payoff_ratio": float(payoff_ratio),
+        "fraction": float(fraction),
+        **result.to_dict(),
+    }
+    if capital is not None:
+        payload["capital"] = float(capital)
+        payload["full_kelly_dollars"] = round(float(result.full_kelly * capital), 2)
+        payload["half_kelly_dollars"] = round(float(result.half_kelly * capital), 2)
+        payload["fractional_kelly_dollars"] = round(float(result.fractional_kelly * capital), 2)
+    return payload
+
+
+def export_kelly_json(
+    result: KellyResult,
+    filepath: str | Path,
+    win_rate: float,
+    payoff_ratio: float,
+    fraction: float,
+    capital: float | None = None,
+) -> None:
+    """Export Kelly sizing results to a JSON file."""
+    out_path = Path(filepath)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = to_dict_kelly_result(
+        result,
+        win_rate=win_rate,
+        payoff_ratio=payoff_ratio,
+        fraction=fraction,
+        capital=capital,
+    )
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2, ensure_ascii=False)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Crypto Kelly Criterion Position Sizer.")
     parser.add_argument("--win-rate", type=float, default=0.55, help="Strategy win rate (e.g. 0.55)")
@@ -215,22 +259,15 @@ def main():
     print("================================================================")
 
     if args.export_json:
-        out_path = Path(args.export_json)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        payload = {
-            "win_rate": args.win_rate,
-            "payoff_ratio": args.payoff,
-            "fraction": args.fraction,
-            **res.to_dict(),
-        }
-        if args.capital:
-            payload["capital"] = args.capital
-            payload["full_kelly_dollars"] = round(res.full_kelly * args.capital, 2)
-            payload["half_kelly_dollars"] = round(res.half_kelly * args.capital, 2)
-            payload["fractional_kelly_dollars"] = round(res.fractional_kelly * args.capital, 2)
-        with open(out_path, "w", encoding="utf-8") as f:
-            json.dump(payload, f, indent=2, ensure_ascii=False)
-        print(f"[+] Kelly sizing results exported to: {out_path}")
+        export_kelly_json(
+            res,
+            args.export_json,
+            win_rate=args.win_rate,
+            payoff_ratio=args.payoff,
+            fraction=args.fraction,
+            capital=args.capital,
+        )
+        print(f"[+] Kelly sizing results exported to: {args.export_json}")
 
 
 if __name__ == "__main__":
