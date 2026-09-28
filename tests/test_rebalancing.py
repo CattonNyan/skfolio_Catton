@@ -203,7 +203,7 @@ class RebalancingTests(unittest.TestCase):
         self.assertIsInstance(res["nav_port"], pd.Series)
         self.assertGreater(len(res["nav_port"]), 0)
 
-    def test_rebalancing_summary_includes_ulcer_and_martin(self):
+    def test_rebalancing_summary_includes_downside_metrics(self):
         prices = generate_synthetic_crypto_data(periods=120)
         res = simulate_rebalancing(
             prices=prices,
@@ -215,8 +215,14 @@ class RebalancingTests(unittest.TestCase):
         s = res["summary"]
         self.assertIn("Ulcer Index (%)", s)
         self.assertIn("Martin Ratio", s)
+        self.assertIn("Pain Index (%)", s)
+        self.assertIn("Pain Ratio", s)
+        self.assertIn("Sterling Ratio", s)
         self.assertIsInstance(s["Ulcer Index (%)"], float)
         self.assertIsInstance(s["Martin Ratio"], float)
+        self.assertIsInstance(s["Pain Index (%)"], float)
+        self.assertIsInstance(s["Pain Ratio"], float)
+        self.assertIsInstance(s["Sterling Ratio"], float)
 
     def test_rebalancing_json_export_and_serialization(self):
         from scripts.crypto_rebalancing_backtest import export_rebalancing_json, to_dict_rebalancing_result

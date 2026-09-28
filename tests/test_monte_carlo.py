@@ -151,6 +151,24 @@ class MonteCarloTests(unittest.TestCase):
         d_no_paths = to_dict_monte_carlo_result(res, include_paths=False)
         self.assertNotIn("path_p50", d_no_paths)
 
+    def test_export_monte_carlo_csv(self):
+        from scripts.crypto_monte_carlo import export_monte_carlo_csv
+        import tempfile
+        from pathlib import Path
+        prices = generate_synthetic_crypto_data(periods=50)
+        res = simulate_monte_carlo_paths(prices, weights={"BTC/USDT": 1.0}, days=10, num_simulations=50)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "mc_test.csv"
+            export_monte_carlo_csv(res, out_file)
+            self.assertTrue(out_file.exists())
+            df = pd.read_csv(out_file)
+            self.assertIn("metric", df.columns)
+            self.assertIn("value", df.columns)
+            metrics = set(df["metric"].tolist())
+            self.assertIn("expected_final_wealth", metrics)
+            self.assertIn("var_95_dollar", metrics)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -44,6 +44,11 @@ class HtmlReportTests(unittest.TestCase):
             # Verify Dark Theme styling
             self.assertIn("#0E1117", content)
             self.assertIn("#161B22", content)
+            # Verify Downside Risk cards
+            self.assertIn("Ulcer Index", content)
+            self.assertIn("Martin", content)
+            self.assertIn("Sterling", content)
+            self.assertIn("card-value red", content)
 
     def test_invalid_inputs_and_xss_escaping(self):
         prices = generate_synthetic_crypto_data(periods=50)

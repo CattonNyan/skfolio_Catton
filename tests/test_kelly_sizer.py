@@ -107,6 +107,23 @@ class KellySizerTests(unittest.TestCase):
             self.assertIn("half_kelly_dollars", data)
             self.assertEqual(data["is_positive_edge"], True)
 
+    def test_direct_export_kelly_json(self):
+        from scripts.crypto_kelly_sizer import export_kelly_json, to_dict_kelly_result
+        res = calculate_discrete_kelly(0.60, 1.5, fraction=0.5)
+        d = to_dict_kelly_result(res, win_rate=0.60, payoff_ratio=1.5, fraction=0.5, capital=5000.0)
+        self.assertEqual(d["capital"], 5000.0)
+        self.assertEqual(d["win_rate"], 0.60)
+        self.assertIn("fractional_kelly_dollars", d)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "direct_kelly.json"
+            export_kelly_json(res, out_file, win_rate=0.60, payoff_ratio=1.5, fraction=0.5, capital=5000.0)
+            self.assertTrue(out_file.exists())
+            with open(out_file, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+            self.assertEqual(loaded["capital"], 5000.0)
+            self.assertEqual(loaded["payoff_ratio"], 1.5)
+
 
 if __name__ == "__main__":
     unittest.main()

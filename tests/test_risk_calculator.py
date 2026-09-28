@@ -127,6 +127,24 @@ class RiskCalculatorTests(unittest.TestCase):
         self.assertEqual(res["assets"]["BTC/USDT"]["recommended_stoploss"], -0.04)
         self.assertIn("generated_at", res)
 
+    def test_export_risk_csv(self):
+        from scripts.crypto_risk_budget_calculator import export_risk_csv
+        import tempfile
+        from pathlib import Path
+        sample = {
+            "BTC/USDT": {"recommended_stoploss": -0.04, "recommended_take_profit": 0.08, "weight": 0.5, "semi_dev": 1.2, "risk_reward_ratio": 2.0},
+            "ETH/USDT": {"recommended_stoploss": -0.05, "recommended_take_profit": 0.10, "weight": 0.5, "semi_dev": 1.5, "risk_reward_ratio": 2.0},
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "risk_test.csv"
+            export_risk_csv(sample, out_file, total_wallet=10000.0)
+            self.assertTrue(out_file.exists())
+            df = pd.read_csv(out_file)
+            self.assertEqual(len(df), 2)
+            self.assertIn("stake_dollars", df.columns)
+            self.assertIn("recommended_stoploss", df.columns)
+            self.assertEqual(df.loc[df["asset"] == "BTC/USDT", "stake_dollars"].iloc[0], 5000.0)
+
 
 if __name__ == "__main__":
     unittest.main()

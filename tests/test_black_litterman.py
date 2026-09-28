@@ -173,6 +173,26 @@ class BlackLittermanTests(unittest.TestCase):
             self.assertEqual(loaded["views"], views)
             self.assertEqual(loaded["tau"], 0.05)
 
+    def test_export_black_litterman_csv(self):
+        from scripts.crypto_black_litterman import export_black_litterman_csv
+        import tempfile
+        from pathlib import Path
+        prices = generate_synthetic_crypto_data(periods=60)
+        views = ["BTC/USDT>ETH/USDT:0.02"]
+        res = compute_black_litterman_weights(prices, views=views, tau=0.05, risk_aversion=2.5)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "bl_test.csv"
+            export_black_litterman_csv(res, out_file)
+            self.assertTrue(out_file.exists())
+            df = pd.read_csv(out_file)
+            self.assertIn("asset", df.columns)
+            self.assertIn("prior_weight", df.columns)
+            self.assertIn("posterior_weight", df.columns)
+            self.assertIn("implied_return", df.columns)
+            self.assertIn("posterior_return", df.columns)
+            self.assertEqual(len(df), len(prices.columns))
+
 
 if __name__ == "__main__":
     unittest.main()
