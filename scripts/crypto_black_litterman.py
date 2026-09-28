@@ -248,6 +248,42 @@ def export_black_litterman_json(
         json.dump(payload, f, indent=indent, ensure_ascii=False)
 
 
+def export_black_litterman_csv(
+    res: dict[str, object],
+    output_path: Path | str,
+) -> None:
+    """Export Black-Litterman comparative weights and returns to a CSV file."""
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    priors = res.get("prior_weights", {})
+    posts = res.get("posterior_weights", {})
+    imp_ret = res.get("implied_returns", {})
+    post_ret = res.get("posterior_returns", {})
+
+    rows = []
+    assets = list(priors.keys()) if isinstance(priors, dict) else []
+    for asset in assets:
+        w_pri = float(priors.get(asset, 0.0))
+        w_pos = float(posts.get(asset, 0.0))
+        delta = w_pos - w_pri
+        r_imp = float(imp_ret.get(asset, 0.0))
+        r_post = float(post_ret.get(asset, 0.0))
+        rows.append({
+            "asset": asset,
+            "prior_weight": round(w_pri, 6),
+            "prior_weight_pct": round(w_pri * 100, 2),
+            "posterior_weight": round(w_pos, 6),
+            "posterior_weight_pct": round(w_pos * 100, 2),
+            "delta_pct": round(delta * 100, 2),
+            "implied_return": round(r_imp, 6),
+            "implied_return_pct": round(r_imp * 100, 4),
+            "posterior_return": round(r_post, 6),
+            "posterior_return_pct": round(r_post * 100, 4),
+        })
+    df = pd.DataFrame(rows)
+    df.to_csv(path, index=False, encoding="utf-8")
+
+
 def print_black_litterman_report(res: dict[str, object]):
     """Print comparative table between Prior and Black-Litterman Posterior."""
     print("================================================================================")
@@ -301,6 +337,7 @@ def main():
     parser.add_argument("--config-file", type=str, default="", help="비중을 불러올 config.json 또는 allocation JSON 파일 경로")
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic sample data")
     parser.add_argument("--export-json", type=str, default=None, help="Path to export Black-Litterman results to JSON file.")
+    parser.add_argument("--export-csv", type=str, default=None, help="Path to export Black-Litterman results to CSV file.")
     args = parser.parse_args()
 
     try:
@@ -346,6 +383,10 @@ def main():
             risk_aversion=args.risk_aversion,
         )
         print(f"[+] Black-Litterman results exported to: {args.export_json}")
+
+    if args.export_csv:
+        export_black_litterman_csv(res, args.export_csv)
+        print(f"[+] Black-Litterman results exported to: {args.export_csv}")
 
 
 if __name__ == "__main__":
