@@ -209,6 +209,30 @@ def compute_burke_ratio(
     return float(excess_return / denom)
 
 
+def compute_sterling_ratio(
+    data: pd.Series | np.ndarray,
+    risk_free_rate: float = 0.0,
+    is_returns: bool = True,
+    periods_per_year: int = 365,
+) -> float:
+    """Calculate Sterling Ratio.
+
+    Sterling Ratio = (CAGR - RiskFreeRate) / Average Drawdown
+    Evaluates return generation efficiency against typical downside drawdown depth.
+    """
+    dd = compute_drawdown_series(data, is_returns=is_returns)
+    cagr = compute_annualized_cagr(data, is_returns=is_returns, periods_per_year=periods_per_year)
+    excess_return = cagr - risk_free_rate
+
+    underwater = [abs(val) for val in dd if val < -1e-6]
+    avg_dd = float(np.mean(underwater)) if underwater else 0.0
+
+    if avg_dd < 1e-8:
+        return 999.0 if excess_return > 0 else 0.0
+
+    return float(excess_return / avg_dd)
+
+
 def compute_drawdown_duration_stats(
     data: pd.Series | np.ndarray,
     is_returns: bool = True,
@@ -285,6 +309,7 @@ def compute_drawdown_metrics_summary(
     martin = compute_martin_ratio(data, risk_free_rate=risk_free_rate, is_returns=is_returns, periods_per_year=periods_per_year)
     pain = compute_pain_ratio(data, risk_free_rate=risk_free_rate, is_returns=is_returns, periods_per_year=periods_per_year)
     burke = compute_burke_ratio(data, risk_free_rate=risk_free_rate, is_returns=is_returns, periods_per_year=periods_per_year)
+    sterling = compute_sterling_ratio(data, risk_free_rate=risk_free_rate, is_returns=is_returns, periods_per_year=periods_per_year)
     calmar = (cagr - risk_free_rate) / mdd if mdd > 1e-8 else (999.0 if cagr > risk_free_rate else 0.0)
     dur_stats = compute_drawdown_duration_stats(data, is_returns=is_returns)
 
@@ -296,6 +321,7 @@ def compute_drawdown_metrics_summary(
         "martin_ratio": round(martin, 4),
         "pain_ratio": round(pain, 4),
         "burke_ratio": round(burke, 4),
+        "sterling_ratio": round(sterling, 4),
         "calmar_ratio": round(calmar, 4),
         "max_drawdown_duration": dur_stats["max_drawdown_duration"],
         "avg_drawdown_duration": dur_stats["avg_drawdown_duration"],
@@ -303,6 +329,17 @@ def compute_drawdown_metrics_summary(
         "drawdown_episodes_count": dur_stats["drawdown_episodes_count"],
         "time_underwater_pct": dur_stats["time_underwater_pct"],
     }
+
+
+def export_drawdown_metrics_json(
+    summary: dict[str, float],
+    filepath: str | Path,
+) -> None:
+    """Export drawdown metrics summary dictionary to a JSON file."""
+    out_path = Path(filepath)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2, ensure_ascii=False)
 
 
 def main():
@@ -323,11 +360,8 @@ def main():
         print(f"  {k:20s}: {v}")
 
     if args.export_json:
-        out_path = Path(args.export_json)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(out_path, "w", encoding="utf-8") as f:
-            json.dump(summary, f, indent=2, ensure_ascii=False)
-        print(f"[+] Drawdown metrics exported to: {out_path}")
+        export_drawdown_metrics_json(summary, args.export_json)
+        print(f"[+] Drawdown metrics exported to: {args.export_json}")
 
 
 if __name__ == "__main__":
