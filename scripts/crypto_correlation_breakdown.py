@@ -192,7 +192,36 @@ def detect_correlation_breakdown(
     return results
 
 
-def print_breakdown_report(results: dict[str, dict[str, object]], benchmark: str):
+def to_dict_correlation_breakdown(
+    results: dict[str, dict[str, object]],
+    diversification_ratio: float | None = None,
+) -> dict[str, Any]:
+    """Convert correlation breakdown results to a serializable dictionary."""
+    payload: dict[str, Any] = {
+        "assets": results,
+    }
+    if diversification_ratio is not None:
+        payload["diversification_ratio"] = round(float(diversification_ratio), 4)
+    return payload
+
+
+def export_correlation_breakdown_json(
+    results: dict[str, dict[str, object]],
+    filepath: str | Path,
+    diversification_ratio: float | None = None,
+) -> None:
+    """Export correlation breakdown results to a JSON file."""
+    out_path = Path(filepath)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = to_dict_correlation_breakdown(results, diversification_ratio=diversification_ratio)
+    out_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def print_breakdown_report(
+    results: dict[str, dict[str, object]],
+    benchmark: str,
+    diversification_ratio: float | None = None,
+):
     """Print clean terminal report of correlation decoupling analysis."""
     print("================================================================================")
     print(f"      CORRELATION BREAKDOWN & DECOUPLING MONITOR (Benchmark: {benchmark})       ")
@@ -208,6 +237,10 @@ def print_breakdown_report(results: dict[str, dict[str, object]], benchmark: str
         flag = "[!]" if data["is_anomaly"] else "[ ]"
         status_str = f"{flag} {data['status']}"
         print(f"{asset:<14} | {curr_str:>8} | {mean_str:>10} | {z_str:>8} | {div_str:>9} | {status_str}")
+
+    if diversification_ratio is not None:
+        print("--------------------------------------------------------------------------------")
+        print(f"Overall Portfolio Diversification Ratio (DR): {diversification_ratio:.4f}")
 
     print("================================================================================\n")
 
@@ -240,14 +273,19 @@ def main():
         z_threshold=args.threshold,
     )
 
+    div_ratio = None
+    if not prices.empty and prices.shape[1] >= 2:
+        try:
+            div_ratio = compute_diversification_ratio(prices)
+        except Exception:
+            pass
+
     bench = args.benchmark or (prices.columns[0] if not prices.empty else "BTC/USDT")
-    print_breakdown_report(res, benchmark=bench)
+    print_breakdown_report(res, benchmark=bench, diversification_ratio=div_ratio)
 
     if args.export_json:
-        out_path = Path(args.export_json)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(res, indent=2, ensure_ascii=False), encoding="utf-8")
-        print(f"[+] Correlation breakdown results exported to: {out_path}")
+        export_correlation_breakdown_json(res, args.export_json, diversification_ratio=div_ratio)
+        print(f"[+] Correlation breakdown results exported to: {args.export_json}")
 
 
 if __name__ == "__main__":
