@@ -290,6 +290,13 @@ def simulate_rebalancing(
     ann_return = mean_ret * annual_factor * 100.0
     martin_ratio = (ann_return / ulcer_index) if ulcer_index > 1e-6 else (999.0 if ann_return > 0 else 0.0)
 
+    # Pain Index, Pain Ratio & Sterling Ratio
+    pain_index = float(np.mean(np.abs(dd_port_pct)))
+    pain_ratio = (ann_return / pain_index) if pain_index > 1e-6 else (999.0 if ann_return > 0 else 0.0)
+    underwater_dd = dd_port_pct[dd_port_pct < -1e-6]
+    avg_dd = float(np.mean(np.abs(underwater_dd))) if len(underwater_dd) > 0 else 0.0
+    sterling_ratio = (ann_return / avg_dd) if avg_dd > 1e-6 else (999.0 if ann_return > 0 else 0.0)
+
     avg_turnover = float(np.mean(turnover_history)) if turnover_history else 0.0
 
     summary = {
@@ -297,7 +304,10 @@ def simulate_rebalancing(
         "Total Return (%)": round(total_return_port, 2),
         "Max Drawdown (%)": round(port_mdd * 100, 2),
         "Ulcer Index (%)": round(ulcer_index, 2),
+        "Pain Index (%)": round(pain_index, 2),
         "Martin Ratio": round(martin_ratio, 3),
+        "Pain Ratio": round(pain_ratio, 3),
+        "Sterling Ratio": round(sterling_ratio, 3),
         "Sharpe Ratio (Ann.)": round(sharpe, 3),
         "Sortino Ratio (Ann.)": round(sortino, 3),
         "Calmar Ratio": round(calmar, 3),
@@ -469,6 +479,10 @@ def print_backtest_report(summary: dict[str, object]):
     print(f" - Annualized Sharpe Ratio  : {summary['Sharpe Ratio (Ann.)']}")
     print(f" - Annualized Sortino Ratio : {summary['Sortino Ratio (Ann.)']}")
     print(f" - Calmar Ratio             : {summary['Calmar Ratio']}")
+    print(f" - Ulcer Index (%)          : {summary.get('Ulcer Index (%)', 0.0)}%")
+    print(f" - Pain Index (%)           : {summary.get('Pain Index (%)', 0.0)}%")
+    print(f" - Martin Ratio             : {summary.get('Martin Ratio', 0.0)}")
+    print(f" - Sterling Ratio           : {summary.get('Sterling Ratio', 0.0)}")
     print(f" - Average Turnover Rate    : {summary['Average Turnover (%)']}% per rebalance")
     print(f" - Total Rebalance Events   : {summary['Rebalancing Count']} times")
     if summary.get("Skipped Rebalances", 0) > 0 or summary.get("Tolerance Band (%)") != "None":
