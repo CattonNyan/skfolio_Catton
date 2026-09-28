@@ -2,6 +2,30 @@
 
 <!-- version list -->
 
+## v1.7.0 (2026-09-29)
+
+### Features & Improvements
+
+- **rebalancing**: Add Sterling ratio, Pain index, and Pain ratio to periodic rebalancing backtest (`scripts/crypto_rebalancing_backtest.py`)
+  - Integrated `pain_index`, `pain_ratio`, and `sterling_ratio` calculation into `simulate_rebalancing`
+  - Added downside risk metrics to terminal report and JSON serialization output
+- **html-report**: Embed Ulcer index, Martin ratio, and Sterling ratio downside risk cards (`scripts/export_html_report.py`)
+  - Added institutional downside risk metrics section featuring Ulcer Index, Martin Ratio, and Sterling Ratio
+  - Introduced red-accented metric cards for intuitive downside risk visualization
+- **kelly**: Add `to_dict_kelly_result` serialization and `export_kelly_json` helper (`scripts/crypto_kelly_sizer.py`)
+  - Added structured dictionary conversion and standalone file exporter for Kelly sizing results
+- **risk-budget**: Add `export_risk_csv` helper and `--export-csv` CLI option (`scripts/crypto_risk_budget_calculator.py`)
+  - Added CSV export functionality for volatility-based dynamic stoploss and take-profit guidelines
+- **black-litterman**: Add `export_black_litterman_csv` helper and `--export-csv` CLI option (`scripts/crypto_black_litterman.py`)
+  - Added comparative CSV export containing prior vs. posterior weights and implied equilibrium returns
+- **monte-carlo**: Add `export_monte_carlo_csv` helper and `--export-csv` CLI option (`scripts/crypto_monte_carlo.py`)
+  - Added scalar metrics CSV export covering VaR, CVaR, expected drawdown, and wealth percentiles
+
+### Testing & Verification
+
+- Added unit tests for CSV exporters, Kelly serialization, and downside risk metrics (`tests/`)
+- Maintained 100% test pass rate across `tests/test_crypto_suite.py`
+
 ## v1.6.9 (2026-09-28)
 
 ### Features & Improvements

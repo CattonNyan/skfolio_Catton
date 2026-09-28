@@ -243,7 +243,7 @@ python scripts/crypto_rebalancing_backtest.py --model "Risk Parity" --timeframe 
 # 합성 데이터로 빠른 검증 실행 및 결과 JSON 파일 내보내기
 python scripts/crypto_rebalancing_backtest.py --use-synthetic --model "Equal Weight" --export-json reports/rebalancing_results.json
 ```
-- **산출 지표**: 누적 수익률(Total Return), 최대 낙폭(MDD), 연환산 샤프 지수, 회전율(Turnover Rate), 리밸런싱 횟수 비교 요약표 출력
+- **산출 지표**: 누적 수익률(Total Return), 최대 낙폭(MDD), 연환산 샤프 지수, 회전율(Turnover Rate), 스털링 비율(Sterling Ratio), 페인 지수(Pain Index) 및 페인 비율(Pain Ratio) 비교 요약표 출력
 
 ---
 
@@ -254,7 +254,7 @@ python scripts/crypto_rebalancing_backtest.py --use-synthetic --model "Equal Wei
 ```powershell
 python scripts/export_html_report.py --output reports/crypto_portfolio_report.html --model "Risk Parity (ERC)"
 ```
-- **포함 내용**: 다크 핀테크 테마(#0E1117) 디자인, KPI 성과 카드, 최적 자산 배분 도넛 차트, 코인 간 상관관계 히트맵, 누적 수익률 시뮬레이션 인터랙티브 차트, Freqtrade 설정 코드
+- **포함 내용**: 다크 핀테크 테마(#0E1117) 디자인, KPI 성과 카드(샤프 지수, 연환산 수익률, MDD), 기관 하방 리스크 카드(궤양지수 Ulcer Index, 마틴 비율 Martin Ratio, 스털링 비율 Sterling Ratio), 최적 자산 배분 도넛 차트, 코인 간 상관관계 히트맵, 누적 수익률 시뮬레이션 인터랙티브 차트, Freqtrade 설정 코드
 
 ---
 
@@ -263,11 +263,12 @@ python scripts/export_html_report.py --output reports/crypto_portfolio_report.ht
 각 코인의 하방 변동성(Semi-Deviation)과 위험-보상 비율(RR Ratio)을 분석하여 개별 코인별 권장 손절폭(Stoploss)과 익절폭(Take-Profit)을 자동 산출합니다:
 
 ```powershell
-# 분석용 리스크 JSON 생성
+# 분석용 리스크 JSON 및 CSV 파일 내보내기
 python scripts/crypto_risk_budget_calculator.py `
   --risk-mult 2.0 `
   --rr-ratio 2.0 `
-  --export-json user_data/risk_params.json
+  --export-json user_data/risk_params.json `
+  --export-csv user_data/risk_params.csv
 
 # 기존 Freqtrade config.json에 콜백용 종목별 SL/TP를 안전하게 주입
 python scripts/crypto_risk_budget_calculator.py `
@@ -309,11 +310,12 @@ python scripts/crypto_risk_budget_calculator.py `
 시장 균형 수익률(Prior)과 트레이더의 주관적 시장 전망(Views)을 베이지안 통계로 결합하여 안정적이고 극단값 없는 최적 비중을 계산합니다:
 
 ```powershell
-# 상대적 뷰(BTC가 ETH보다 +2% 초과 상승)와 절대적 뷰(SOL +5% 상승) 반영 및 최적 비중 JSON 내보내기
+# 상대적 뷰(BTC가 ETH보다 +2% 초과 상승)와 절대적 뷰(SOL +5% 상승) 반영 및 최적 비중 JSON/CSV 내보내기
 python scripts/crypto_black_litterman.py `
   --views "BTC/USDT>ETH/USDT:0.02" "SOL/USDT:0.05" `
   --risk-aversion 2.5 `
-  --export-json reports/black_litterman.json
+  --export-json reports/black_litterman.json `
+  --export-csv reports/black_litterman.csv
 ```
 
 ---
@@ -355,8 +357,8 @@ python scripts/freqtrade_strategy_optimizer.py --capital 10000 --model "Risk Par
 기하 브라운 운동(GBM)을 기반으로 향후 90일간 발생 가능한 1,000개의 가상 가격 경로를 시뮬레이션하여 95% 신뢰구간 콘 차트와 최대 손실액(VaR, CVaR), 원금 손실 확률을 계산합니다:
 
 ```powershell
-# 향후 90일 1,000개 경로 시뮬레이션 및 VaR/CVaR 신뢰구간 JSON 내보내기
-python scripts/crypto_monte_carlo.py --days 90 --sims 1000 --capital 10000 --export-json reports/monte_carlo.json
+# 향후 90일 1,000개 경로 시뮬레이션 및 VaR/CVaR 신뢰구간 JSON/CSV 내보내기
+python scripts/crypto_monte_carlo.py --days 90 --sims 1000 --capital 10000 --export-json reports/monte_carlo.json --export-csv reports/monte_carlo.csv
 ```
 
 ---
