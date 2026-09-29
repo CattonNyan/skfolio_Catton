@@ -164,6 +164,20 @@ class DrawdownMetricsTests(unittest.TestCase):
             self.assertEqual(loaded["sterling_ratio"], 1.25)
             self.assertEqual(loaded["cagr_pct"], 14.5)
 
+    def test_export_drawdown_metrics_csv_direct(self):
+        from scripts.crypto_drawdown_metrics import export_drawdown_metrics_csv
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "exported_metrics.csv"
+            sample = {"cagr_pct": 14.5, "sterling_ratio": 1.25, "pain_index": 5.2}
+            export_drawdown_metrics_csv(sample, out_file)
+            self.assertTrue(out_file.exists())
+            df = pd.read_csv(out_file)
+            self.assertIn("metric", df.columns)
+            self.assertIn("value", df.columns)
+            metrics_dict = dict(zip(df["metric"], df["value"]))
+            self.assertAlmostEqual(metrics_dict["sterling_ratio"], 1.25)
+            self.assertAlmostEqual(metrics_dict["cagr_pct"], 14.5)
+
 
 if __name__ == "__main__":
     unittest.main()

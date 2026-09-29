@@ -9,6 +9,7 @@ from scripts.crypto_vol_target_allocator import (
     calculate_portfolio_realized_volatility,
     apply_volatility_targeting,
     export_vol_target_json,
+    export_vol_target_csv,
     simulate_vol_targeted_backtest,
     to_dict_vol_target_backtest,
 )
@@ -119,6 +120,36 @@ class VolTargetAllocatorTests(unittest.TestCase):
             self.assertEqual(obj_data["target_vol_ann"], 0.25)
             self.assertEqual(obj_data["vol_scalar"], 0.5)
 
+    def test_export_vol_target_csv(self):
+        prices = generate_synthetic_crypto_data(periods=60)
+        base_w = {"BTC/USDT": 0.5, "ETH/USDT": 0.5}
+        res = simulate_vol_targeted_backtest(
+            prices[["BTC/USDT", "ETH/USDT"]],
+            base_weights=base_w,
+            target_vol_ann=0.25,
+            lookback_bars=15,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "sub" / "vol_target.csv"
+            export_vol_target_csv(res, out_file)
+            self.assertTrue(out_file.exists())
+            df = pd.read_csv(out_file)
+            self.assertIn("metric", df.columns)
+            self.assertIn("value", df.columns)
+            metrics = dict(zip(df["metric"], df["value"]))
+            self.assertIn("mdd_targeted_pct", metrics)
+            self.assertIn("sharpe_targeted", metrics)
+
+            vt_obj = apply_volatility_targeting(base_w, realized_vol_ann=0.50, target_vol_ann=0.25)
+            obj_file = Path(tmpdir) / "sub" / "vt_obj.csv"
+            export_vol_target_csv(vt_obj, obj_file)
+            self.assertTrue(obj_file.exists())
+            df_obj = pd.read_csv(obj_file)
+            metrics_obj = dict(zip(df_obj["metric"], df_obj["value"]))
+            self.assertAlmostEqual(float(metrics_obj["target_vol_ann"]), 0.25)
+            self.assertAlmostEqual(float(metrics_obj["vol_scalar"]), 0.5)
+
 
 if __name__ == "__main__":
     unittest.main()
+

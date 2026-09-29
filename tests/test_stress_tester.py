@@ -2,10 +2,12 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import pandas as pd
 
 from scripts.crypto_stress_tester import (
     evaluate_stress_test,
     export_stress_test_json,
+    export_stress_test_csv,
     summarize_stress_test_results,
     to_dict_stress_test_result,
 )
@@ -162,6 +164,23 @@ class StressTesterTests(unittest.TestCase):
             self.assertIn("scenarios", loaded)
             self.assertIn("summary", loaded)
             self.assertEqual(loaded["total_wallet"], 10000.0)
+
+    def test_export_stress_test_csv(self):
+        weights = {"BTC/USDT": 0.6, "ETH/USDT": 0.4}
+        wallet = 10000.0
+        results = evaluate_stress_test(weights, total_wallet=wallet)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "sub" / "stress.csv"
+            export_stress_test_csv(results, out_file)
+            self.assertTrue(out_file.exists())
+            df = pd.read_csv(out_file)
+            self.assertIn("scenario", df.columns)
+            self.assertIn("portfolio_loss_pct", df.columns)
+            self.assertIn("dollar_loss", df.columns)
+            self.assertIn("remaining_balance", df.columns)
+            self.assertIn("recovery_required_pct", df.columns)
+            self.assertIn("resilience_grade", df.columns)
+            self.assertEqual(len(df), len(results))
 
 
 if __name__ == "__main__":

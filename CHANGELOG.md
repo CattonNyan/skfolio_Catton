@@ -20,6 +20,15 @@
   - Added comparative CSV export containing prior vs. posterior weights and implied equilibrium returns
 - **monte-carlo**: Add `export_monte_carlo_csv` helper and `--export-csv` CLI option (`scripts/crypto_monte_carlo.py`)
   - Added scalar metrics CSV export covering VaR, CVaR, expected drawdown, and wealth percentiles
+- **drawdown-metrics**: Add standalone CSV exporter and CLI export option (`scripts/crypto_drawdown_metrics.py`)
+  - Added `export_drawdown_metrics_csv` helper function
+  - Added `--export-csv` CLI option for automated downside risk analysis reporting
+- **vol-targeting**: Add CSV export helper and CLI export option (`scripts/crypto_vol_target_allocator.py`)
+  - Added `export_vol_target_csv` helper function supporting both backtest summary and allocation weights
+  - Added `--export-csv` CLI option
+- **stress-tester**: Add CSV export helper and CLI export option (`scripts/crypto_stress_tester.py`)
+  - Added `export_stress_test_csv` helper function exporting scenario loss, dollar impact, recovery requirement, and resilience grade
+  - Added `--export-csv` CLI option
 
 ### Testing & Verification
 
