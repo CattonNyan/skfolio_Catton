@@ -229,11 +229,39 @@ def export_vol_target_json(
         json.dump(payload, f, indent=2, ensure_ascii=False)
 
 
+def export_vol_target_csv(
+    result: VolTargetResult | dict[str, Any],
+    filepath: str | Path,
+) -> None:
+    """Export volatility targeting result or backtest metrics to a CSV file."""
+    out_path = Path(filepath)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    if isinstance(result, VolTargetResult):
+        d = result.to_dict()
+        rows = []
+        for k, v in d.items():
+            if k == "scaled_weights" and isinstance(v, dict):
+                for asset, w in v.items():
+                    rows.append({"metric": f"weight_{asset}", "value": w})
+            else:
+                rows.append({"metric": k, "value": v})
+    elif isinstance(result, dict) and ("nav_static" in result or "nav_targeted" in result):
+        d = to_dict_vol_target_backtest(result, include_nav=False)
+        rows = [{"metric": k, "value": v} for k, v in d.items()]
+    elif isinstance(result, dict):
+        rows = [{"metric": k, "value": v} for k, v in result.items() if not isinstance(v, (dict, list, pd.Series))]
+    else:
+        rows = []
+    df = pd.DataFrame(rows)
+    df.to_csv(out_path, index=False, encoding="utf-8")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Volatility Targeting Allocator.")
     parser.add_argument("--target-vol", type=float, default=0.30, help="Target annualized volatility (e.g. 0.30 = 30%%).")
     parser.add_argument("--realized-vol", type=float, default=0.60, help="Current realized volatility (e.g. 0.60 = 60%%).")
     parser.add_argument("--export-json", type=str, default=None, help="Export volatility targeting results to JSON file.")
+    parser.add_argument("--export-csv", type=str, default=None, help="Export volatility targeting results to CSV file.")
     args = parser.parse_args()
 
     base_w = {"BTC/USDT": 0.60, "ETH/USDT": 0.40}
@@ -249,7 +277,11 @@ def main():
 
     if args.export_json:
         export_vol_target_json(res, args.export_json)
-        print(f"[+] Volatility targeting result exported to: {args.export_json}")
+        print(f"[+] Volatility targeting results exported to: {args.export_json}")
+
+    if args.export_csv:
+        export_vol_target_csv(res, args.export_csv)
+        print(f"[+] Volatility targeting results exported to: {args.export_csv}")
 
 
 if __name__ == "__main__":
