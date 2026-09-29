@@ -274,6 +274,27 @@ def export_stress_test_json(
     out_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
+def export_stress_test_csv(
+    results: dict[str, dict[str, float | str]],
+    filepath: str | Path,
+) -> None:
+    """Export stress test scenarios and metrics to a CSV file."""
+    out_path = Path(filepath)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for scenario_name, m in results.items():
+        rows.append({
+            "scenario": scenario_name,
+            "portfolio_loss_pct": m.get("portfolio_loss_pct", 0.0),
+            "dollar_loss": m.get("dollar_loss", 0.0),
+            "remaining_balance": m.get("remaining_balance", 0.0),
+            "recovery_required_pct": m.get("recovery_required_pct", 0.0),
+            "resilience_grade": m.get("resilience_grade", ""),
+        })
+    df = pd.DataFrame(rows)
+    df.to_csv(out_path, index=False, encoding="utf-8")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Crypto Historical Stress Testing Engine")
     parser.add_argument("--wallet-size", "--wallet", dest="wallet_size", type=float, default=10000.0, help="Total wallet value in USDT (default: 10000.0)")
@@ -281,6 +302,7 @@ def main():
     parser.add_argument("--custom-shock", nargs="+", default=None, help="Custom shock rates (e.g. BTC:-0.25 ETH:-0.35)")
     parser.add_argument("--config-file", type=str, default="", help="Path to allocation or config JSON to read weights from")
     parser.add_argument("--export-json", type=str, default="", help="Path to export results JSON file")
+    parser.add_argument("--export-csv", type=str, default="", help="Path to export results CSV file")
     args = parser.parse_args()
 
     weights = {"BTC/USDT": 0.50, "ETH/USDT": 0.30, "SOL/USDT": 0.20}
@@ -317,6 +339,10 @@ def main():
     if args.export_json:
         export_stress_test_json(results, args.export_json, total_wallet=args.wallet_size, weights=weights)
         print(f"[+] Stress test results exported to: {args.export_json}")
+
+    if args.export_csv:
+        export_stress_test_csv(results, args.export_csv)
+        print(f"[+] Stress test results exported to: {args.export_csv}")
 
 
 if __name__ == "__main__":
