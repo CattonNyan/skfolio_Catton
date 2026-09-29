@@ -342,12 +342,25 @@ def export_drawdown_metrics_json(
         json.dump(summary, f, indent=2, ensure_ascii=False)
 
 
+def export_drawdown_metrics_csv(
+    summary: dict[str, float],
+    filepath: str | Path,
+) -> None:
+    """Export drawdown metrics summary dictionary to a CSV file."""
+    out_path = Path(filepath)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    rows = [{"metric": k, "value": v} for k, v in summary.items()]
+    df = pd.DataFrame(rows)
+    df.to_csv(out_path, index=False, encoding="utf-8")
+
+
 def main():
     """CLI test runner demonstration."""
     parser = argparse.ArgumentParser(description="Cryptocurrency Drawdown & Ulcer Index Calculator")
     parser.add_argument("--synthetic", action="store_true", default=True, help="Use synthetic dataset for test")
     parser.add_argument("--rf", type=float, default=2.0, help="Annualized risk-free rate percentage (default: 2.0%%)")
     parser.add_argument("--export-json", type=str, default=None, help="Path to export drawdown metrics summary to JSON file.")
+    parser.add_argument("--export-csv", type=str, default=None, help="Path to export drawdown metrics summary to CSV file.")
     args = parser.parse_args()
 
     # Generate test returns
@@ -362,6 +375,10 @@ def main():
     if args.export_json:
         export_drawdown_metrics_json(summary, args.export_json)
         print(f"[+] Drawdown metrics exported to: {args.export_json}")
+
+    if args.export_csv:
+        export_drawdown_metrics_csv(summary, args.export_csv)
+        print(f"[+] Drawdown metrics exported to: {args.export_csv}")
 
 
 if __name__ == "__main__":
