@@ -332,11 +332,42 @@ def export_factor_ranking_json(
     out_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
+def export_factor_ranking_csv(
+    factors_df: pd.DataFrame,
+    filepath: str | Path,
+    top_n: int | None = None,
+    tilted_weights: dict[str, float] | None = None,
+) -> None:
+    """Export multi-factor ranking results and tilted weights to a CSV file."""
+    out_path = Path(filepath)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    df_to_export = factors_df.iloc[:top_n] if top_n else factors_df
+    rows = []
+    for rank, (asset, row) in enumerate(df_to_export.iterrows(), start=1):
+        rec = {
+            "rank": rank,
+            "asset": str(asset),
+            "momentum": round(float(row["momentum"]), 4),
+            "volatility": round(float(row["volatility"]), 4),
+            "low_volatility": round(float(row["low_volatility"]), 4),
+            "trend_strength": round(float(row["trend_strength"]), 4),
+            "sortino_ratio": round(float(row["sortino_ratio"]), 4),
+            "omega_ratio": round(float(row["omega_ratio"]), 4) if np.isfinite(row["omega_ratio"]) else 999.0,
+            "gain_to_pain": round(float(row["gain_to_pain"]), 4) if np.isfinite(row["gain_to_pain"]) else 999.0,
+            "composite_score": round(float(row["composite_score"]), 4),
+            "tilted_weight": tilted_weights.get(str(asset), 0.0) if tilted_weights else "",
+        }
+        rows.append(rec)
+    df = pd.DataFrame(rows)
+    df.to_csv(out_path, index=False, encoding="utf-8")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Crypto Quantitative Multi-Factor Analyzer")
     parser.add_argument("--lookback", type=int, default=60, help="Lookback bars for factor calculation")
     parser.add_argument("--top-n", type=int, default=3, help="Number of top assets to select")
     parser.add_argument("--export-json", type=str, default="", help="Path to export results JSON")
+    parser.add_argument("--export-csv", type=str, default="", help="Path to export results CSV")
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic sample data")
     args = parser.parse_args()
 
@@ -363,6 +394,10 @@ def main():
     if args.export_json:
         export_factor_ranking_json(factors_df, args.export_json, top_n=args.top_n, tilted_weights=tilted_w)
         print(f"[+] Factor rankings exported to: {args.export_json}")
+
+    if args.export_csv:
+        export_factor_ranking_csv(factors_df, args.export_csv, top_n=args.top_n, tilted_weights=tilted_w)
+        print(f"[+] Factor rankings exported to: {args.export_csv}")
 
 
 if __name__ == "__main__":
