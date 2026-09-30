@@ -16,6 +16,9 @@ import math
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Any
+
+import pandas as pd
 
 # Ensure local skfolio source and scripts are discovered
 root_dir = str(Path(__file__).resolve().parents[1])
@@ -126,6 +129,22 @@ def simulate_kimchi_hedging(
     )
 
 
+def export_kimchi_hedging_csv(
+    result: HedgingSimulationResult | dict[str, Any],
+    filepath: str | Path | None = None,
+) -> str:
+    """Export Kimchi Premium hedging simulation results to CSV string or file."""
+    data = result.to_dict() if isinstance(result, HedgingSimulationResult) else dict(result)
+    rows = [{"metric": k, "value": v} for k, v in data.items()]
+    df = pd.DataFrame(rows)
+    csv_str = df.to_csv(index=False)
+    if filepath:
+        out_path = Path(filepath)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(csv_str, encoding="utf-8")
+    return csv_str
+
+
 def main():
     parser = argparse.ArgumentParser(description="Kimchi Premium Arbitrage & Hedging Simulator.")
     parser.add_argument("--capital", type=float, default=50_000_000.0, help="Capital in KRW.")
@@ -134,6 +153,7 @@ def main():
     parser.add_argument("--days", type=int, default=30, help="Holding duration (days).")
     parser.add_argument("--daily-funding", type=float, default=0.0003, help="Daily funding rate (0.0003 for 0.03%%).")
     parser.add_argument("--export-json", type=str, default="", help="Path to export results JSON.")
+    parser.add_argument("--export-csv", type=str, default="", help="Path to export results CSV.")
     args = parser.parse_args()
 
     res = simulate_kimchi_hedging(
@@ -161,6 +181,10 @@ def main():
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(json.dumps(res.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"[+] Hedging simulation exported to: {out_path}")
+
+    if args.export_csv:
+        export_kimchi_hedging_csv(res, args.export_csv)
+        print(f"[+] Hedging simulation CSV exported to: {args.export_csv}")
 
 
 if __name__ == "__main__":
