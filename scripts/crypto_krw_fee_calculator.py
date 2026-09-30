@@ -12,6 +12,7 @@ import json
 import math
 import sys
 from pathlib import Path
+from typing import Any
 
 # Ensure local skfolio source and scripts are discovered
 root_dir = str(Path(__file__).resolve().parents[1])
@@ -212,6 +213,27 @@ def print_krw_fee_report(res: dict[str, object], exchange_name: str = "Custom"):
     print("================================================================================\n")
 
 
+def export_krw_fee_csv(
+    data: dict[str, Any] | pd.DataFrame,
+    filepath: str | Path | None = None,
+) -> str:
+    """Export KRW fee drag calculation results or comparison DataFrame to CSV string or file."""
+    if isinstance(data, pd.DataFrame):
+        df = data
+    elif isinstance(data, dict):
+        rows = [{"metric": k, "value": v} for k, v in data.items()]
+        df = pd.DataFrame(rows)
+    else:
+        raise ValueError("data must be a dictionary or a pandas DataFrame.")
+
+    csv_str = df.to_csv(index=False)
+    if filepath:
+        out_path = Path(filepath)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(csv_str, encoding="utf-8")
+    return csv_str
+
+
 def main():
     parser = argparse.ArgumentParser(description="Korean Crypto Exchange Fee Drag Calculator")
     parser.add_argument(
@@ -226,6 +248,7 @@ def main():
     parser.add_argument("--withdrawals", type=int, default=12, help="Annual KRW bank withdrawals (default: 12)")
     parser.add_argument("--compare", action="store_true", help="Compare all Korean exchanges side-by-side")
     parser.add_argument("--export-json", type=str, default="", help="Path to export results JSON")
+    parser.add_argument("--export-csv", type=str, default="", help="Path to export results CSV")
     args = parser.parse_args()
 
     if args.compare:
@@ -241,6 +264,9 @@ def main():
             out_path.parent.mkdir(parents=True, exist_ok=True)
             out_path.write_text(cmp_df.to_json(orient="records", indent=2, force_ascii=False), encoding="utf-8")
             print(f"[+] Multi-exchange comparison exported to: {out_path}")
+        if args.export_csv:
+            export_krw_fee_csv(cmp_df, args.export_csv)
+            print(f"[+] Multi-exchange comparison CSV exported to: {args.export_csv}")
         return
 
     preset = get_korean_exchange_preset(args.exchange)
@@ -261,6 +287,10 @@ def main():
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(json.dumps(res, indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"[+] Fee report exported to: {out_path}")
+
+    if args.export_csv:
+        export_krw_fee_csv(res, args.export_csv)
+        print(f"[+] Fee report CSV exported to: {args.export_csv}")
 
 
 if __name__ == "__main__":
