@@ -420,11 +420,14 @@ python scripts/fetch_upbit_crypto.py --markets KRW-BTC KRW-ETH KRW-SOL KRW-XRP -
 
 ### 22. 한국 거래소 수수료 및 포트폴리오 수익률 잠식 계산기
 
-업비트(0.05%), 빗썸(0.04% 쿠폰 / 0.25%), 코인원(0.20%), 코빗 등 국내 주요 거래소의 수수료 체계와 원화 출금 수수료(건당 1,000원), 연간 포트폴리오 회전율(Turnover)을 반영하여 실질 연간 수수료 잠식률(Fee Drag %)과 손익분기 최소 요구수익률을 산출합니다:
+업비트(0.05%), 빗썸(0.04% 쿠폰 / 0.25%), 코인원(0.20%), 코빗 등 국내 주요 거래소의 수수료 체계와 원화 출금 수수료(건당 1,000원), 연간 포트폴리오 회전율(Turnover)을 반영하여 실질 연간 수수료 잠식률(Fee Drag %)과 손익분기 최소 요구수익률을 산출하고 JSON 및 CSV로 내보냅니다:
 
 ```powershell
-# 업비트 KRW 마켓 기준 5,000만원 자본금, 연간 회전율 6배수 수수료 시뮬레이션
-python scripts/crypto_krw_fee_calculator.py --exchange upbit --capital 50000000 --turnover 6.0
+# 업비트 KRW 마켓 기준 5,000만원 자본금, 연간 회전율 6배수 수수료 시뮬레이션 및 JSON/CSV 내보내기
+python scripts/crypto_krw_fee_calculator.py --exchange upbit --capital 50000000 --turnover 6.0 --export-json reports/krw_fee.json --export-csv reports/krw_fee.csv
+
+# 국내 전체 거래소 수수료 잠식 비교 매트릭스 CSV 내보내기
+python scripts/crypto_krw_fee_calculator.py --compare --capital 50000000 --export-csv reports/exchange_fee_compare.csv
 ```
 
 ### 23. 김치 프리미엄 기반 동적 자산배분 레짐 시그널러
@@ -464,10 +467,18 @@ python scripts/crypto_kelly_sizer.py --win-rate 0.58 --payoff 1.75 --capital 200
 
 ### 28. 3각 차익거래 기회 탐색 및 수수료 잠식 분석기
 
-3개 레그(Quote -> A -> B -> Quote) 환율 경로의 순환 불일치를 탐색하고 거래소 수수료(Fee Drag)와 슬리피지 버퍼를 감안한 무위험 차익 기회를 정형 JSON 데이터로 내보냅니다:
+3개 레그(Quote -> A -> B -> Quote) 환율 경로의 순환 불일치를 탐색하고 거래소 수수료(Fee Drag)와 슬리피지 버퍼를 감안한 무위험 차익 기회를 정형 JSON 및 CSV 데이터로 내보냅니다:
 
 ```powershell
-python scripts/crypto_triangular_arbitrage.py --p-btc-usdt 65000 --p-eth-usdt 3500 --p-eth-btc 0.0545 --export-json reports/triangular_arb.json
+python scripts/crypto_triangular_arbitrage.py --p-btc-usdt 65000 --p-eth-usdt 3500 --p-eth-btc 0.0545 --export-json reports/triangular_arb.json --export-csv reports/triangular_arb.csv
+```
+
+### 29. 김치 프리미엄 델타 중립 펀딩비 차익 시뮬레이터
+
+국내 거래소(업비트/빗썸)와 해외 거래소(바이낸스/바이비트) 간의 김치 프리미엄 스프레드 수렴 및 무기한 선물 8시간 펀딩비 수익을 결합한 델타 중립 캐리 트레이드(Basis Trading)의 순수익, 거래소 수수료 잠식, 연환산 APR 및 손익분기 스프레드를 정밀 시뮬레이션하고 정형 JSON 및 CSV 보고서로 내보냅니다:
+
+```powershell
+python scripts/crypto_kimchi_hedging.py --capital 50000000 --entry-kp 1.0 --exit-kp 4.0 --days 30 --export-json reports/kimchi_hedging.json --export-csv reports/kimchi_hedging.csv
 ```
 
 ### 31. Freqtrade 선물 펀딩비 차익 화이트리스트 & 설정 생성기
@@ -480,7 +491,7 @@ python scripts/freqtrade_funding_arbitrage.py --min-apr 15.0 --stake 1000 --expo
 
 ### 33. 오메가 비율(Omega) 및 고도화 하방 리스크(Drawdown) 분석기
 
-궤양지수(Ulcer Index), 마틴 비율(Martin Ratio), 페인 지수(Pain Index), 버크 비율(Burke Ratio), 스털링 비율(Sterling Ratio), 최대 침체 기간(Duration) 등 기관 수준의 하방 리스크를 종합 계산하고 정형 JSON 및 CSV 보고서로 내보냅니다:
+키팅-샤드윅 오메가 비율(Omega Ratio), 게인투페인 비율(Gain-to-Pain), 궤양지수(Ulcer Index), 마틴 비율(Martin Ratio), 페인 지수(Pain Index), 버크 비율(Burke Ratio), 스털링 비율(Sterling Ratio), 최대 침체 기간(Duration) 등 기관 수준의 하방 리스크를 종합 계산하고 정형 JSON 및 CSV 보고서로 내보냅니다:
 
 ```powershell
 python scripts/crypto_drawdown_metrics.py --rf 2.0 --export-json reports/drawdown_metrics.json --export-csv reports/drawdown_metrics.csv

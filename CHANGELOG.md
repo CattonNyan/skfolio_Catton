@@ -2,6 +2,29 @@
 
 <!-- version list -->
 
+## v1.7.2 (2026-09-30)
+
+### Features & Improvements
+
+- **drawdown**: Add Omega Ratio and Gain-to-Pain Ratio to drawdown metrics engine (`scripts/crypto_drawdown_metrics.py`)
+  - Added `compute_omega_ratio` for Keating-Shadwick probability-weighted gain/loss ratio
+  - Added `compute_gain_to_pain_ratio` for Jack Schwager net return per unit downside loss
+  - Integrated both metrics into `compute_drawdown_metrics_summary`, JSON and CSV exports
+- **hedging**: Add CSV export helper and CLI export option (`scripts/crypto_kimchi_hedging.py`)
+  - Added `export_kimchi_hedging_csv` function to export delta-neutral carry trade results
+  - Added `--export-csv` CLI option
+- **arbitrage**: Add CSV export helper and CLI export option (`scripts/crypto_triangular_arbitrage.py`)
+  - Added `export_triangular_arbitrage_csv` function exporting 3-legged arbitrage loops and net profit
+  - Added `--export-csv` CLI option
+- **krw-fee**: Add CSV export helper and CLI export option (`scripts/crypto_krw_fee_calculator.py`)
+  - Added `export_krw_fee_csv` function supporting single-exchange breakdown and multi-exchange comparison matrix
+  - Added `--export-csv` CLI option
+
+### Testing & Verification
+
+- Added unit tests for Omega ratio, Gain-to-Pain ratio, and CSV exporters (`tests/`)
+- Maintained 100% test pass rate across `tests/test_crypto_suite.py`
+
 ## v1.7.1 (2026-09-30)
 
 ### Features & Improvements

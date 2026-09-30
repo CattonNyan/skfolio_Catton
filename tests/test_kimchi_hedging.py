@@ -50,6 +50,27 @@ class KimchiHedgingTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             simulate_kimchi_hedging(daily_funding_rate=float("nan"))
 
+    def test_export_kimchi_hedging_csv(self):
+        import tempfile
+        from pathlib import Path
+        import pandas as pd
+        from scripts.crypto_kimchi_hedging import export_kimchi_hedging_csv
+
+        res = simulate_kimchi_hedging(capital_krw=10_000_000.0)
+        csv_str = export_kimchi_hedging_csv(res)
+        self.assertIn("capital_krw", csv_str)
+        self.assertIn("annualized_apr_pct", csv_str)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "hedging.csv"
+            export_kimchi_hedging_csv(res, out_file)
+            self.assertTrue(out_file.exists())
+            df = pd.read_csv(out_file)
+            self.assertIn("metric", df.columns)
+            self.assertIn("value", df.columns)
+            m = dict(zip(df["metric"], df["value"]))
+            self.assertAlmostEqual(float(m["capital_krw"]), 10000000.0)
+
 
 if __name__ == "__main__":
     unittest.main()

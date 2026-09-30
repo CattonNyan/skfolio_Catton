@@ -75,6 +75,26 @@ class TriangularArbitrageTests(unittest.TestCase):
         self.assertIn("legs", d)
         self.assertEqual(len(d["legs"]), 3)
 
+    def test_export_triangular_arbitrage_csv(self):
+        import tempfile
+        from pathlib import Path
+        import pandas as pd
+        from scripts.crypto_triangular_arbitrage import export_triangular_arbitrage_csv
+
+        opps = calculate_triangular_arbitrage(50000.0, 3000.0, 0.055)
+        csv_str = export_triangular_arbitrage_csv(opps)
+        self.assertIn("cycle", csv_str)
+        self.assertIn("gross_return_pct", csv_str)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "arbitrage.csv"
+            export_triangular_arbitrage_csv(opps, out_file)
+            self.assertTrue(out_file.exists())
+            df = pd.read_csv(out_file)
+            self.assertEqual(len(df), len(opps))
+            self.assertIn("cycle", df.columns)
+            self.assertIn("legs", df.columns)
+
 
 if __name__ == "__main__":
     unittest.main()

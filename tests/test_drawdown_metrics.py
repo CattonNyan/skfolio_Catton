@@ -140,6 +140,8 @@ class DrawdownMetricsTests(unittest.TestCase):
             self.assertIn("pain_index", data)
             self.assertIn("martin_ratio", data)
             self.assertIn("sterling_ratio", data)
+            self.assertIn("omega_ratio", data)
+            self.assertIn("gain_to_pain_ratio", data)
             self.assertIn("time_underwater_pct", data)
 
     def test_sterling_ratio(self):
@@ -152,6 +154,36 @@ class DrawdownMetricsTests(unittest.TestCase):
         sr = compute_sterling_ratio(prices, risk_free_rate=0.0, is_returns=False)
         self.assertIsInstance(sr, float)
         self.assertAlmostEqual(sr, 0.0, places=4)
+
+    def test_omega_ratio(self):
+        from scripts.crypto_drawdown_metrics import compute_omega_ratio
+        # Positive returns only -> zero downside -> 999.0
+        pos = np.array([0.02, 0.03, 0.01])
+        self.assertEqual(compute_omega_ratio(pos, is_returns=True), 999.0)
+
+        # Mixed returns: upside sum 0.05, downside abs sum 0.02 -> 2.5
+        mixed = np.array([0.03, -0.01, 0.02, -0.01])
+        self.assertAlmostEqual(compute_omega_ratio(mixed, is_returns=True), 2.5, places=2)
+
+        # Price series mode
+        prices = np.array([100.0, 105.0, 100.0])
+        omega = compute_omega_ratio(prices, is_returns=False)
+        self.assertGreater(omega, 0.0)
+
+    def test_gain_to_pain_ratio(self):
+        from scripts.crypto_drawdown_metrics import compute_gain_to_pain_ratio
+        # Positive returns only -> zero loss -> 999.0
+        pos = np.array([0.02, 0.03, 0.01])
+        self.assertEqual(compute_gain_to_pain_ratio(pos, is_returns=True), 999.0)
+
+        # Mixed returns: sum(all) = 0.03, sum(losses) = 0.02 -> 1.5
+        mixed = np.array([0.03, -0.01, 0.02, -0.01])
+        self.assertAlmostEqual(compute_gain_to_pain_ratio(mixed, is_returns=True), 1.5, places=2)
+
+        # Price series mode
+        prices = np.array([100.0, 110.0, 105.0])
+        gpr = compute_gain_to_pain_ratio(prices, is_returns=False)
+        self.assertGreater(gpr, 0.0)
 
     def test_export_drawdown_metrics_json_direct(self):
         with tempfile.TemporaryDirectory() as tmpdir:

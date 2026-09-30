@@ -114,6 +114,30 @@ class KrwFeeCalculatorTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             compute_krw_fee_drag(portfolio_value_krw=1000.0, annual_withdrawals=True)  # type: ignore
 
+    def test_export_krw_fee_csv(self):
+        import tempfile
+        from pathlib import Path
+        import pandas as pd
+        from scripts.crypto_krw_fee_calculator import export_krw_fee_csv
+
+        res = compute_krw_fee_drag(portfolio_value_krw=10_000_000.0)
+        csv_str = export_krw_fee_csv(res)
+        self.assertIn("portfolio_value_krw", csv_str)
+        self.assertIn("fee_drag_pct", csv_str)
+
+        cmp_df = compare_exchange_fee_drag(portfolio_value_krw=10_000_000.0)
+        cmp_csv = export_krw_fee_csv(cmp_df)
+        self.assertIn("bithumb_coupon", cmp_csv)
+        self.assertIn("upbit", cmp_csv)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "fee.csv"
+            export_krw_fee_csv(res, out_file)
+            self.assertTrue(out_file.exists())
+            df = pd.read_csv(out_file)
+            self.assertIn("metric", df.columns)
+            self.assertIn("value", df.columns)
+
 
 if __name__ == "__main__":
     unittest.main()
