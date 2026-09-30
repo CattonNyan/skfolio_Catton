@@ -233,6 +233,29 @@ def export_kelly_json(
         json.dump(payload, f, indent=2, ensure_ascii=False)
 
 
+def export_kelly_csv(
+    result: KellyResult,
+    filepath: str | Path,
+    win_rate: float,
+    payoff_ratio: float,
+    fraction: float,
+    capital: float | None = None,
+) -> None:
+    """Export Kelly sizing results to a CSV file."""
+    out_path = Path(filepath)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = to_dict_kelly_result(
+        result,
+        win_rate=win_rate,
+        payoff_ratio=payoff_ratio,
+        fraction=fraction,
+        capital=capital,
+    )
+    rows = [{"metric": k, "value": v} for k, v in payload.items()]
+    df = pd.DataFrame(rows)
+    df.to_csv(out_path, index=False, encoding="utf-8")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Crypto Kelly Criterion Position Sizer.")
     parser.add_argument("--win-rate", type=float, default=0.55, help="Strategy win rate (e.g. 0.55)")
@@ -240,6 +263,7 @@ def main():
     parser.add_argument("--fraction", type=float, default=0.5, help="Fractional Kelly multiplier (default 0.5)")
     parser.add_argument("--capital", type=float, default=None, help="Total account capital for position sizing in USD.")
     parser.add_argument("--export-json", type=str, default=None, help="Path to export Kelly sizing results to JSON file.")
+    parser.add_argument("--export-csv", type=str, default=None, help="Path to export Kelly sizing results to CSV file.")
     args = parser.parse_args()
 
     res = calculate_discrete_kelly(args.win_rate, args.payoff, fraction=args.fraction)
@@ -268,6 +292,17 @@ def main():
             capital=args.capital,
         )
         print(f"[+] Kelly sizing results exported to: {args.export_json}")
+
+    if args.export_csv:
+        export_kelly_csv(
+            res,
+            args.export_csv,
+            win_rate=args.win_rate,
+            payoff_ratio=args.payoff,
+            fraction=args.fraction,
+            capital=args.capital,
+        )
+        print(f"[+] Kelly sizing results exported to: {args.export_csv}")
 
 
 if __name__ == "__main__":
