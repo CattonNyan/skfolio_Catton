@@ -375,10 +375,10 @@ python scripts/crypto_macro_regime.py --wallet-size 10000
 
 ### 17. 퀀트 멀티 팩터 분석 및 스마트 베타 유니버스 스크리너
 
-모멘텀(Momentum), 저변동성(Low Volatility), 추세 강도(Trend Strength) 팩터를 Z-score로 정규화 합산하여 상위 우량 코인을 자동 선별(Smart Beta Universe)하고 정형 JSON 보고서로 내보냅니다:
+모멘텀(Momentum), 저변동성(Low Volatility), 추세 강도(Trend Strength) 팩터를 Z-score로 정규화 합산하여 상위 우량 코인을 자동 선별(Smart Beta Universe)하고 정형 JSON 및 CSV 보고서로 내보냅니다:
 
 ```powershell
-python scripts/crypto_factor_analyzer.py --lookback 60 --top-n 3 --export-json reports/factor_ranking.json
+python scripts/crypto_factor_analyzer.py --lookback 60 --top-n 3 --export-json reports/factor_ranking.json --export-csv reports/factor_ranking.csv
 ```
 
 ---
@@ -393,10 +393,10 @@ python scripts/crypto_factor_analyzer.py --lookback 60 --top-n 3 --export-json r
 
 ### 19. 상관계수 붕괴 & 디커플링(Decoupling) 감지기
 
-비트코인(BTC)과 알트코인 간의 롤링 상관계수를 실시간 모니터링하여, 동조화가 깨지는 이상 현상(역상관, 상관계수 급락), 포트폴리오 분산 비율(DR) 및 분산 투자 강화 기회를 감지하고 JSON으로 내보냅니다:
+비트코인(BTC)과 알트코인 간의 롤링 상관계수를 실시간 모니터링하여, 동조화가 깨지는 이상 현상(역상관, 상관계수 급락), 포트폴리오 분산 비율(DR) 및 분산 투자 강화 기회를 감지하고 JSON 및 CSV로 내보냅니다:
 
 ```powershell
-python scripts/crypto_correlation_breakdown.py --window 30 --threshold 1.8 --export-json reports/corr_breakdown.json
+python scripts/crypto_correlation_breakdown.py --window 30 --threshold 1.8 --export-json reports/corr_breakdown.json --export-csv reports/corr_breakdown.csv
 ```
 
 ---
@@ -456,10 +456,10 @@ python scripts/crypto_liquidity_filter.py --min-volume 50000 --max-amihud 2.0 --
 
 ### 26. 켈리 공식 및 하프 켈리 포지션 사이징 계산기
 
-과거 백테스트 승률과 손익비(Payoff Ratio)를 바탕으로 기하급수적 계좌 성장을 달성하는 이산/연속 켈리 비중(f*) 및 암호화폐 변동성 하방 리스크를 50% 완화한 하프 켈리(Half-Kelly) 투자 비중을 계산하고, 자본금 기준 달러 주문 금액을 정형 JSON으로 내보냅니다:
+과거 백테스트 승률과 손익비(Payoff Ratio)를 바탕으로 기하급수적 계좌 성장을 달성하는 이산/연속 켈리 비중(f*) 및 암호화폐 변동성 하방 리스크를 50% 완화한 하프 켈리(Half-Kelly) 투자 비중을 계산하고, 자본금 기준 달러 주문 금액을 정형 JSON 및 CSV로 내보냅니다:
 
 ```powershell
-python scripts/crypto_kelly_sizer.py --win-rate 0.58 --payoff 1.75 --capital 20000 --export-json reports/kelly_sizing.json
+python scripts/crypto_kelly_sizer.py --win-rate 0.58 --payoff 1.75 --capital 20000 --export-json reports/kelly_sizing.json --export-csv reports/kelly_sizing.csv
 ```
 
 ### 28. 3각 차익거래 기회 탐색 및 수수료 잠식 분석기
@@ -496,10 +496,10 @@ python scripts/crypto_vol_target_allocator.py --target-vol 0.25 --realized-vol 0
 
 ### 35. 가상자산 꼬리 의존성(Tail Dependence) 및 동반 급락 분석기
 
-비선형 극단 상황(하위 5% 폭락 또는 상위 5% 급등)에서의 자산 간 동조화 계수(Tail Dependence Coefficient)를 추정하여, 일반 선형 상관계수로는 포착할 수 없는 시장 붕괴 시의 동반 급락 위험 및 시스템적 취약도(Systemic Crash Vulnerability)를 계산하고 정형 JSON 보고서로 내보냅니다:
+비선형 극단 상황(하위 5% 폭락 또는 상위 5% 급등)에서의 자산 간 동조화 계수(Tail Dependence Coefficient)를 추정하여, 일반 선형 상관계수로는 포착할 수 없는 시장 붕괴 시의 동반 급락 위험 및 시스템적 취약도(Systemic Crash Vulnerability)를 계산하고 정형 JSON 및 CSV 보고서로 내보냅니다:
 
 ```powershell
-python scripts/crypto_tail_dependence.py --quantile 0.05 --export-json reports/tail_dependence.json
+python scripts/crypto_tail_dependence.py --quantile 0.05 --export-json reports/tail_dependence.json --export-csv reports/tail_dependence.csv
 ```
 
 ---

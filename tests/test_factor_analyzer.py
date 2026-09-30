@@ -159,6 +159,22 @@ class FactorAnalyzerTests(unittest.TestCase):
             self.assertEqual(len(loaded["rankings"]), 2)
             self.assertIn("tilted_weights", loaded)
 
+    def test_export_factor_ranking_csv(self):
+        from scripts.crypto_factor_analyzer import export_factor_ranking_csv, generate_factor_tilted_weights, compute_crypto_factors
+        prices = generate_synthetic_crypto_data(periods=100)
+        factors = compute_crypto_factors(prices, lookback_bars=50)
+        tilted = generate_factor_tilted_weights(factors, top_n=2, weighting="equal")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "sub" / "factor_ranking.csv"
+            export_factor_ranking_csv(factors, out_file, top_n=2, tilted_weights=tilted)
+            self.assertTrue(out_file.exists())
+            df = pd.read_csv(out_file)
+            self.assertIn("rank", df.columns)
+            self.assertIn("asset", df.columns)
+            self.assertIn("composite_score", df.columns)
+            self.assertIn("tilted_weight", df.columns)
+            self.assertEqual(len(df), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

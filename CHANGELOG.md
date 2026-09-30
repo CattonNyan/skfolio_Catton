@@ -2,6 +2,28 @@
 
 <!-- version list -->
 
+## v1.7.1 (2026-09-30)
+
+### Features & Improvements
+
+- **tail-dep**: Add CSV export helper and CLI export option (`scripts/crypto_tail_dependence.py`)
+  - Added `export_tail_dependence_csv` function to export pairwise lower/upper tail dependence matrices and systemic vulnerability rankings
+  - Added `--export-csv` CLI option
+- **correlation**: Add CSV export helper and CLI export option (`scripts/crypto_correlation_breakdown.py`)
+  - Added `export_correlation_breakdown_csv` function exporting rolling breakdown events, pair statistics, and diversification ratio
+  - Added `--export-csv` CLI option
+- **factor**: Add CSV export helper and CLI export option (`scripts/crypto_factor_analyzer.py`)
+  - Added `export_factor_ranking_csv` function exporting multi-factor rankings, z-scores, and tilted portfolio weights
+  - Added `--export-csv` CLI option
+- **kelly**: Add CSV export helper and CLI export option (`scripts/crypto_kelly_sizer.py`)
+  - Added `export_kelly_csv` function exporting discrete and fractional Kelly sizing metrics and dollar allocations
+  - Added `--export-csv` CLI option
+
+### Testing & Verification
+
+- Added unit tests for tail-dependence, correlation-breakdown, factor-analyzer, and kelly-sizer CSV exporters (`tests/`)
+- Maintained 100% test pass rate across `tests/test_crypto_suite.py`
+
 ## v1.7.0 (2026-09-29)
 
 ### Features & Improvements

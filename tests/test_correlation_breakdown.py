@@ -123,6 +123,22 @@ class CorrelationBreakdownTests(unittest.TestCase):
             self.assertIn("assets", loaded)
             self.assertEqual(loaded["diversification_ratio"], round(dr, 4))
 
+    def test_export_correlation_breakdown_csv(self):
+        from scripts.crypto_correlation_breakdown import export_correlation_breakdown_csv
+        prices = generate_synthetic_crypto_data(periods=80)
+        res = detect_correlation_breakdown(prices, rolling_window=20)
+        dr = compute_diversification_ratio(prices)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "sub" / "corr_breakdown.csv"
+            export_correlation_breakdown_csv(res, out_file, diversification_ratio=dr)
+            self.assertTrue(out_file.exists())
+            df = pd.read_csv(out_file)
+            self.assertIn("asset", df.columns)
+            self.assertIn("current_correlation", df.columns)
+            self.assertIn("z_score", df.columns)
+            self.assertIn("diversification_ratio", df.columns)
+            self.assertEqual(len(df), len(res))
+
 
 if __name__ == "__main__":
     unittest.main()

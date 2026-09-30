@@ -107,6 +107,25 @@ class TailDependenceTests(unittest.TestCase):
             self.assertEqual(loaded["quantile"], 0.05)
             self.assertIn("lower_tail_matrix", loaded)
 
+    def test_export_tail_dependence_csv(self):
+        from scripts.crypto_tail_dependence import export_tail_dependence_csv
+        rng = np.random.default_rng(42)
+        rets = pd.DataFrame({
+            "BTC": rng.normal(0, 0.02, 100),
+            "ETH": rng.normal(0, 0.03, 100),
+        })
+        df_l, df_u, scores = compute_tail_dependence_matrix(rets, quantile=0.05)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "sub" / "tail.csv"
+            export_tail_dependence_csv(df_l, df_u, scores, out_file, quantile=0.05)
+            self.assertTrue(out_file.exists())
+            df = pd.read_csv(out_file)
+            self.assertIn("record_type", df.columns)
+            self.assertIn("asset_a", df.columns)
+            self.assertIn("lower_tail", df.columns)
+            self.assertIn("systemic_vulnerability", df.columns)
+            self.assertGreaterEqual(len(df), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

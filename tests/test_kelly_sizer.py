@@ -124,6 +124,20 @@ class KellySizerTests(unittest.TestCase):
             self.assertEqual(loaded["capital"], 5000.0)
             self.assertEqual(loaded["payoff_ratio"], 1.5)
 
+    def test_export_kelly_csv(self):
+        from scripts.crypto_kelly_sizer import export_kelly_csv
+        res = calculate_discrete_kelly(0.60, 1.5, fraction=0.5)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "kelly.csv"
+            export_kelly_csv(res, out_file, win_rate=0.60, payoff_ratio=1.5, fraction=0.5, capital=5000.0)
+            self.assertTrue(out_file.exists())
+            df = pd.read_csv(out_file)
+            self.assertIn("metric", df.columns)
+            self.assertIn("value", df.columns)
+            metrics = dict(zip(df["metric"], df["value"]))
+            self.assertAlmostEqual(float(metrics["capital"]), 5000.0)
+            self.assertAlmostEqual(float(metrics["full_kelly"]), 0.3333, places=2)
+
 
 if __name__ == "__main__":
     unittest.main()
