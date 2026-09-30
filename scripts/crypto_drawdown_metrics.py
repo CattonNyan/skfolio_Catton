@@ -6,6 +6,9 @@ Provides institutional downside risk metrics:
 - Pain Index (Thomas Becker, 2001): Mean absolute percentage drawdown
 - Pain Ratio: Excess return per unit of Pain Index
 - Burke Ratio (Gibbon Burke, 1994): Excess return divided by root-sum-square drawdowns
+- Sterling Ratio: CAGR excess return per unit of average drawdown
+- Omega Ratio (Con Keating & William Shadwick, 2002): Ratio of upside gains to downside losses
+- Gain-to-Pain Ratio (Jack Schwager): Net return divided by absolute downside losses
 - Maximum Drawdown (MDD) & Drawdown Duration
 """
 
@@ -233,6 +236,63 @@ def compute_sterling_ratio(
     return float(excess_return / avg_dd)
 
 
+def compute_omega_ratio(
+    data: pd.Series | np.ndarray,
+    threshold: float = 0.0,
+    is_returns: bool = True,
+) -> float:
+    """Calculate Keating-Shadwick Omega Ratio (Con Keating & William F. Shadwick, 2002).
+
+    Omega(L) = Sum(max(r - L, 0)) / Sum(max(L - r, 0))
+    Evaluates probability-weighted gains relative to probability-weighted losses
+    against a return threshold L (default 0.0).
+    """
+    cleaned = _clean_series(data)
+    if not is_returns:
+        if np.any(cleaned <= 0):
+            raise ValueError("Price series must contain strictly positive values.")
+        returns = np.diff(cleaned) / cleaned[:-1]
+    else:
+        returns = cleaned
+
+    upside = returns[returns > threshold] - threshold
+    downside = threshold - returns[returns < threshold]
+
+    sum_downside = float(np.sum(downside))
+    sum_upside = float(np.sum(upside))
+
+    if sum_downside < 1e-8:
+        return 999.0 if sum_upside > 0 else 0.0
+
+    return float(sum_upside / sum_downside)
+
+
+def compute_gain_to_pain_ratio(
+    data: pd.Series | np.ndarray,
+    is_returns: bool = True,
+) -> float:
+    """Calculate Gain-to-Pain Ratio (Jack Schwager).
+
+    Gain-to-Pain = Sum(All Returns) / Sum(|Negative Returns|)
+    Measures net return generation efficiency against raw downside loss volume.
+    """
+    cleaned = _clean_series(data)
+    if not is_returns:
+        if np.any(cleaned <= 0):
+            raise ValueError("Price series must contain strictly positive values.")
+        returns = np.diff(cleaned) / cleaned[:-1]
+    else:
+        returns = cleaned
+
+    sum_all = float(np.sum(returns))
+    sum_losses = float(np.sum(np.abs(returns[returns < 0.0])))
+
+    if sum_losses < 1e-8:
+        return 999.0 if sum_all > 0 else 0.0
+
+    return float(sum_all / sum_losses)
+
+
 def compute_drawdown_duration_stats(
     data: pd.Series | np.ndarray,
     is_returns: bool = True,
@@ -310,6 +370,8 @@ def compute_drawdown_metrics_summary(
     pain = compute_pain_ratio(data, risk_free_rate=risk_free_rate, is_returns=is_returns, periods_per_year=periods_per_year)
     burke = compute_burke_ratio(data, risk_free_rate=risk_free_rate, is_returns=is_returns, periods_per_year=periods_per_year)
     sterling = compute_sterling_ratio(data, risk_free_rate=risk_free_rate, is_returns=is_returns, periods_per_year=periods_per_year)
+    omega = compute_omega_ratio(data, threshold=0.0, is_returns=is_returns)
+    gain_to_pain = compute_gain_to_pain_ratio(data, is_returns=is_returns)
     calmar = (cagr - risk_free_rate) / mdd if mdd > 1e-8 else (999.0 if cagr > risk_free_rate else 0.0)
     dur_stats = compute_drawdown_duration_stats(data, is_returns=is_returns)
 
@@ -322,6 +384,8 @@ def compute_drawdown_metrics_summary(
         "pain_ratio": round(pain, 4),
         "burke_ratio": round(burke, 4),
         "sterling_ratio": round(sterling, 4),
+        "omega_ratio": round(omega, 4),
+        "gain_to_pain_ratio": round(gain_to_pain, 4),
         "calmar_ratio": round(calmar, 4),
         "max_drawdown_duration": dur_stats["max_drawdown_duration"],
         "avg_drawdown_duration": dur_stats["avg_drawdown_duration"],
