@@ -165,10 +165,54 @@ def export_tail_dependence_json(
         json.dump(payload, f, indent=2, ensure_ascii=False)
 
 
+def export_tail_dependence_csv(
+    df_lower: pd.DataFrame,
+    df_upper: pd.DataFrame,
+    scores: pd.Series,
+    filepath: str | Path,
+    quantile: float = 0.05,
+) -> None:
+    """Export pairwise tail dependence metrics and systemic vulnerability to a CSV file."""
+    out_path = Path(filepath)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    rows = []
+    assets = list(df_lower.columns)
+    n = len(assets)
+    for i in range(n):
+        for j in range(i + 1, n):
+            a, b = assets[i], assets[j]
+            l_val = float(df_lower.loc[a, b])
+            u_val = float(df_upper.loc[a, b])
+            rows.append({
+                "record_type": "pair_tail_dependence",
+                "asset_a": a,
+                "asset_b": b,
+                "lower_tail": round(l_val, 4),
+                "upper_tail": round(u_val, 4),
+                "tail_asymmetry": round(l_val - u_val, 4),
+                "systemic_vulnerability": "",
+                "quantile": quantile,
+            })
+    for asset, score in scores.items():
+        rows.append({
+            "record_type": "systemic_vulnerability",
+            "asset_a": str(asset),
+            "asset_b": "",
+            "lower_tail": "",
+            "upper_tail": "",
+            "tail_asymmetry": "",
+            "systemic_vulnerability": round(float(score), 4),
+            "quantile": quantile,
+        })
+    df = pd.DataFrame(rows)
+    df.to_csv(out_path, index=False, encoding="utf-8")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Crypto Tail Dependence Analyzer.")
     parser.add_argument("--quantile", type=float, default=0.05, help="Tail quantile cutoff (default 0.05 = 5%%).")
     parser.add_argument("--export-json", type=str, default=None, help="Path to export tail dependence results to JSON file.")
+    parser.add_argument("--export-csv", type=str, default=None, help="Path to export tail dependence results to CSV file.")
     args = parser.parse_args()
 
     # Create synthetic demonstration
@@ -189,6 +233,10 @@ def main():
     if args.export_json:
         export_tail_dependence_json(df_l, df_u, scores, args.export_json, quantile=args.quantile)
         print(f"[+] Tail dependence results exported to: {args.export_json}")
+
+    if args.export_csv:
+        export_tail_dependence_csv(df_l, df_u, scores, args.export_csv, quantile=args.quantile)
+        print(f"[+] Tail dependence results exported to: {args.export_csv}")
 
 
 if __name__ == "__main__":
