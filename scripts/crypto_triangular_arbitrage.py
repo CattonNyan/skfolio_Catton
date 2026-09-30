@@ -17,6 +17,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
+
 # Ensure local skfolio source and scripts are discovered
 root_dir = str(Path(__file__).resolve().parents[1])
 src_dir = str(Path(__file__).resolve().parents[1] / "src")
@@ -171,6 +173,32 @@ def scan_triangular_pairs(
     return opportunities
 
 
+def export_triangular_arbitrage_csv(
+    opportunities: list[ArbitrageOpportunity | dict[str, Any]],
+    filepath: str | Path | None = None,
+) -> str:
+    """Export identified triangular arbitrage opportunities to CSV string or file."""
+    rows = []
+    for o in opportunities:
+        d = o.to_dict() if isinstance(o, ArbitrageOpportunity) else dict(o)
+        legs = d.get("legs", [])
+        rows.append({
+            "cycle": d.get("cycle", ""),
+            "gross_return_pct": d.get("gross_return_pct", 0.0),
+            "fee_drag_pct": d.get("fee_drag_pct", 0.0),
+            "net_return_pct": d.get("net_return_pct", 0.0),
+            "is_profitable": d.get("is_profitable", False),
+            "legs": " -> ".join(legs) if isinstance(legs, list) else str(legs),
+        })
+    df = pd.DataFrame(rows)
+    csv_str = df.to_csv(index=False)
+    if filepath:
+        out_path = Path(filepath)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(csv_str, encoding="utf-8")
+    return csv_str
+
+
 def main():
     parser = argparse.ArgumentParser(description="Triangular Arbitrage Scanner.")
     parser.add_argument("--p-btc-usdt", type=float, default=65000.0, help="BTC/USDT price")
@@ -178,6 +206,7 @@ def main():
     parser.add_argument("--p-eth-btc", type=float, default=0.0545, help="ETH/BTC price")
     parser.add_argument("--fee", type=float, default=0.00075, help="Fee per leg (default 0.075%%)")
     parser.add_argument("--export-json", type=str, default=None, help="Export identified opportunities to JSON file")
+    parser.add_argument("--export-csv", type=str, default=None, help="Export identified opportunities to CSV file")
     args = parser.parse_args()
 
     opps = calculate_triangular_arbitrage(
@@ -204,6 +233,10 @@ def main():
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump([o.to_dict() for o in opps], f, indent=2, ensure_ascii=False)
         print(f"[+] Opportunities exported to {out_path}")
+
+    if args.export_csv:
+        export_triangular_arbitrage_csv(opps, args.export_csv)
+        print(f"[+] Opportunities CSV exported to {args.export_csv}")
 
 
 if __name__ == "__main__":
