@@ -217,6 +217,32 @@ def export_correlation_breakdown_json(
     out_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
+def export_correlation_breakdown_csv(
+    results: dict[str, dict[str, object]],
+    filepath: str | Path,
+    diversification_ratio: float | None = None,
+) -> None:
+    """Export correlation breakdown metrics and diversification ratio to a CSV file."""
+    out_path = Path(filepath)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for asset, data in results.items():
+        rows.append({
+            "asset": asset,
+            "current_correlation": data.get("current_correlation", 0.0),
+            "historical_mean_corr": data.get("historical_mean_corr", 0.0),
+            "historical_std_corr": data.get("historical_std_corr", 0.0),
+            "z_score": data.get("z_score", 0.0),
+            "delta_corr": data.get("delta_corr", 0.0),
+            "diversification_score": data.get("diversification_score", 0.0),
+            "is_anomaly": data.get("is_anomaly", False),
+            "status": data.get("status", ""),
+            "diversification_ratio": round(float(diversification_ratio), 4) if diversification_ratio is not None else "",
+        })
+    df = pd.DataFrame(rows)
+    df.to_csv(out_path, index=False, encoding="utf-8")
+
+
 def print_breakdown_report(
     results: dict[str, dict[str, object]],
     benchmark: str,
@@ -251,6 +277,7 @@ def main():
     parser.add_argument("--window", type=int, default=30, help="Rolling correlation window")
     parser.add_argument("--threshold", type=float, default=1.8, help="Anomaly Z-score threshold")
     parser.add_argument("--export-json", type=str, default="", help="Path to export JSON metrics")
+    parser.add_argument("--export-csv", type=str, default="", help="Path to export CSV metrics")
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic data")
     args = parser.parse_args()
 
@@ -286,6 +313,10 @@ def main():
     if args.export_json:
         export_correlation_breakdown_json(res, args.export_json, diversification_ratio=div_ratio)
         print(f"[+] Correlation breakdown results exported to: {args.export_json}")
+
+    if args.export_csv:
+        export_correlation_breakdown_csv(res, args.export_csv, diversification_ratio=div_ratio)
+        print(f"[+] Correlation breakdown results exported to: {args.export_csv}")
 
 
 if __name__ == "__main__":
