@@ -5,8 +5,10 @@ import pandas as pd
 from scripts.crypto_liquidity_filter import (
     compute_amihud_illiquidity,
     estimate_corwin_schultz_spread,
+    export_liquidity_report_csv,
     filter_crypto_universe,
 )
+
 
 
 class LiquidityFilterTests(unittest.TestCase):
@@ -93,6 +95,26 @@ class LiquidityFilterTests(unittest.TestCase):
         self.assertIn("estimated_slippage_pct", d)
         self.assertIn("is_liquid", d)
 
+    def test_export_liquidity_report_csv(self):
+        import tempfile
+        from pathlib import Path
+
+        data = {
+            "LIQUID/USDT": self.liquid_df,
+            "ILLIQUID/USDT": self.illiquid_df,
+        }
+        _, report = filter_crypto_universe(data)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "liquidity_test.csv"
+            export_liquidity_report_csv(report, out_file)
+            self.assertTrue(out_file.exists())
+            df = pd.read_csv(out_file)
+            self.assertIn("symbol", df.columns)
+            self.assertIn("is_liquid", df.columns)
+            self.assertIn("mean_volume_usd", df.columns)
+            self.assertEqual(len(df), 2)
+
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -217,6 +217,19 @@ def filter_crypto_universe(
     return liquid_symbols, metrics_dict
 
 
+def export_liquidity_report_csv(
+    metrics_dict: dict[str, LiquidityMetrics],
+    output_path: Path | str,
+) -> Path:
+    """Export liquidity screening metrics to a CSV file."""
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    rows = [m.to_dict() for m in metrics_dict.values()]
+    df = pd.DataFrame(rows)
+    df.to_csv(path, index=False, encoding="utf-8")
+    return path
+
+
 def main():
     parser = argparse.ArgumentParser(description="Cryptocurrency Liquidity Risk Filter and Screener.")
     parser.add_argument("--min-volume", type=float, default=50000.0, help="Minimum mean dollar volume per bar.")
@@ -225,6 +238,7 @@ def main():
     parser.add_argument("--trade-size", type=float, default=10000.0, help="Trade size in USD for slippage estimation.")
     parser.add_argument("--max-slippage", type=float, default=None, help="Maximum allowed estimated total slippage percentage.")
     parser.add_argument("--export-json", type=str, default=None, help="Export liquidity screening results to JSON file.")
+    parser.add_argument("--export-csv", type=str, default=None, help="Export liquidity screening results to CSV file.")
     args = parser.parse_args()
 
     # Create dummy synthetic data for demonstration
@@ -266,6 +280,10 @@ def main():
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump(export_payload, f, indent=2, ensure_ascii=False)
         print(f"[+] Liquidity report exported to: {out_path}")
+
+    if args.export_csv:
+        out_csv = export_liquidity_report_csv(report, args.export_csv)
+        print(f"[+] Liquidity report exported to: {out_csv}")
 
 
 if __name__ == "__main__":
