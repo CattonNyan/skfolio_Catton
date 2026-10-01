@@ -9,6 +9,9 @@ Provides institutional downside risk metrics:
 - Sterling Ratio: CAGR excess return per unit of average drawdown
 - Omega Ratio (Con Keating & William Shadwick, 2002): Ratio of upside gains to downside losses
 - Gain-to-Pain Ratio (Jack Schwager): Net return divided by absolute downside losses
+- Tail Ratio: 95th percentile return divided by absolute 5th percentile return
+- Common Sense Ratio (CSR, Jack Schwager): Tail Ratio multiplied by Gain-to-Pain Ratio
+- K-Ratio (Lars Kestner): Cumulative equity curve slope normalized by standard error and sqrt(T)
 - Maximum Drawdown (MDD) & Drawdown Duration
 """
 
@@ -293,6 +296,91 @@ def compute_gain_to_pain_ratio(
     return float(sum_all / sum_losses)
 
 
+def compute_tail_ratio(
+    data: pd.Series | np.ndarray,
+    percentile: float = 95.0,
+    is_returns: bool = True,
+) -> float:
+    """Calculate Tail Ratio (95th percentile return / abs(5th percentile return)).
+
+    Measures right-tail upside vs left-tail downside asymmetry.
+    A ratio > 1.0 indicates upside outliers outstrip downside tail risk.
+    """
+    cleaned = _clean_series(data)
+    if not is_returns:
+        if np.any(cleaned <= 0):
+            raise ValueError("Price series must contain strictly positive values.")
+        returns = np.diff(cleaned) / cleaned[:-1]
+    else:
+        returns = cleaned
+
+    if len(returns) < 2:
+        return 0.0
+
+    p_upper = float(np.percentile(returns, percentile))
+    p_lower = float(np.percentile(returns, 100.0 - percentile))
+    abs_lower = abs(p_lower)
+
+    if abs_lower < 1e-8:
+        return 999.0 if p_upper > 0 else 0.0
+
+    return float(p_upper / abs_lower)
+
+
+def compute_common_sense_ratio(
+    data: pd.Series | np.ndarray,
+    percentile: float = 95.0,
+    is_returns: bool = True,
+) -> float:
+    """Calculate Jack Schwager's Common Sense Ratio (CSR).
+
+    CSR = Tail Ratio * Gain-to-Pain Ratio
+    Combines right-tail skew asymmetry with net return efficiency against loss volume.
+    """
+    tail = compute_tail_ratio(data, percentile=percentile, is_returns=is_returns)
+    gpr = compute_gain_to_pain_ratio(data, is_returns=is_returns)
+    if tail <= 0.0 or gpr <= 0.0:
+        return 0.0
+    return float(tail * gpr)
+
+
+def compute_k_ratio(
+    data: pd.Series | np.ndarray,
+    is_returns: bool = True,
+) -> float:
+    """Calculate Lars Kestner's K-Ratio.
+
+    K-Ratio = Slope of cumulative NAV / (Standard Error of slope * sqrt(T))
+    Evaluates consistency of equity curve upward trajectory against noise.
+    """
+    nav = compute_nav_series(data, is_returns=is_returns)
+    T = len(nav)
+    if T < 3:
+        return 0.0
+
+    x = np.arange(T, dtype=float)
+    y = (nav - nav[0]) / (nav[0] if nav[0] > 0 else 1.0) * 100.0
+
+    mean_x = (T - 1) / 2.0
+    mean_y = float(np.mean(y))
+    ss_xx = float(np.sum((x - mean_x) ** 2))
+    ss_xy = float(np.sum((x - mean_x) * (y - mean_y)))
+
+    if ss_xx < 1e-9:
+        return 0.0
+
+    slope = ss_xy / ss_xx
+    intercept = mean_y - slope * mean_x
+    residuals = y - (intercept + slope * x)
+    ss_res = float(np.sum(residuals ** 2))
+    se_slope = np.sqrt(ss_res / ((T - 2) * ss_xx))
+
+    if se_slope < 1e-8:
+        return 999.0 if slope > 0 else (-999.0 if slope < 0 else 0.0)
+
+    return float(slope / (se_slope * np.sqrt(T)))
+
+
 def compute_drawdown_duration_stats(
     data: pd.Series | np.ndarray,
     is_returns: bool = True,
@@ -372,6 +460,9 @@ def compute_drawdown_metrics_summary(
     sterling = compute_sterling_ratio(data, risk_free_rate=risk_free_rate, is_returns=is_returns, periods_per_year=periods_per_year)
     omega = compute_omega_ratio(data, threshold=0.0, is_returns=is_returns)
     gain_to_pain = compute_gain_to_pain_ratio(data, is_returns=is_returns)
+    tail_ratio = compute_tail_ratio(data, is_returns=is_returns)
+    csr = compute_common_sense_ratio(data, is_returns=is_returns)
+    k_ratio = compute_k_ratio(data, is_returns=is_returns)
     calmar = (cagr - risk_free_rate) / mdd if mdd > 1e-8 else (999.0 if cagr > risk_free_rate else 0.0)
     dur_stats = compute_drawdown_duration_stats(data, is_returns=is_returns)
 
@@ -386,6 +477,9 @@ def compute_drawdown_metrics_summary(
         "sterling_ratio": round(sterling, 4),
         "omega_ratio": round(omega, 4),
         "gain_to_pain_ratio": round(gain_to_pain, 4),
+        "tail_ratio": round(tail_ratio, 4),
+        "common_sense_ratio": round(csr, 4),
+        "k_ratio": round(k_ratio, 4),
         "calmar_ratio": round(calmar, 4),
         "max_drawdown_duration": dur_stats["max_drawdown_duration"],
         "avg_drawdown_duration": dur_stats["avg_drawdown_duration"],
