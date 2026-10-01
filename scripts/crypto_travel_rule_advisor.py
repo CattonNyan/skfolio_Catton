@@ -22,6 +22,7 @@ for p in [root_dir, src_dir]:
         sys.path.insert(0, p)
 
 import numpy as np
+import pandas as pd
 
 
 TRAVEL_RULE_STATUTORY_LIMIT_KRW = 1000000.0  # 1,000,000 KRW
@@ -190,6 +191,19 @@ def print_travel_rule_report(res: dict[str, object]):
     print("================================================================================\n")
 
 
+def export_travel_rule_csv(
+    res: dict[str, object],
+    output_path: Path | str,
+) -> Path:
+    """Export Travel Rule advisor metrics to a CSV file."""
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    rows = [{"metric": k, "value": v} for k, v in res.items()]
+    df = pd.DataFrame(rows)
+    df.to_csv(path, index=False, encoding="utf-8")
+    return path
+
+
 def main():
     parser = argparse.ArgumentParser(description="Korea Travel Rule Safe Transfer Advisor")
     parser.add_argument("--coin", type=str, default="XRP", help="Crypto symbol (e.g. XRP, TRX, SOL, BTC)")
@@ -198,6 +212,7 @@ def main():
     parser.add_argument("--network-fee", type=float, default=1.0, help="Withdrawal fee per tx in coins")
     parser.add_argument("--safe-buffer", type=float, default=DEFAULT_SAFE_BUFFER_KRW, help="Safe buffer in KRW")
     parser.add_argument("--export-json", type=str, default="", help="Path to export results JSON")
+    parser.add_argument("--export-csv", type=str, default="", help="Path to export results CSV")
     args = parser.parse_args()
 
     price = args.price_krw
@@ -226,6 +241,11 @@ def main():
         out_path.write_text(json.dumps(res, indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"[+] Travel rule plan exported to: {out_path}")
 
+    if args.export_csv:
+        csv_path = export_travel_rule_csv(res, args.export_csv)
+        print(f"[+] Travel rule plan CSV exported to: {csv_path}")
+
 
 if __name__ == "__main__":
     main()
+

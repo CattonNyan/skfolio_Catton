@@ -6,8 +6,10 @@ import unittest
 from scripts.crypto_travel_rule_advisor import (
     COMMON_REMITTANCE_FEE_PRESETS,
     calculate_travel_rule_plan,
+    export_travel_rule_csv,
     get_coin_transfer_preset,
 )
+
 
 
 class TravelRuleAdvisorTests(unittest.TestCase):
@@ -131,6 +133,28 @@ class TravelRuleAdvisorTests(unittest.TestCase):
         self.assertTrue(res_high["anti_structuring_alert"])
         self.assertIn("FDS/STR", res_high["anti_structuring_note"])
 
+    def test_export_travel_rule_csv(self):
+        import tempfile
+        from pathlib import Path
+        import pandas as pd
+
+        res = calculate_travel_rule_plan(
+            coin_symbol="XRP",
+            target_amount=1200.0,
+            coin_price_krw=2000.0,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "travel_rule.csv"
+            export_travel_rule_csv(res, out_file)
+            self.assertTrue(out_file.exists())
+            df = pd.read_csv(out_file)
+            self.assertIn("metric", df.columns)
+            self.assertIn("value", df.columns)
+            metrics = set(df["metric"])
+            self.assertIn("coin_symbol", metrics)
+            self.assertIn("recommended_batches", metrics)
+
 
 if __name__ == "__main__":
     unittest.main()
+
