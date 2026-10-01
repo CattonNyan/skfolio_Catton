@@ -166,10 +166,44 @@ def print_kimchi_regime_report(regime_info: dict[str, object], adjusted_weights:
     print("================================================================================\n")
 
 
+def export_kimchi_regime_csv(
+    regime_info: dict[str, object],
+    adjusted_weights: dict[str, float],
+    filepath: str | Path,
+) -> Path:
+    """Export Kimchi Premium tactical allocation results to a CSV file."""
+    import pandas as pd
+    out_path = Path(filepath)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    rows = []
+    regime = str(regime_info.get("regime", ""))
+    prem = float(regime_info.get("premium_pct", 0.0))
+    for asset, w in adjusted_weights.items():
+        rows.append({
+            "section": "allocation",
+            "key": asset,
+            "value": round(w, 4),
+            "regime": regime,
+            "premium_pct": prem,
+        })
+    for k, v in regime_info.items():
+        rows.append({
+            "section": "regime_info",
+            "key": k,
+            "value": v,
+            "regime": regime,
+            "premium_pct": prem,
+        })
+    df = pd.DataFrame(rows)
+    df.to_csv(out_path, index=False, encoding="utf-8")
+    return out_path
+
+
 def main():
     parser = argparse.ArgumentParser(description="Kimchi Premium Tactical Asset Allocation")
     parser.add_argument("--premium", type=float, default=None, help="Kimchi Premium pct (default: fetch live)")
     parser.add_argument("--export-json", type=str, default="", help="Path to export results JSON")
+    parser.add_argument("--export-csv", type=str, default="", help="Path to export results CSV")
     args = parser.parse_args()
 
     premium_val = args.premium
@@ -205,6 +239,10 @@ def main():
         }
         out_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"[+] Regime results exported to: {out_path}")
+
+    if args.export_csv:
+        out_csv = export_kimchi_regime_csv(regime_info, adjusted, args.export_csv)
+        print(f"[+] Regime results exported to: {out_csv}")
 
 
 if __name__ == "__main__":
