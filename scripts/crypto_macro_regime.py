@@ -239,12 +239,47 @@ def print_macro_regime_report(res: dict[str, object]):
     print("================================================================================\n")
 
 
+def export_macro_regime_csv(
+    res: dict[str, object],
+    filepath: str | Path,
+) -> Path:
+    """Export macro regime and tactical cash allocation results to a CSV file."""
+    out_path = Path(filepath)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    rows = []
+    weights = res.get("adjusted_weights", {})
+    capitals = res.get("capital_allocation", {})
+    for asset in weights:
+        rows.append({
+            "section": "allocation",
+            "asset": asset,
+            "weight": round(weights[asset], 4),
+            "allocated_usd": round(capitals.get(asset, 0.0), 2),
+            "market_regime": res.get("market_regime", ""),
+            "fng_value": res.get("fng_value", 0),
+        })
+    for key in ["fng_value", "market_regime", "cash_ratio", "crypto_ratio", "total_wallet"]:
+        if key in res:
+            rows.append({
+                "section": "summary",
+                "asset": key,
+                "weight": res[key] if isinstance(res[key], (int, float)) else 0.0,
+                "allocated_usd": res[key] if isinstance(res[key], (int, float)) else 0.0,
+                "market_regime": str(res[key]) if not isinstance(res[key], (int, float)) else res.get("market_regime", ""),
+                "fng_value": res.get("fng_value", 0),
+            })
+    df = pd.DataFrame(rows)
+    df.to_csv(out_path, index=False, encoding="utf-8")
+    return out_path
+
+
 def main():
     parser = argparse.ArgumentParser(description="Crypto Macro Regime & Dynamic Cash Allocator")
     parser.add_argument("--fng", type=int, default=None, help="Explicit Fear & Greed index (0-100, default: fetch live)")
     parser.add_argument("--wallet-size", type=float, default=10000.0, help="Total wallet value in USDT")
     parser.add_argument("--config-file", type=str, default="", help="Path to allocation or config JSON to read weights from")
     parser.add_argument("--export-json", type=str, default="", help="Path to export results JSON")
+    parser.add_argument("--export-csv", type=str, default="", help="Path to export results CSV")
     args = parser.parse_args()
 
     if args.fng is not None:
@@ -274,6 +309,10 @@ def main():
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(json.dumps(res, indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"[+] Macro regime cash allocation exported to: {out_path}")
+
+    if args.export_csv:
+        out_csv = export_macro_regime_csv(res, args.export_csv)
+        print(f"[+] Macro regime cash allocation exported to: {out_csv}")
 
 
 if __name__ == "__main__":
