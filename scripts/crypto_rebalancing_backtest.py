@@ -297,6 +297,13 @@ def simulate_rebalancing(
     avg_dd = float(np.mean(np.abs(underwater_dd))) if len(underwater_dd) > 0 else 0.0
     sterling_ratio = (ann_return / avg_dd) if avg_dd > 1e-6 else (999.0 if ann_return > 0 else 0.0)
 
+    # Omega Ratio & Gain-to-Pain Ratio
+    sum_all_ret = float(pct_changes.sum()) if len(pct_changes) > 0 else 0.0
+    sum_losses = float(np.abs(pct_changes[pct_changes < 0]).sum()) if len(pct_changes[pct_changes < 0]) > 0 else 0.0
+    gain_to_pain = (sum_all_ret / sum_losses) if sum_losses > 1e-6 else (999.0 if sum_all_ret > 0 else 0.0)
+    sum_gains = float(pct_changes[pct_changes > 0].sum()) if len(pct_changes[pct_changes > 0]) > 0 else 0.0
+    omega_ratio = (sum_gains / sum_losses) if sum_losses > 1e-6 else (999.0 if sum_gains > 0 else 0.0)
+
     avg_turnover = float(np.mean(turnover_history)) if turnover_history else 0.0
 
     summary = {
@@ -308,6 +315,8 @@ def simulate_rebalancing(
         "Martin Ratio": round(martin_ratio, 3),
         "Pain Ratio": round(pain_ratio, 3),
         "Sterling Ratio": round(sterling_ratio, 3),
+        "Omega Ratio": round(omega_ratio, 3),
+        "Gain-to-Pain Ratio": round(gain_to_pain, 3),
         "Sharpe Ratio (Ann.)": round(sharpe, 3),
         "Sortino Ratio (Ann.)": round(sortino, 3),
         "Calmar Ratio": round(calmar, 3),
@@ -529,6 +538,19 @@ def export_rebalancing_json(result: dict[str, object], output_path: Path | str, 
         json.dump(payload, f, indent=indent, ensure_ascii=False)
 
 
+def export_rebalancing_csv(result: dict[str, object], output_path: Path | str) -> Path:
+    """Export rebalancing results and summary metrics to a CSV file."""
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    summary = result.get("summary", {})
+    rows = []
+    for k, v in summary.items():
+        rows.append({"metric": k, "value": v})
+    df = pd.DataFrame(rows)
+    df.to_csv(path, index=False, encoding="utf-8")
+    return path
+
+
 def main():
     parser = argparse.ArgumentParser(description="Crypto Portfolio Rebalancing Backtest")
     parser.add_argument("--data-dir", type=str, default="", help="Directory with Freqtrade feather files")
@@ -546,6 +568,7 @@ def main():
     parser.add_argument("--tolerance-band", type=float, default=None, help="Drift threshold to execute rebalancing (e.g. 0.05 for 5%%)")
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic data")
     parser.add_argument("--export-json", type=str, default=None, help="Path to export rebalancing backtest summary to JSON file.")
+    parser.add_argument("--export-csv", type=str, default=None, help="Path to export rebalancing backtest summary to CSV file.")
     args = parser.parse_args()
 
     try:
@@ -578,6 +601,10 @@ def main():
     if args.export_json:
         export_rebalancing_json(res, args.export_json)
         print(f"[+] Rebalancing backtest results exported to: {args.export_json}")
+
+    if args.export_csv:
+        out_csv = export_rebalancing_csv(res, args.export_csv)
+        print(f"[+] Rebalancing backtest results exported to: {out_csv}")
 
 
 if __name__ == "__main__":

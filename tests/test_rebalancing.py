@@ -8,9 +8,11 @@ from scripts.crypto_portfolio_optimizer import generate_synthetic_crypto_data
 from scripts.crypto_rebalancing_backtest import (
     calculate_drawdown,
     calculate_weight_drift,
+    export_rebalancing_csv,
     simulate_drift_band_rebalancing,
     simulate_rebalancing,
 )
+
 
 
 class RebalancingTests(unittest.TestCase):
@@ -218,11 +220,15 @@ class RebalancingTests(unittest.TestCase):
         self.assertIn("Pain Index (%)", s)
         self.assertIn("Pain Ratio", s)
         self.assertIn("Sterling Ratio", s)
+        self.assertIn("Omega Ratio", s)
+        self.assertIn("Gain-to-Pain Ratio", s)
         self.assertIsInstance(s["Ulcer Index (%)"], float)
         self.assertIsInstance(s["Martin Ratio"], float)
         self.assertIsInstance(s["Pain Index (%)"], float)
         self.assertIsInstance(s["Pain Ratio"], float)
         self.assertIsInstance(s["Sterling Ratio"], float)
+        self.assertIsInstance(s["Omega Ratio"], float)
+        self.assertIsInstance(s["Gain-to-Pain Ratio"], float)
 
     def test_rebalancing_json_export_and_serialization(self):
         from scripts.crypto_rebalancing_backtest import export_rebalancing_json, to_dict_rebalancing_result
@@ -253,6 +259,30 @@ class RebalancingTests(unittest.TestCase):
                 loaded = json.load(f)
             self.assertEqual(loaded["summary"]["Model"], "Equal Weight")
             self.assertIn("portfolio_nav", loaded)
+
+    def test_rebalancing_csv_export(self):
+        import tempfile
+        from pathlib import Path
+
+        prices = generate_synthetic_crypto_data(periods=120)
+        res = simulate_rebalancing(
+            prices=prices,
+            train_bars=50,
+            rebalance_freq_bars=15,
+            fee_rate=0.001,
+            model_choice="Equal Weight",
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "rebal_test.csv"
+            export_rebalancing_csv(res, out_file)
+            self.assertTrue(out_file.exists())
+            df = pd.read_csv(out_file)
+            self.assertIn("metric", df.columns)
+            self.assertIn("value", df.columns)
+            metrics = set(df["metric"])
+            self.assertIn("Omega Ratio", metrics)
+            self.assertIn("Gain-to-Pain Ratio", metrics)
+
 
 
 if __name__ == "__main__":
