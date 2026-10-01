@@ -2,6 +2,32 @@
 
 <!-- version list -->
 
+## v1.7.4 (2026-10-02)
+
+### Features & Improvements
+
+- **rebalancing**: Add Omega Ratio, Gain-to-Pain Ratio, and CSV export helper (`scripts/crypto_rebalancing_backtest.py`)
+  - Added `compute_omega_ratio` (Keating-Shadwick probability-weighted gain/loss ratio) and `compute_gain_to_pain_ratio` (Schwager net return per downside pain)
+  - Integrated both metrics into rebalancing performance summaries and exports
+  - Added `export_rebalancing_csv` function and `--export-csv` CLI option
+- **hrp**: Add CSV export helper and CLI option (`scripts/crypto_hrp_clustering.py`)
+  - Added `export_hrp_csv` function exporting model weights and cross-asset correlation matrices
+  - Added `--export-csv` CLI option
+- **liquidity**: Add CSV export helper and CLI option (`scripts/crypto_liquidity_filter.py`)
+  - Added `export_liquidity_report_csv` function exporting Amihud illiquidity, Corwin-Schultz spreads, and slippage metrics
+  - Added `--export-csv` CLI option
+- **tax**: Add CSV export helper and CLI option (`scripts/crypto_tax_calculator.py`)
+  - Added `export_tax_metrics_csv` function exporting capital gains tax obligations, carry-forward loss status, and net post-tax returns
+  - Added `--export-csv` CLI option
+- **travel-rule**: Add CSV export helper and CLI option (`scripts/crypto_travel_rule_advisor.py`)
+  - Added `export_travel_rule_csv` function exporting statutory compliance metrics, safe batch breakdown, and anti-structuring alerts
+  - Added `--export-csv` CLI option
+
+### Testing & Verification
+
+- Added unit tests for Omega Ratio, Gain-to-Pain Ratio, and CSV exporters across all 5 modules (`tests/test_rebalancing.py`, `tests/test_hrp_clustering.py`, `tests/test_liquidity_filter.py`, `tests/test_tax_calculator.py`, `tests/test_travel_rule_advisor.py`)
+- Maintained 100% test pass rate across all 635 test cases in the test suite
+
 ## v1.7.3 (2026-10-02)
 
 ### Features & Improvements
