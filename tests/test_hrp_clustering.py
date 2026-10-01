@@ -5,7 +5,12 @@ import pandas as pd
 import numpy as np
 
 from scripts.crypto_portfolio_optimizer import generate_synthetic_crypto_data
-from scripts.crypto_hrp_clustering import compute_correlation_matrix, run_hrp_analysis
+from scripts.crypto_hrp_clustering import (
+    compute_correlation_matrix,
+    export_hrp_csv,
+    run_hrp_analysis,
+)
+
 
 
 class HrpClusteringTests(unittest.TestCase):
@@ -67,6 +72,26 @@ class HrpClusteringTests(unittest.TestCase):
             self.assertIn("correlation_matrix", loaded)
             self.assertIn("BTC/USDT", loaded["correlation_matrix"])
 
+    def test_hrp_csv_export(self):
+        import tempfile
+        from pathlib import Path
+
+        prices = generate_synthetic_crypto_data(periods=60)
+        results = run_hrp_analysis(prices)
+        returns = prices.pct_change().dropna()
+        corr = compute_correlation_matrix(returns)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "hrp_test.csv"
+            export_hrp_csv(results, out_file, corr_matrix=corr)
+            self.assertTrue(out_file.exists())
+            df = pd.read_csv(out_file)
+            self.assertIn("model", df.columns)
+            self.assertIn("asset", df.columns)
+            self.assertIn("weight", df.columns)
+            self.assertGreater(len(df), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
+
