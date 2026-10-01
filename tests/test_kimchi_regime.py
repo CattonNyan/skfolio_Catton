@@ -94,6 +94,40 @@ class KimchiRegimeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             adjust_portfolio_weights_by_kimchi({"BTC": 0.0, "ETH": 0.0}, premium_pct=2.0)
 
+    def test_export_kimchi_regime_csv(self):
+        import tempfile
+        from pathlib import Path
+        import pandas as pd
+        from scripts.crypto_kimchi_regime import export_kimchi_regime_csv
+
+        regime_info = {
+            "premium_pct": 4.5,
+            "regime": "MODERATE_OVERHEATED",
+            "target_crypto_ratio": 0.70,
+            "target_cash_ratio": 0.30,
+            "tactical_action": "Moderate De-risking",
+        }
+        adjusted_weights = {
+            "KRW-BTC": 0.35,
+            "KRW-ETH": 0.35,
+            "KRW": 0.30,
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "sub" / "kimchi_regime.csv"
+            res_path = export_kimchi_regime_csv(regime_info, adjusted_weights, out_file)
+            self.assertEqual(res_path, out_file)
+            self.assertTrue(out_file.exists())
+
+            df = pd.read_csv(out_file)
+            self.assertIn("section", df.columns)
+            self.assertIn("key", df.columns)
+            self.assertIn("value", df.columns)
+            self.assertIn("regime", df.columns)
+            self.assertTrue(any(df["key"] == "KRW-BTC"))
+            self.assertTrue(any(df["key"] == "regime"))
+
 
 if __name__ == "__main__":
     unittest.main()
+

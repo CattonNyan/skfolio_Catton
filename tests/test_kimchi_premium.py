@@ -93,6 +93,36 @@ class KimchiPremiumTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             compute_kimchi_premium({"BTC": 100000.0}, {"BTC": False})
 
+    def test_export_kimchi_premium_csv(self):
+        import tempfile
+        from pathlib import Path
+        import pandas as pd
+        from scripts.crypto_kimchi_premium import export_kimchi_premium_csv
+
+        sample_results = {
+            "BTC": {
+                "upbit_krw": 105000.0,
+                "binance_usdt": 100.0,
+                "fair_krw": 100000.0,
+                "krw_difference": 5000.0,
+                "premium_pct": 5.0,
+                "status": "Moderate Premium (Domestic Buying Pressure)",
+            }
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "sub" / "kimchi_premium.csv"
+            res_path = export_kimchi_premium_csv(sample_results, out_file)
+            self.assertEqual(res_path, out_file)
+            self.assertTrue(out_file.exists())
+
+            df = pd.read_csv(out_file)
+            self.assertIn("symbol", df.columns)
+            self.assertIn("premium_pct", df.columns)
+            self.assertEqual(df.iloc[0]["symbol"], "BTC")
+            self.assertAlmostEqual(df.iloc[0]["premium_pct"], 5.0)
+
 
 if __name__ == "__main__":
     unittest.main()
+

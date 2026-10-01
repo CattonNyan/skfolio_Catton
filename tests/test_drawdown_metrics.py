@@ -18,6 +18,9 @@ from scripts.crypto_drawdown_metrics import (
     compute_pain_index,
     compute_pain_ratio,
     compute_sterling_ratio,
+    compute_tail_ratio,
+    compute_common_sense_ratio,
+    compute_k_ratio,
     compute_ulcer_index,
     export_drawdown_metrics_json,
     main as drawdown_main,
@@ -87,6 +90,11 @@ class DrawdownMetricsTests(unittest.TestCase):
             "burke_ratio",
             "sterling_ratio",
             "calmar_ratio",
+            "omega_ratio",
+            "gain_to_pain_ratio",
+            "tail_ratio",
+            "common_sense_ratio",
+            "k_ratio",
         ]
         for k in required_keys:
             self.assertIn(k, summary)
@@ -209,6 +217,45 @@ class DrawdownMetricsTests(unittest.TestCase):
             metrics_dict = dict(zip(df["metric"], df["value"]))
             self.assertAlmostEqual(metrics_dict["sterling_ratio"], 1.25)
             self.assertAlmostEqual(metrics_dict["cagr_pct"], 14.5)
+
+    def test_tail_ratio(self):
+        # Sample with positive tail asymmetry
+        returns = np.array([-0.01, -0.01, -0.01, 0.01, 0.05, 0.10])
+        tail = compute_tail_ratio(returns, percentile=95.0, is_returns=True)
+        self.assertGreater(tail, 1.0)
+
+        # Zero lower tail (no downside)
+        zero_tail = np.array([0.0, 0.0, 0.02, 0.05])
+        self.assertEqual(compute_tail_ratio(zero_tail, is_returns=True), 999.0)
+
+        # Price series mode
+        prices = np.array([100.0, 105.0, 102.0, 115.0])
+        tail_p = compute_tail_ratio(prices, is_returns=False)
+        self.assertGreater(tail_p, 0.0)
+
+    def test_common_sense_ratio(self):
+        returns = np.array([-0.01, -0.02, 0.03, 0.04, 0.05])
+        csr = compute_common_sense_ratio(returns, is_returns=True)
+        self.assertGreater(csr, 0.0)
+
+        # Zero or negative returns produce 0.0
+        neg = np.array([-0.01, -0.02, -0.03])
+        self.assertEqual(compute_common_sense_ratio(neg, is_returns=True), 0.0)
+
+    def test_k_ratio(self):
+        # Strongly upward linear trajectory -> high K-ratio
+        upward_returns = np.array([0.01] * 20)
+        k_up = compute_k_ratio(upward_returns, is_returns=True)
+        self.assertGreater(k_up, 1.0)
+
+        # Flat / zero returns
+        flat_returns = np.array([0.0] * 10)
+        self.assertEqual(compute_k_ratio(flat_returns, is_returns=True), 0.0)
+
+        # Price series mode
+        upward_prices = np.linspace(100, 200, 30)
+        k_price = compute_k_ratio(upward_prices, is_returns=False)
+        self.assertGreater(k_price, 1.0)
 
 
 if __name__ == "__main__":

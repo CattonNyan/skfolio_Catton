@@ -90,6 +90,45 @@ class MacroRegimeTests(unittest.TestCase):
             with self.subTest(bad_weights=bad_weights), self.assertRaises(ValueError):
                 adjust_cash_allocation_by_regime(bad_weights, fng_value=50)
 
+    def test_export_macro_regime_csv(self):
+        import tempfile
+        from pathlib import Path
+        import pandas as pd
+        from scripts.crypto_macro_regime import export_macro_regime_csv
+
+        sample_res = {
+            "fng_value": 75,
+            "market_regime": "Extreme Greed",
+            "cash_ratio": 0.40,
+            "crypto_ratio": 0.60,
+            "total_wallet": 10000.0,
+            "adjusted_weights": {
+                "BTC/USDT": 0.35,
+                "ETH/USDT": 0.25,
+                "USDT (Cash)": 0.40,
+            },
+            "capital_allocation": {
+                "BTC/USDT": 3500.0,
+                "ETH/USDT": 2500.0,
+                "USDT (Cash)": 4000.0,
+            },
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "sub" / "macro_regime.csv"
+            res_path = export_macro_regime_csv(sample_res, out_file)
+            self.assertEqual(res_path, out_file)
+            self.assertTrue(out_file.exists())
+
+            df = pd.read_csv(out_file)
+            self.assertIn("section", df.columns)
+            self.assertIn("asset", df.columns)
+            self.assertIn("weight", df.columns)
+            self.assertIn("allocated_usd", df.columns)
+            self.assertTrue(any(df["asset"] == "BTC/USDT"))
+            self.assertTrue(any(df["asset"] == "market_regime"))
+
 
 if __name__ == "__main__":
     unittest.main()
+

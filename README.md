@@ -365,10 +365,10 @@ python scripts/crypto_monte_carlo.py --days 90 --sims 1000 --capital 10000 --exp
 
 ### 16. 공포·탐욕 지수 기반 거시 국면 동적 현금(USDT) 비중 조절기
 
-Alternative.me 실시간 공포·탐욕 지수를 읽어와 시장 과열(Extreme Greed) 시 최대 40%의 현금 버퍼를 강제 확보하여 자산을 보호하고, 공포 국면에서는 적극 투자로 스위칭합니다:
+Alternative.me 실시간 공포·탐욕 지수를 읽어와 시장 과열(Extreme Greed) 시 최대 40%의 현금 버퍼를 강제 확보하여 자산을 보호하고, 공포 국면에서는 적극 투자로 스위칭하며 정형 JSON 및 CSV로 내보냅니다:
 
 ```powershell
-python scripts/crypto_macro_regime.py --wallet-size 10000
+python scripts/crypto_macro_regime.py --wallet-size 10000 --export-json reports/macro_regime.json --export-csv reports/macro_regime.csv
 ```
 
 ---
@@ -432,11 +432,11 @@ python scripts/crypto_krw_fee_calculator.py --compare --capital 50000000 --expor
 
 ### 23. 김치 프리미엄 기반 동적 자산배분 레짐 시그널러
 
-실시간 김치 프리미엄 수준을 바탕으로 시장의 과열/할인 레짐(EXTREME_OVERHEATED, MODERATE_OVERHEATED, FAIR_EQUILIBRIUM, NEGATIVE_DISCOUNT)을 진단하고, 포트폴리오의 안전자산(KRW 현금)과 위험자산(크립토) 비중을 동적으로 리스케일링합니다:
+실시간 김치 프리미엄 수준을 바탕으로 시장의 과열/할인 레짐(EXTREME_OVERHEATED, MODERATE_OVERHEATED, FAIR_EQUILIBRIUM, NEGATIVE_DISCOUNT)을 진단하고, 포트폴리오의 안전자산(KRW 현금)과 위험자산(크립토) 비중을 동적으로 리스케일링하며 정형 JSON 및 CSV로 내보냅니다:
 
 ```powershell
-# 김치 프리미엄 실시간 또는 지정값(+6.5%) 기준 전술적 자산배분 실행
-python scripts/crypto_kimchi_regime.py --premium 6.5 --export-json reports/kimchi_regime.json
+# 김치 프리미엄 실시간 또는 지정값(+6.5%) 기준 전술적 자산배분 실행 및 JSON/CSV 내보내기
+python scripts/crypto_kimchi_regime.py --premium 6.5 --export-json reports/kimchi_regime.json --export-csv reports/kimchi_regime.csv
 ```
 
 ### 24. 한국 특금법 트래블룰 준수 & 100만원 안전 분할 전송 어드바이저
@@ -491,7 +491,7 @@ python scripts/freqtrade_funding_arbitrage.py --min-apr 15.0 --stake 1000 --expo
 
 ### 33. 오메가 비율(Omega) 및 고도화 하방 리스크(Drawdown) 분석기
 
-키팅-샤드윅 오메가 비율(Omega Ratio), 게인투페인 비율(Gain-to-Pain), 궤양지수(Ulcer Index), 마틴 비율(Martin Ratio), 페인 지수(Pain Index), 버크 비율(Burke Ratio), 스털링 비율(Sterling Ratio), 최대 침체 기간(Duration) 등 기관 수준의 하방 리스크를 종합 계산하고 정형 JSON 및 CSV 보고서로 내보냅니다:
+키팅-샤드윅 오메가 비율(Omega Ratio), 게인투페인 비율(Gain-to-Pain), 테일 비율(Tail Ratio), 상식 비율(Common Sense Ratio), 케스트너 K-비율(K-Ratio), 궤양지수(Ulcer Index), 마틴 비율(Martin Ratio), 페인 지수(Pain Index), 버크 비율(Burke Ratio), 스털링 비율(Sterling Ratio), 최대 침체 기간(Duration) 등 기관 수준의 하방 리스크를 종합 계산하고 정형 JSON 및 CSV 보고서로 내보냅니다:
 
 ```powershell
 python scripts/crypto_drawdown_metrics.py --rf 2.0 --export-json reports/drawdown_metrics.json --export-csv reports/drawdown_metrics.csv

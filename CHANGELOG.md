@@ -2,6 +2,30 @@
 
 <!-- version list -->
 
+## v1.7.3 (2026-10-02)
+
+### Features & Improvements
+
+- **drawdown**: Add Tail Ratio, Common Sense Ratio, and K-Ratio to drawdown metrics engine (`scripts/crypto_drawdown_metrics.py`)
+  - Added `compute_tail_ratio` measuring right-tail upside vs left-tail downside asymmetry (p95 / |p05|)
+  - Added `compute_common_sense_ratio` combining Tail Ratio with Gain-to-Pain Ratio (Jack Schwager)
+  - Added `compute_k_ratio` evaluating consistency of cumulative equity curve upward trajectory (Lars Kestner)
+  - Integrated all three metrics into `compute_drawdown_metrics_summary`, JSON and CSV exports
+- **kimchi-premium**: Add CSV export helper and CLI export option (`scripts/crypto_kimchi_premium.py`)
+  - Added `export_kimchi_premium_csv` function to export real-time and historical Kimchi Premium spread analysis
+  - Added `--export-csv` CLI option
+- **kimchi-regime**: Add CSV export helper and CLI export option (`scripts/crypto_kimchi_regime.py`)
+  - Added `export_kimchi_regime_csv` function exporting tactical crypto-to-cash risk allocation shifts and regime status
+  - Added `--export-csv` CLI option
+- **macro-regime**: Add CSV export helper and CLI export option (`scripts/crypto_macro_regime.py`)
+  - Added `export_macro_regime_csv` function exporting Fear & Greed index status, cash buffer, and adjusted capital allocations
+  - Added `--export-csv` CLI option
+
+### Testing & Verification
+
+- Added unit tests for Tail Ratio, CSR, K-Ratio, and CSV exporters (`tests/test_drawdown_metrics.py`, `tests/test_kimchi_premium.py`, `tests/test_kimchi_regime.py`, `tests/test_macro_regime.py`)
+- Maintained 100% test pass rate across custom crypto test suite
+
 ## v1.7.2 (2026-09-30)
 
 ### Features & Improvements
