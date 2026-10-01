@@ -5,8 +5,10 @@ from scripts.crypto_tax_calculator import (
     calculate_tax_loss_harvesting_target,
     compare_tax_allowance_tiers,
     compute_crypto_tax_impact,
+    export_tax_metrics_csv,
     format_allowance_comparison_table,
 )
+
 
 
 class TaxCalculatorTests(unittest.TestCase):
@@ -135,6 +137,28 @@ class TaxCalculatorTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             compute_crypto_tax_impact([1000000.0], carried_forward_loss_krw=True)
 
+    def test_export_tax_metrics_csv(self):
+        import tempfile
+        from pathlib import Path
+        import pandas as pd
+
+        res = compute_crypto_tax_impact(
+            realized_profits=[5000000.0, -1000000.0],
+            annual_allowance_krw=2500000.0,
+            tax_rate=0.22,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "tax_metrics.csv"
+            export_tax_metrics_csv(res, out_file)
+            self.assertTrue(out_file.exists())
+            df = pd.read_csv(out_file)
+            self.assertIn("metric", df.columns)
+            self.assertIn("value", df.columns)
+            metrics = set(df["metric"])
+            self.assertIn("net_realized_profit", metrics)
+            self.assertIn("estimated_tax_krw", metrics)
+
 
 if __name__ == "__main__":
     unittest.main()
+

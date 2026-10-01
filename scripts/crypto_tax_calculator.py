@@ -215,6 +215,19 @@ def print_tax_report(res: dict[str, object]):
     print("================================================================================\n")
 
 
+def export_tax_metrics_csv(
+    res: dict[str, object],
+    output_path: Path | str,
+) -> Path:
+    """Export tax simulation metrics to a CSV file."""
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    rows = [{"metric": k, "value": v} for k, v in res.items()]
+    df = pd.DataFrame(rows)
+    df.to_csv(path, index=False, encoding="utf-8")
+    return path
+
+
 def main():
     parser = argparse.ArgumentParser(description="Crypto Capital Gains Tax Simulator")
     parser.add_argument("--profit", type=float, default=12000000.0, help="Annual net realized profit in KRW")
@@ -224,6 +237,7 @@ def main():
     parser.add_argument("--tax-rate", type=float, default=0.22, help="Effective tax rate (default: 0.22)")
     parser.add_argument("--compare-tiers", action="store_true", help="Compare tax burden across multiple basic allowance tiers")
     parser.add_argument("--export-json", type=str, default="", help="Path to export JSON metrics")
+    parser.add_argument("--export-csv", type=str, default="", help="Path to export CSV metrics")
     args = parser.parse_args()
 
     # Representative sample profits: mixed gains and losses
@@ -246,6 +260,11 @@ def main():
             out_path.parent.mkdir(parents=True, exist_ok=True)
             out_path.write_text(tier_df.to_json(orient="records", indent=2, force_ascii=False), encoding="utf-8")
             print(f"[+] Allowance tiers comparison exported to: {out_path}")
+        if args.export_csv:
+            out_csv = Path(args.export_csv)
+            out_csv.parent.mkdir(parents=True, exist_ok=True)
+            tier_df.to_csv(out_csv, index=False, encoding="utf-8")
+            print(f"[+] Allowance tiers comparison exported to: {out_csv}")
         return
 
     res = compute_crypto_tax_impact(
@@ -263,6 +282,10 @@ def main():
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(json.dumps(res, indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"[+] Tax simulation metrics exported to: {out_path}")
+
+    if args.export_csv:
+        out_csv = export_tax_metrics_csv(res, args.export_csv)
+        print(f"[+] Tax simulation metrics exported to: {out_csv}")
 
 
 if __name__ == "__main__":
