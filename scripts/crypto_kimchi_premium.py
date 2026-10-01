@@ -168,6 +168,22 @@ def print_kimchi_premium_report(
     print("================================================================================\n")
 
 
+def export_kimchi_premium_csv(
+    results: dict[str, dict[str, float | str]],
+    filepath: str | Path,
+) -> Path:
+    """Export Kimchi Premium analysis results to a CSV file."""
+    out_path = Path(filepath)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for sym, m in results.items():
+        row = {"symbol": sym, **m}
+        rows.append(row)
+    df = pd.DataFrame(rows)
+    df.to_csv(out_path, index=False, encoding="utf-8")
+    return out_path
+
+
 from scripts.crypto_portfolio_optimizer import positive_float
 
 
@@ -176,6 +192,7 @@ def main():
     parser.add_argument("--coins", nargs="+", default=None, help="코인 심볼 목록 (예: BTC ETH SOL XRP DOGE)")
     parser.add_argument("--usdt-krw", type=positive_float, default=None, help="Explicit USD/KRW exchange rate (default: fetch live)")
     parser.add_argument("--export-json", type=str, default="", help="Path to export results JSON")
+    parser.add_argument("--export-csv", type=str, default="", help="Path to export results CSV")
     args = parser.parse_args()
 
     if args.usdt_krw is not None:
@@ -221,6 +238,10 @@ def main():
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"[+] Kimchi premium results exported to: {out_path}")
+
+    if args.export_csv:
+        out_csv = export_kimchi_premium_csv(results, args.export_csv)
+        print(f"[+] Kimchi premium results exported to: {out_csv}")
 
 
 if __name__ == "__main__":
