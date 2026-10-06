@@ -2,6 +2,26 @@
 
 <!-- version list -->
 
+## v1.7.5 (2026-10-06)
+
+### Features & Improvements
+
+- **strategy-optimizer**: Add zip/dir auto-loader, portfolio risk metrics, and CSV export helper (`scripts/freqtrade_strategy_optimizer.py`)
+  - Added `load_freqtrade_backtest_file` supporting transparent `.zip` archive extraction, `.last_result.json` resolution, and directory auto-discovery
+  - Added portfolio-level quantitative metrics: annualized Sharpe Ratio, Sortino Ratio, and Diversification Ratio (Choueifaty & Coignard)
+  - Added `export_strategy_allocation_csv` function and `--export-csv`, `--latest` CLI options
+- **funding-arbitrage**: Add CSV export helper and CLI option (`scripts/freqtrade_funding_arbitrage.py`)
+  - Added `export_funding_pairs_csv` function exporting qualified funding rate pairs and APR yields
+  - Added `--export-csv` CLI option
+- **fetchers**: Add CSV export helpers and CLI options for Bithumb and Coinbase
+  - Added `export_bithumb_prices_csv` and `--export-csv` CLI option (`scripts/fetch_bithumb_crypto.py`)
+  - Added `export_coinbase_prices_csv` and `--export-csv` CLI option (`scripts/fetch_coinbase_crypto.py`)
+
+### Testing & Verification
+
+- Added unit tests for strategy optimizer CSV export and zip/dir loading, funding arbitrage CSV export, Bithumb price CSV export, and Coinbase price CSV export (`tests/test_strategy_optimizer.py`, `tests/test_funding_arbitrage.py`, `tests/test_bithumb_fetcher.py`, `tests/test_coinbase_fetcher.py`)
+- Maintained 100% test pass rate across all 647 test cases in the test suite
+
 ## v1.7.4 (2026-10-02)
 
 ### Features & Improvements

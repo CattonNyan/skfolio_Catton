@@ -10,8 +10,10 @@ from scripts.fetch_bithumb_crypto import (
     fetch_bithumb_multi_assets,
     fetch_bithumb_orderbook,
     compute_bithumb_spread,
+    export_bithumb_prices_csv,
     VALID_BITHUMB_INTERVALS,
 )
+
 
 
 class BithumbFetcherTests(unittest.TestCase):
@@ -123,6 +125,23 @@ class BithumbFetcherTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             fetch_bithumb_candlestick("BTC", count=0)
 
+    def test_export_bithumb_prices_csv(self):
+        import tempfile
+        from pathlib import Path
+
+        df = pd.DataFrame(
+            {"BTC/KRW": [100.0, 105.0], "ETH/KRW": [50.0, 52.0]},
+            index=pd.date_range("2026-01-01", periods=2, freq="1D"),
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_csv = Path(tmpdir) / "bithumb.csv"
+            export_bithumb_prices_csv(df, out_csv)
+            self.assertTrue(out_csv.exists())
+            loaded = pd.read_csv(out_csv, index_col=0)
+            self.assertEqual(list(loaded.columns), ["BTC/KRW", "ETH/KRW"])
+            self.assertEqual(len(loaded), 2)
+
 
 if __name__ == "__main__":
     unittest.main()
+

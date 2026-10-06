@@ -262,11 +262,23 @@ def calculate_market_impact_slippage(
     }
 
 
+def export_coinbase_prices_csv(
+    df: pd.DataFrame,
+    output_path: Path | str,
+) -> Path:
+    """Export Coinbase price series DataFrame to a CSV file."""
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(path, index=True, encoding="utf-8")
+    return path
+
+
 def main():
     parser = argparse.ArgumentParser(description="Coinbase Institutional Crypto Price Fetcher.")
     parser.add_argument("--symbols", nargs="+", default=["BTC", "ETH", "SOL"], help="Symbols to fetch.")
     parser.add_argument("--timeframe", default="1d", choices=list(GRANULARITY_MAP.keys()), help="Timeframe.")
     parser.add_argument("--limit", type=int, default=30, help="Number of candles.")
+    parser.add_argument("--export-csv", type=str, default="", help="Path to export fetched Coinbase prices to CSV.")
     args = parser.parse_args()
 
     print(f"[*] Fetching Coinbase data for {args.symbols} ({args.timeframe})...")
@@ -277,6 +289,11 @@ def main():
         print(f"[+] Successfully fetched {len(df)} bars across {len(df.columns)} assets:")
         print(df.tail())
 
+    if args.export_csv and not df.empty:
+        csv_path = export_coinbase_prices_csv(df, args.export_csv)
+        print(f"[+] Saved Coinbase price data to {csv_path}")
+
 
 if __name__ == "__main__":
     main()
+

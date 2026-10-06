@@ -4,14 +4,16 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 
 from scripts.fetch_coinbase_crypto import (
-    normalize_coinbase_symbol,
-    fetch_coinbase_spot_price,
+    calculate_market_impact_slippage,
+    export_coinbase_prices_csv,
     fetch_coinbase_candles,
     fetch_coinbase_multi_assets,
     fetch_coinbase_orderbook,
-    calculate_market_impact_slippage,
+    fetch_coinbase_spot_price,
+    normalize_coinbase_symbol,
     GRANULARITY_MAP,
 )
+
 
 
 class CoinbaseFetcherTests(unittest.TestCase):
@@ -139,6 +141,23 @@ class CoinbaseFetcherTests(unittest.TestCase):
         self.assertGreater(res_huge["unfilled_usd"], 0.0)
         self.assertEqual(res_huge["executed_usd"], 60100.0 * 1.0 + 60200.0 * 2.0)
 
+    def test_export_coinbase_prices_csv(self):
+        import tempfile
+        from pathlib import Path
+
+        df = pd.DataFrame(
+            {"BTC-USD": [60000.0, 61000.0], "ETH-USD": [3000.0, 3100.0]},
+            index=pd.date_range("2026-01-01", periods=2, freq="1D"),
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_csv = Path(tmpdir) / "coinbase.csv"
+            export_coinbase_prices_csv(df, out_csv)
+            self.assertTrue(out_csv.exists())
+            loaded = pd.read_csv(out_csv, index_col=0)
+            self.assertEqual(list(loaded.columns), ["BTC-USD", "ETH-USD"])
+            self.assertEqual(len(loaded), 2)
+
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -211,11 +211,23 @@ def compute_bithumb_spread(orderbook_data: dict) -> dict[str, float]:
     }
 
 
+def export_bithumb_prices_csv(
+    df: pd.DataFrame,
+    output_path: Path | str,
+) -> Path:
+    """Export Bithumb price series DataFrame to a CSV file."""
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(path, index=True, encoding="utf-8")
+    return path
+
+
 def main():
     parser = argparse.ArgumentParser(description="Fetch candlestick data from Bithumb public API.")
     parser.add_argument("--symbols", nargs="+", default=["BTC", "ETH", "SOL", "XRP"], help="List of crypto symbols.")
     parser.add_argument("--interval", default="24h", choices=list(VALID_BITHUMB_INTERVALS), help="Candle interval.")
     parser.add_argument("--count", type=int, default=30, help="Number of candles to fetch.")
+    parser.add_argument("--export-csv", type=str, default="", help="Path to export fetched Bithumb prices to CSV.")
     args = parser.parse_args()
 
     print(f"[*] Fetching Bithumb data for {args.symbols} ({args.interval})...")
@@ -226,6 +238,11 @@ def main():
         print(f"[+] Successfully fetched {len(df)} rows across {len(df.columns)} assets:")
         print(df.tail())
 
+    if args.export_csv and not df.empty:
+        csv_path = export_bithumb_prices_csv(df, args.export_csv)
+        print(f"[+] Saved Bithumb price data to {csv_path}")
+
 
 if __name__ == "__main__":
     main()
+
