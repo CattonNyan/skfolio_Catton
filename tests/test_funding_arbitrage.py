@@ -5,11 +5,13 @@ from pathlib import Path
 from unittest.mock import patch
 
 from scripts.freqtrade_funding_arbitrage import (
+    export_funding_config,
+    export_funding_pairs_csv,
     filter_funding_rate_pairs,
     generate_freqtrade_funding_config,
-    export_funding_config,
     main as funding_main,
 )
+
 
 
 class FundingArbitrageTests(unittest.TestCase):
@@ -76,6 +78,40 @@ class FundingArbitrageTests(unittest.TestCase):
             self.assertIn("SOL/USDT:USDT", cfg["exchange"]["pair_whitelist"])
             self.assertIn("ETH/USDT:USDT", cfg["exchange"]["pair_whitelist"])
 
+    def test_export_funding_pairs_csv(self):
+        import pandas as pd
+        rates = {
+            "BTC/USDT": 0.0003,
+            "ETH/USDT": 0.0002,
+        }
+        res = filter_funding_rate_pairs(rates, min_apr_pct=10.0)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_csv = Path(tmpdir) / "funding_pairs.csv"
+            export_funding_pairs_csv(res, out_csv)
+            self.assertTrue(out_csv.exists())
+            df = pd.read_csv(out_csv)
+            self.assertIn("pair", df.columns)
+            self.assertIn("rate_8h_pct", df.columns)
+            self.assertIn("annualized_apr_pct", df.columns)
+            self.assertEqual(len(df), 2)
+
+    def test_cli_export_csv(self):
+        import pandas as pd
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_csv = Path(tmpdir) / "cli_pairs.csv"
+            test_args = [
+                "freqtrade_funding_arbitrage.py",
+                "--min-apr", "20.0",
+                "--export-csv", str(out_csv),
+            ]
+            with patch("sys.argv", test_args):
+                funding_main()
+            self.assertTrue(out_csv.exists())
+            df = pd.read_csv(out_csv)
+            self.assertIn("pair", df.columns)
+            self.assertGreater(len(df), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
+

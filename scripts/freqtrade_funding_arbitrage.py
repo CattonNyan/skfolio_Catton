@@ -21,8 +21,11 @@ for p in [root_dir, src_dir]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
+import pandas as pd
+
 
 def filter_funding_rate_pairs(
+
     funding_rates_8h: dict[str, float],
     min_apr_pct: float = 10.0,
 ) -> dict[str, dict[str, float]]:
@@ -114,11 +117,33 @@ def export_funding_config(config: dict[str, object], output_path: Path | str) ->
     return path
 
 
+def export_funding_pairs_csv(
+    qualified_pairs: dict[str, dict[str, float]],
+    output_path: Path | str,
+) -> Path:
+    """Export filtered funding rate arbitrage pairs and yield metrics to a CSV file."""
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for pair, stats in qualified_pairs.items():
+        rows.append({
+            "pair": pair,
+            "rate_8h": stats.get("rate_8h", 0.0),
+            "rate_8h_pct": round(stats.get("rate_8h", 0.0) * 100.0, 4),
+            "daily_rate_pct": stats.get("daily_rate_pct", 0.0),
+            "annualized_apr_pct": stats.get("annualized_apr_pct", 0.0),
+        })
+    df = pd.DataFrame(rows)
+    df.to_csv(path, index=False, encoding="utf-8")
+    return path
+
+
 def main():
     parser = argparse.ArgumentParser(description="Freqtrade Funding Rate Config Generator.")
     parser.add_argument("--min-apr", type=float, default=12.0, help="Minimum funding APR %% threshold.")
     parser.add_argument("--stake", type=float, default=500.0, help="Stake per pair in USDT.")
     parser.add_argument("--export-json", type=str, default=None, help="Path to export generated Freqtrade funding config JSON.")
+    parser.add_argument("--export-csv", type=str, default=None, help="Path to export qualified funding pairs to CSV.")
     args = parser.parse_args()
 
     sample_rates = {
@@ -141,6 +166,11 @@ def main():
         export_funding_config(config, args.export_json)
         print(f"[+] Freqtrade funding config exported to: {args.export_json}")
 
+    if args.export_csv:
+        csv_path = export_funding_pairs_csv(filtered, args.export_csv)
+        print(f"[+] Qualified funding pairs CSV exported to: {csv_path}")
+
 
 if __name__ == "__main__":
     main()
+
