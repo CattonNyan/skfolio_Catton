@@ -8,9 +8,12 @@ Provides a clean integration helper for Freqtrade strategies:
 
 from __future__ import annotations
 
+import argparse
 import json
 import math
 from pathlib import Path
+
+import pandas as pd
 
 
 class SkfolioStakeAllocator:
@@ -143,3 +146,112 @@ def get_custom_stake_amount(
         min_stake=min_stake,
         max_stake=max_stake,
     )
+
+
+def export_stake_allocation_csv(
+    allocator: SkfolioStakeAllocator,
+    pairs: list[str],
+    total_wallet: float,
+    output_path: str | Path,
+    min_stake: float | None = None,
+    max_stake: float | None = None,
+) -> Path:
+    """
+    Export stake amounts and portfolio allocation weights across specified pairs to a CSV file.
+
+    Parameters:
+    - allocator: Instantiated SkfolioStakeAllocator
+    - pairs: List of trading pairs to evaluate
+    - total_wallet: Total wallet size in quote currency
+    - output_path: File path to save the CSV
+    - min_stake: Exchange minimum allowed order size
+    - max_stake: Exchange maximum allowed order size
+    """
+    if not isinstance(allocator, SkfolioStakeAllocator):
+        raise TypeError("allocator must be an instance of SkfolioStakeAllocator.")
+    if not isinstance(pairs, list) or not pairs or not all(isinstance(p, str) and p.strip() for p in pairs):
+        raise ValueError("pairs must be a non-empty list of non-empty strings.")
+    if isinstance(total_wallet, bool) or not isinstance(total_wallet, (int, float)) or not math.isfinite(total_wallet) or total_wallet <= 0:
+        raise ValueError("total_wallet must be finite and strictly positive.")
+    for name, boundary in (("min_stake", min_stake), ("max_stake", max_stake)):
+        if boundary is not None and (
+            isinstance(boundary, bool)
+            or not isinstance(boundary, (int, float))
+            or not math.isfinite(boundary)
+            or boundary < 0
+        ):
+            raise ValueError(f"{name} must be finite and non-negative.")
+    if min_stake is not None and max_stake is not None and min_stake > max_stake:
+        raise ValueError("min_stake cannot exceed max_stake.")
+
+    equal_stake = total_wallet / len(pairs)
+    records: list[dict[str, object]] = []
+    for pair in pairs:
+        allocated = allocator.get_stake_amount(
+            pair=pair,
+            proposed_stake=equal_stake,
+            total_wallet=total_wallet,
+            min_stake=min_stake,
+            max_stake=max_stake,
+        )
+        weight_pct = round((allocated / total_wallet) * 100.0, 2)
+        records.append({
+            "pair": pair,
+            "allocated_stake": allocated,
+            "weight_pct": weight_pct,
+            "min_stake": min_stake if min_stake is not None else float("nan"),
+            "max_stake": max_stake if max_stake is not None else float("nan"),
+        })
+
+    df = pd.DataFrame(records)
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(path, index=False, encoding="utf-8")
+    return path
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Freqtrade Dynamic Stake Allocator CLI")
+    parser.add_argument("--config", type=str, default="user_data/config.json", help="Path to Freqtrade config or allocation JSON")
+    parser.add_argument("--pairs", nargs="+", default=["BTC/USDT", "ETH/USDT", "SOL/USDT"], help="Trading pairs to allocate")
+    parser.add_argument("--wallet", type=float, default=10000.0, help="Total wallet balance in stake currency")
+    parser.add_argument("--min-stake", type=float, default=None, help="Exchange minimum allowed order size")
+    parser.add_argument("--max-stake", type=float, default=None, help="Exchange maximum allowed order size")
+    parser.add_argument("--export-csv", type=str, default=None, help="Path to export allocation CSV")
+    args = parser.parse_args()
+
+    allocator = SkfolioStakeAllocator(allocation_file=args.config)
+    print("=" * 60)
+    print("  Freqtrade Dynamic Stake Allocation Summary")
+    print("=" * 60)
+    print(f"Config File: {args.config}")
+    print(f"Total Wallet: {args.wallet:,.2f}")
+    if args.min_stake is not None:
+        print(f"Min Stake Boundary: {args.min_stake}")
+    if args.max_stake is not None:
+        print(f"Max Stake Boundary: {args.max_stake}")
+    print("-" * 60)
+
+    equal_stake = args.wallet / len(args.pairs) if args.pairs else 0.0
+    for pair in args.pairs:
+        stake = allocator.get_stake_amount(
+            pair=pair,
+            proposed_stake=equal_stake,
+            total_wallet=args.wallet,
+            min_stake=args.min_stake,
+            max_stake=args.max_stake,
+        )
+        pct = (stake / args.wallet * 100.0) if args.wallet > 0 else 0.0
+        print(f"  {pair:<12} => Stake: {stake:>10.4f} ({pct:>6.2f}%)")
+    print("=" * 60)
+
+    if args.export_csv:
+        out = export_stake_allocation_csv(
+            allocator=allocator,
+            pairs=args.pairs,
+            total_wallet=args.wallet,
+            output_path=args.export_csv,
+            min_stake=args.min_stake,
+            max_stake=args.max_stake,
+        )
+        print(f"[+] Stake allocation exported to: {out}")

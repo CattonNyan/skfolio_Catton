@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v1.7.7 (2026-10-06)
+
+### Features & Improvements
+
+- **stake-allocator**: Add dynamic stake allocation CSV export helper and CLI interface (`scripts/freqtrade_stake_allocator.py`)
+  - Added `export_stake_allocation_csv` generating tabular breakdown of allocated stakes, percentage weights, and boundary constraints per pair
+  - Added interactive CLI `main()` with `--config`, `--pairs`, `--wallet`, `--min-stake`, `--max-stake`, and `--export-csv` flags
+- **live-fetcher**: Add combined live prices CSV export helper and CLI options (`scripts/fetch_live_crypto.py`)
+  - Added `export_live_prices_csv` exporting pivoted multi-asset price history DataFrames to CSV
+  - Added `--export-csv` (and `--output-csv` alias) CLI arguments to persist fetched price matrices
+
+### Testing & Verification
+
+- Added unit tests for stake allocator CSV export, input validations, CLI interface execution, and live fetcher CSV export (`tests/test_stake_allocator.py`, `tests/test_live_fetcher.py`)
+- Maintained 100% test pass rate across all 663 test cases in the test suite
+
 ## v1.7.6 (2026-10-06)
 
 ### Features & Improvements

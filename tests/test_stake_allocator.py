@@ -5,7 +5,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.freqtrade_stake_allocator import SkfolioStakeAllocator, get_custom_stake_amount
+from scripts.freqtrade_stake_allocator import (
+    SkfolioStakeAllocator,
+    export_stake_allocation_csv,
+    get_custom_stake_amount,
+)
 
 
 class StakeAllocatorTests(unittest.TestCase):
@@ -140,6 +144,83 @@ class StakeAllocatorTests(unittest.TestCase):
                     allocator.get_stake_amount("BTC/USDT", proposed_stake=100.0, min_stake=bad_bool)
                 with self.assertRaises(ValueError):
                     allocator.get_stake_amount("BTC/USDT", proposed_stake=100.0, max_stake=bad_bool)
+
+    def test_export_stake_allocation_csv(self):
+        sample = {
+            "pair_weights": {"BTC/USDT": 0.5, "ETH/USDT": 0.3, "SOL/USDT": 0.2}
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.json"
+            config_path.write_text(json.dumps(sample), encoding="utf-8")
+            allocator = SkfolioStakeAllocator(allocation_file=config_path)
+
+            csv_out = Path(tmpdir) / "allocation.csv"
+            result = export_stake_allocation_csv(
+                allocator=allocator,
+                pairs=["BTC/USDT", "ETH/USDT", "SOL/USDT"],
+                total_wallet=10000.0,
+                output_path=csv_out,
+                min_stake=100.0,
+                max_stake=6000.0,
+            )
+            self.assertEqual(result, csv_out)
+            self.assertTrue(csv_out.is_file())
+
+            import pandas as pd
+            df = pd.read_csv(csv_out)
+            self.assertEqual(list(df.columns), ["pair", "allocated_stake", "weight_pct", "min_stake", "max_stake"])
+            self.assertEqual(len(df), 3)
+
+            btc_row = df[df["pair"] == "BTC/USDT"].iloc[0]
+            self.assertEqual(btc_row["allocated_stake"], 5000.0)
+            self.assertEqual(btc_row["weight_pct"], 50.0)
+
+    def test_export_stake_allocation_csv_validation(self):
+        allocator = SkfolioStakeAllocator(allocation_file="non_existent.json")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            csv_out = Path(tmpdir) / "allocation.csv"
+
+            # Invalid allocator
+            with self.assertRaises(TypeError):
+                export_stake_allocation_csv(None, ["BTC/USDT"], 1000.0, csv_out)
+
+            # Invalid pairs
+            for bad_pairs in ([], ["  "], [123], "BTC/USDT", None):
+                with self.subTest(bad_pairs=bad_pairs), self.assertRaises(ValueError):
+                    export_stake_allocation_csv(allocator, bad_pairs, 1000.0, csv_out)
+
+            # Invalid wallet
+            for bad_wallet in (0.0, -100.0, float("nan"), True, False):
+                with self.subTest(bad_wallet=bad_wallet), self.assertRaises(ValueError):
+                    export_stake_allocation_csv(allocator, ["BTC/USDT"], bad_wallet, csv_out)
+
+            # Invalid bounds
+            with self.assertRaises(ValueError):
+                export_stake_allocation_csv(allocator, ["BTC/USDT"], 1000.0, csv_out, min_stake=500.0, max_stake=100.0)
+
+    def test_cli_main_execution(self):
+        from unittest.mock import patch
+        from scripts.freqtrade_stake_allocator import main
+
+        sample = {"pair_weights": {"BTC/USDT": 0.6, "ETH/USDT": 0.4}}
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cfg_path = Path(tmpdir) / "config.json"
+            cfg_path.write_text(json.dumps(sample), encoding="utf-8")
+            csv_path = Path(tmpdir) / "output.csv"
+
+            test_args = [
+                "freqtrade_stake_allocator.py",
+                "--config", str(cfg_path),
+                "--pairs", "BTC/USDT", "ETH/USDT",
+                "--wallet", "5000.0",
+                "--min-stake", "50.0",
+                "--max-stake", "4000.0",
+                "--export-csv", str(csv_path),
+            ]
+            with patch("sys.argv", test_args):
+                main()
+
+            self.assertTrue(csv_path.is_file())
 
 
 if __name__ == "__main__":

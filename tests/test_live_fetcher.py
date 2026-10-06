@@ -5,7 +5,11 @@ import tempfile
 from pathlib import Path
 import pandas as pd
 
-from scripts.fetch_live_crypto import data_dict_to_prices, save_market_data
+from scripts.fetch_live_crypto import (
+    data_dict_to_prices,
+    export_live_prices_csv,
+    save_market_data,
+)
 
 
 class LiveFetcherTests(unittest.TestCase):
@@ -37,6 +41,28 @@ class LiveFetcherTests(unittest.TestCase):
         self.assertFalse(prices.empty)
         self.assertEqual(list(prices.columns), ["BTC/USDT", "ETH/USDT"])
         self.assertEqual(len(prices), 5)
+
+    def test_export_live_prices_csv(self):
+        dates = pd.date_range("2026-01-01", periods=3, freq="1h")
+        prices_df = pd.DataFrame(
+            {"BTC/USDT": [100.0, 101.0, 102.0], "ETH/USDT": [50.0, 51.0, 52.0]},
+            index=dates,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            csv_path = Path(tmpdir) / "live_prices.csv"
+            out = export_live_prices_csv(prices_df, csv_path)
+            self.assertEqual(out, csv_path)
+            self.assertTrue(csv_path.is_file())
+
+            loaded = pd.read_csv(csv_path, index_col=0)
+            self.assertEqual(list(loaded.columns), ["BTC/USDT", "ETH/USDT"])
+            self.assertEqual(len(loaded), 3)
+
+    def test_export_live_prices_csv_invalid_input(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            csv_path = Path(tmpdir) / "test.csv"
+            with self.assertRaises(TypeError):
+                export_live_prices_csv("not_a_dataframe", csv_path)
 
     def test_invalid_parameters_rejected(self):
         from scripts.fetch_live_crypto import fetch_ohlcv_ccxt

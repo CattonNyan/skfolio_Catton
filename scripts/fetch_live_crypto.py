@@ -119,6 +119,19 @@ def save_market_data(
     return saved_paths
 
 
+def export_live_prices_csv(
+    prices: pd.DataFrame,
+    output_path: Path | str,
+) -> Path:
+    """Export pivoted live price series DataFrame to a CSV file."""
+    if not isinstance(prices, pd.DataFrame):
+        raise TypeError("prices must be a pandas DataFrame.")
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    prices.to_csv(path, index=True, encoding="utf-8")
+    return path
+
+
 def main():
     parser = argparse.ArgumentParser(description="Live Crypto Market Data Fetcher")
     parser.add_argument("--exchange", type=str, default="binance", choices=["binance", "upbit"], help="Exchange ID")
@@ -127,6 +140,8 @@ def main():
     parser.add_argument("--limit", type=int, default=500, help="Number of candles (max usually 500~1000)")
     parser.add_argument("--output-dir", type=str, default="data/live", help="Output directory")
     parser.add_argument("--optimize", action="store_true", help="Run portfolio optimization immediately after fetching")
+    parser.add_argument("--export-csv", type=str, default=None, help="Export combined close prices to CSV")
+    parser.add_argument("--output-csv", type=str, default=None, help="Alias for --export-csv")
     args = parser.parse_args()
 
     default_pairs = (
@@ -149,6 +164,12 @@ def main():
 
     if data:
         save_market_data(data, Path(args.output_dir), timeframe=args.timeframe)
+        csv_target = args.export_csv or args.output_csv
+        if csv_target:
+            prices = data_dict_to_prices(data)
+            if not prices.empty:
+                out = export_live_prices_csv(prices, csv_target)
+                print(f"[+] Exported live price matrix to: {out}")
         if args.optimize:
             prices = data_dict_to_prices(data)
             if not prices.empty:
