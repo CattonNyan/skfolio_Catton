@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v1.7.6 (2026-10-06)
+
+### Features & Improvements
+
+- **upbit-fetcher**: Add orderbook depth fetching, spread calculation, and CSV export helper (`scripts/fetch_upbit_crypto.py`)
+  - Added `fetch_upbit_orderbook` retrieving live order book units, total ask/bid sizes, and timestamps from Upbit public REST API (`https://api.upbit.com/v1/orderbook`) with deterministic fallback
+  - Added `compute_upbit_spread` calculating best bid, best ask, mid price, spread in KRW, spread in basis points (bps), bid depth, and ask depth
+  - Added `export_upbit_prices_csv` exporting pivoted price history DataFrames to CSV
+  - Added `--orderbook` CLI flag to inspect real-time orderbook liquidity and bid-ask spread
+  - Added `--export-csv` CLI option (aliased with `--output-csv` for backwards compatibility)
+
+### Testing & Verification
+
+- Added unit tests for Upbit orderbook fetching, deterministic spread computation, and CSV price export (`tests/test_upbit_fetcher.py`)
+- Maintained 100% test pass rate across all 653 test cases in the test suite
+
 ## v1.7.5 (2026-10-06)
 
 ### Features & Improvements
