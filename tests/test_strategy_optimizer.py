@@ -5,9 +5,12 @@ import pandas as pd
 import numpy as np
 
 from scripts.freqtrade_strategy_optimizer import (
+    export_strategy_allocation_csv,
+    load_freqtrade_backtest_file,
     optimize_strategy_allocation,
     parse_freqtrade_backtest_trades,
 )
+
 
 
 class StrategyOptimizerTests(unittest.TestCase):
@@ -52,6 +55,10 @@ class StrategyOptimizerTests(unittest.TestCase):
         self.assertAlmostEqual(sum(weights.values()), 1.0, places=3)
         # Low volatility strategy should receive higher allocation in Risk Parity
         self.assertGreater(weights["LowVolStrat"], weights["HighVolStrat"])
+        self.assertIn("portfolio_metrics", res)
+        self.assertIn("annualized_sharpe_ratio", res["portfolio_metrics"])
+        self.assertIn("annualized_sortino_ratio", res["portfolio_metrics"])
+        self.assertIn("diversification_ratio", res["portfolio_metrics"])
 
     def test_empty_profits_fallback(self):
         res = optimize_strategy_allocation(pd.DataFrame(), total_capital=1000.0)
@@ -86,6 +93,68 @@ class StrategyOptimizerTests(unittest.TestCase):
             with self.subTest(bad_df=bad_df), self.assertRaises(ValueError):
                 optimize_strategy_allocation(bad_df)
 
+    def test_export_strategy_allocation_csv(self):
+        import tempfile
+        from pathlib import Path
+
+        dates = pd.date_range("2026-01-01", periods=20, freq="1D")
+        daily = pd.DataFrame(
+            {"Strat1": [10.0] * 20, "Strat2": [20.0] * 20},
+            index=dates,
+        )
+        res = optimize_strategy_allocation(daily, total_capital=10000.0)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_csv = Path(tmpdir) / "alloc.csv"
+            export_strategy_allocation_csv(res, out_csv)
+            self.assertTrue(out_csv.exists())
+            df = pd.read_csv(out_csv)
+            self.assertIn("type", df.columns)
+            self.assertIn("name", df.columns)
+            self.assertIn("weight", df.columns)
+            self.assertIn("capital", df.columns)
+            names = set(df["name"])
+            self.assertIn("Strat1", names)
+            self.assertIn("Strat2", names)
+            self.assertIn("annualized_sharpe_ratio", names)
+
+    def test_load_backtest_file_json_and_zip(self):
+        import tempfile
+        import zipfile
+        import json
+        from pathlib import Path
+
+        mock_data = {
+            "strategy": {
+                "StratA": {"trades": [{"profit_abs": 10.0, "close_date": "2026-01-01"}]}
+            }
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            json_file = tmp / "backtest-result.json"
+            json_file.write_text(json.dumps(mock_data), encoding="utf-8")
+
+            # Load JSON directly
+            d1, p1 = load_freqtrade_backtest_file(json_file)
+            self.assertEqual(p1, json_file)
+            self.assertIn("StratA", d1["strategy"])
+
+            # Create Zip
+            zip_file = tmp / "backtest-result.zip"
+            with zipfile.ZipFile(zip_file, "w") as zf:
+                zf.writestr("backtest-result.json", json.dumps(mock_data))
+                zf.writestr("backtest-result_config.json", "{}")
+
+            # Load Zip directly
+            d2, p2 = load_freqtrade_backtest_file(zip_file)
+            self.assertEqual(p2, zip_file)
+            self.assertIn("StratA", d2["strategy"])
+
+            # Load Directory
+            d3, p3 = load_freqtrade_backtest_file(tmp)
+            self.assertIn("StratA", d3["strategy"])
+
 
 if __name__ == "__main__":
     unittest.main()
+
