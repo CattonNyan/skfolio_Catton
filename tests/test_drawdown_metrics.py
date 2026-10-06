@@ -9,9 +9,14 @@ import pandas as pd
 from scripts.crypto_drawdown_metrics import (
     compute_annualized_cagr,
     compute_burke_ratio,
+    compute_cdar,
+    compute_cdar_ratio,
+    compute_common_sense_ratio,
+    compute_dar,
     compute_drawdown_duration_stats,
     compute_drawdown_metrics_summary,
     compute_drawdown_series,
+    compute_k_ratio,
     compute_martin_ratio,
     compute_max_drawdown,
     compute_nav_series,
@@ -19,8 +24,6 @@ from scripts.crypto_drawdown_metrics import (
     compute_pain_ratio,
     compute_sterling_ratio,
     compute_tail_ratio,
-    compute_common_sense_ratio,
-    compute_k_ratio,
     compute_ulcer_index,
     export_drawdown_metrics_json,
     main as drawdown_main,
@@ -83,6 +86,9 @@ class DrawdownMetricsTests(unittest.TestCase):
         required_keys = [
             "cagr_pct",
             "max_drawdown_pct",
+            "dar_95_pct",
+            "cdar_95_pct",
+            "cdar_ratio",
             "ulcer_index",
             "pain_index",
             "martin_ratio",
@@ -256,6 +262,37 @@ class DrawdownMetricsTests(unittest.TestCase):
         upward_prices = np.linspace(100, 200, 30)
         k_price = compute_k_ratio(upward_prices, is_returns=False)
         self.assertGreater(k_price, 1.0)
+
+    def test_dar_and_cdar_monotonic_positive(self):
+        # Monotonically increasing returns -> no drawdowns -> dar = 0, cdar = 0, cdar_ratio = 999.0
+        pos_returns = np.array([0.01, 0.02, 0.015, 0.03, 0.005])
+        dar = compute_dar(pos_returns, alpha=0.95, is_returns=True)
+        cdar = compute_cdar(pos_returns, alpha=0.95, is_returns=True)
+        cdar_ratio = compute_cdar_ratio(pos_returns, alpha=0.95, risk_free_rate=0.0, is_returns=True)
+
+        self.assertEqual(dar, 0.0)
+        self.assertEqual(cdar, 0.0)
+        self.assertEqual(cdar_ratio, 999.0)
+
+    def test_dar_and_cdar_known_path(self):
+        # Known price trajectory: 100 -> 120 -> 90 -> 100
+        # Peak: 100 (DD=0), 120 (DD=0), 90 (DD=25%), 100 (DD=16.67%)
+        prices = np.array([100.0, 120.0, 90.0, 100.0])
+        mdd = compute_max_drawdown(prices, is_returns=False)
+        dar = compute_dar(prices, alpha=0.90, is_returns=False)
+        cdar = compute_cdar(prices, alpha=0.90, is_returns=False)
+
+        self.assertGreater(dar, 0.0)
+        self.assertGreaterEqual(cdar, dar)
+        self.assertLessEqual(cdar, mdd + 1e-4)
+
+    def test_dar_and_cdar_validation(self):
+        returns = np.array([0.01, -0.02, 0.03])
+        for bad_alpha in (-0.1, 0.0, 1.0, 1.5):
+            with self.subTest(bad_alpha=bad_alpha), self.assertRaises(ValueError):
+                compute_dar(returns, alpha=bad_alpha)
+            with self.subTest(bad_alpha=bad_alpha), self.assertRaises(ValueError):
+                compute_cdar(returns, alpha=bad_alpha)
 
 
 if __name__ == "__main__":

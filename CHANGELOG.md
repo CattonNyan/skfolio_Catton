@@ -6,6 +6,11 @@
 
 ### Features & Improvements
 
+- **drawdown-metrics**: Add Drawdown at Risk (DaR), Conditional Drawdown at Risk (CDaR), and CDaR Ratio metrics (`scripts/crypto_drawdown_metrics.py`)
+  - Added `compute_dar` calculating drawdown depth at specified confidence level (alpha, default 95%)
+  - Added `compute_cdar` calculating Conditional Drawdown at Risk (expected drawdown exceeding DaR, Chekhlov, Uryasev, Zabarankin 2005)
+  - Added `compute_cdar_ratio` evaluating annualized CAGR excess return per unit of conditional drawdown (Calmar-CDaR Ratio)
+  - Integrated `dar_95_pct`, `cdar_95_pct`, and `cdar_ratio` into `compute_drawdown_metrics_summary`
 - **stake-allocator**: Add dynamic stake allocation CSV export helper and CLI interface (`scripts/freqtrade_stake_allocator.py`)
   - Added `export_stake_allocation_csv` generating tabular breakdown of allocated stakes, percentage weights, and boundary constraints per pair
   - Added interactive CLI `main()` with `--config`, `--pairs`, `--wallet`, `--min-stake`, `--max-stake`, and `--export-csv` flags
@@ -15,8 +20,9 @@
 
 ### Testing & Verification
 
+- Added unit tests for DaR, CDaR, and CDaR Ratio calculations, input validation, and summary integration (`tests/test_drawdown_metrics.py`)
 - Added unit tests for stake allocator CSV export, input validations, CLI interface execution, and live fetcher CSV export (`tests/test_stake_allocator.py`, `tests/test_live_fetcher.py`)
-- Maintained 100% test pass rate across all 663 test cases in the test suite
+- Maintained 100% test pass rate across all 669 test cases in the test suite
 
 ## v1.7.6 (2026-10-06)
 

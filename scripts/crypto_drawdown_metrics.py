@@ -12,6 +12,9 @@ Provides institutional downside risk metrics:
 - Tail Ratio: 95th percentile return divided by absolute 5th percentile return
 - Common Sense Ratio (CSR, Jack Schwager): Tail Ratio multiplied by Gain-to-Pain Ratio
 - K-Ratio (Lars Kestner): Cumulative equity curve slope normalized by standard error and sqrt(T)
+- Drawdown at Risk (DaR, Chekhlov, Uryasev, Zabarankin, 2005): Drawdown depth at given confidence level alpha
+- Conditional Drawdown at Risk (CDaR / Expected Drawdown): Mean drawdown exceeding DaR
+- CDaR Ratio: CAGR excess return per unit of Conditional Drawdown at Risk
 - Maximum Drawdown (MDD) & Drawdown Duration
 """
 
@@ -381,6 +384,107 @@ def compute_k_ratio(
     return float(slope / (se_slope * np.sqrt(T)))
 
 
+def compute_dar(
+    data: pd.Series | np.ndarray,
+    alpha: float = 0.95,
+    is_returns: bool = True,
+) -> float:
+    """Calculate Drawdown at Risk (DaR) at confidence level alpha.
+
+    Parameters
+    ----------
+    data : pd.Series or np.ndarray
+        Returns or price series.
+    alpha : float, default 0.95
+        Confidence level strictly between 0.0 and 1.0.
+    is_returns : bool, default True
+        Whether the input data represents returns (True) or price levels (False).
+
+    Returns
+    -------
+    float
+        Drawdown depth percentage at confidence level alpha (non-negative).
+    """
+    if not (0.0 < alpha < 1.0):
+        raise ValueError("Confidence level alpha must be strictly between 0.0 and 1.0.")
+    dd = compute_drawdown_series(data, is_returns=is_returns)
+    if len(dd) == 0:
+        return 0.0
+    dd_depths = np.abs(dd)
+    return float(np.percentile(dd_depths, alpha * 100.0))
+
+
+def compute_cdar(
+    data: pd.Series | np.ndarray,
+    alpha: float = 0.95,
+    is_returns: bool = True,
+) -> float:
+    """Calculate Conditional Drawdown at Risk (CDaR / Expected Drawdown, Chekhlov et al. 2005).
+
+    CDaR is the conditional expectation of drawdowns exceeding DaR at level alpha.
+
+    Parameters
+    ----------
+    data : pd.Series or np.ndarray
+        Returns or price series.
+    alpha : float, default 0.95
+        Confidence level strictly between 0.0 and 1.0.
+    is_returns : bool, default True
+        Whether the input data represents returns (True) or price levels (False).
+
+    Returns
+    -------
+    float
+        Average depth percentage of the worst (1 - alpha) fraction of drawdowns.
+    """
+    if not (0.0 < alpha < 1.0):
+        raise ValueError("Confidence level alpha must be strictly between 0.0 and 1.0.")
+    dd = compute_drawdown_series(data, is_returns=is_returns)
+    if len(dd) == 0:
+        return 0.0
+    dd_depths = np.abs(dd)
+    dar = float(np.percentile(dd_depths, alpha * 100.0))
+    tail_dd = dd_depths[dd_depths >= dar]
+    if len(tail_dd) == 0:
+        return dar
+    return float(np.mean(tail_dd))
+
+
+def compute_cdar_ratio(
+    data: pd.Series | np.ndarray,
+    alpha: float = 0.95,
+    risk_free_rate: float = 0.0,
+    is_returns: bool = True,
+    periods_per_year: int = 365,
+) -> float:
+    """Calculate CDaR Ratio (annualized CAGR excess return / CDaR).
+
+    Parameters
+    ----------
+    data : pd.Series or np.ndarray
+        Returns or price series.
+    alpha : float, default 0.95
+        Confidence level strictly between 0.0 and 1.0.
+    risk_free_rate : float, default 0.0
+        Annualized risk-free rate percentage.
+    is_returns : bool, default True
+        Whether input data represents returns (True) or price levels (False).
+    periods_per_year : int, default 365
+        Compounding frequency.
+
+    Returns
+    -------
+    float
+        Excess return per unit of Conditional Drawdown at Risk.
+    """
+    cagr = compute_annualized_cagr(data, is_returns=is_returns, periods_per_year=periods_per_year)
+    cdar = compute_cdar(data, alpha=alpha, is_returns=is_returns)
+    excess = cagr - risk_free_rate
+    if cdar < 1e-8:
+        return 999.0 if excess > 0 else 0.0
+    return float(excess / cdar)
+
+
 def compute_drawdown_duration_stats(
     data: pd.Series | np.ndarray,
     is_returns: bool = True,
@@ -464,11 +568,17 @@ def compute_drawdown_metrics_summary(
     csr = compute_common_sense_ratio(data, is_returns=is_returns)
     k_ratio = compute_k_ratio(data, is_returns=is_returns)
     calmar = (cagr - risk_free_rate) / mdd if mdd > 1e-8 else (999.0 if cagr > risk_free_rate else 0.0)
+    dar = compute_dar(data, alpha=0.95, is_returns=is_returns)
+    cdar = compute_cdar(data, alpha=0.95, is_returns=is_returns)
+    cdar_ratio = compute_cdar_ratio(data, alpha=0.95, risk_free_rate=risk_free_rate, is_returns=is_returns, periods_per_year=periods_per_year)
     dur_stats = compute_drawdown_duration_stats(data, is_returns=is_returns)
 
     return {
         "cagr_pct": round(cagr, 4),
         "max_drawdown_pct": round(mdd, 4),
+        "dar_95_pct": round(dar, 4),
+        "cdar_95_pct": round(cdar, 4),
+        "cdar_ratio": round(cdar_ratio, 4),
         "ulcer_index": round(ui, 4),
         "pain_index": round(pi, 4),
         "martin_ratio": round(martin, 4),
