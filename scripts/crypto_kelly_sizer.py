@@ -5,6 +5,7 @@ Provides optimal capital growth position sizing:
 - Continuous Kelly formula (mean excess return / variance)
 - Multi-Asset Kelly allocator (unconstrained and constrained)
 - Half-Kelly / Fractional Kelly scaling to curb crypto tail risk drawdown
+- Risk of Ruin (Ralph Vince & Perry Kaufman formula)
 """
 
 from __future__ import annotations
@@ -36,6 +37,7 @@ class KellyResult:
     expected_growth_rate: float
     half_kelly: float
     is_positive_edge: bool
+    risk_of_ruin: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
         """Convert Kelly calculation result to a serializable dictionary."""
@@ -46,7 +48,62 @@ class KellyResult:
             "expected_growth_rate": round(float(self.expected_growth_rate), 6),
             "half_kelly": round(float(self.half_kelly), 4),
             "is_positive_edge": self.is_positive_edge,
+            "risk_of_ruin": round(float(self.risk_of_ruin), 4),
         }
+
+
+def calculate_risk_of_ruin(
+    win_rate: float,
+    payoff_ratio: float,
+    bet_fraction: float = 0.02,
+    loss_limit: float = 0.5,
+) -> float:
+    """Calculate theoretical Risk of Ruin (Ralph Vince & Perry Kaufman formula).
+
+    Evaluates the probability of suffering an accumulated drawdown of loss_limit
+    (e.g., 0.5 for a 50% account drawdown) before reaching capital growth targets.
+
+    Parameters
+    ----------
+    win_rate : float
+        Probability of winning trade (0.0 < p < 1.0).
+    payoff_ratio : float
+        Ratio of average win to average loss (b > 0).
+    bet_fraction : float, default 0.02
+        Fraction of account risked per trade (0.0 < bet_fraction <= 1.0).
+    loss_limit : float, default 0.5
+        Drawdown barrier considered ruin (0.0 < loss_limit <= 1.0).
+
+    Returns
+    -------
+    float
+        Probability of ruin between 0.0 and 1.0.
+    """
+    if not (0.0 < win_rate < 1.0):
+        raise ValueError("Win rate must be strictly between 0 and 1.")
+    if payoff_ratio <= 0.0:
+        raise ValueError("Payoff ratio must be strictly positive.")
+    if not (0.0 < bet_fraction <= 1.0):
+        raise ValueError("Bet fraction must be strictly between 0 and 1.")
+    if not (0.0 < loss_limit <= 1.0):
+        raise ValueError("Loss limit must be strictly between 0 and 1.")
+
+    loss_rate = 1.0 - win_rate
+    expected_payoff = win_rate * payoff_ratio - loss_rate
+    if expected_payoff <= 0.0:
+        return 1.0
+
+    denom = win_rate * payoff_ratio + loss_rate
+    if denom <= 1e-9:
+        return 1.0
+
+    edge = expected_payoff / denom
+    z = (1.0 - edge) / (1.0 + edge)
+
+    # Number of units of bet risked before reaching loss limit
+    units = loss_limit / bet_fraction
+    ror = float(z ** units)
+    return max(0.0, min(1.0, ror))
 
 
 def calculate_discrete_kelly(
@@ -54,6 +111,7 @@ def calculate_discrete_kelly(
     payoff_ratio: float,
     fraction: float = 0.5,
     max_allocation: float = 1.0,
+    ruin_limit: float = 0.5,
 ) -> KellyResult:
     """Calculate discrete Kelly fraction: f* = (p * b - (1 - p)) / b.
 
@@ -67,6 +125,8 @@ def calculate_discrete_kelly(
         Kelly fraction multiplier (0.5 for Half-Kelly).
     max_allocation : float
         Maximum upper bound cap on position size.
+    ruin_limit : float, default 0.5
+        Capital drawdown barrier for risk-of-ruin assessment.
     """
     if not (0.0 < win_rate < 1.0):
         raise ValueError("Win rate must be strictly between 0 and 1.")
@@ -76,6 +136,8 @@ def calculate_discrete_kelly(
         raise ValueError("Fraction must be strictly positive.")
     if max_allocation <= 0.0:
         raise ValueError("Max allocation must be strictly positive.")
+    if not (0.0 < ruin_limit <= 1.0):
+        raise ValueError("Ruin limit must be strictly between 0 and 1.")
 
     loss_rate = 1.0 - win_rate
     full_k = (win_rate * payoff_ratio - loss_rate) / payoff_ratio
@@ -90,6 +152,13 @@ def calculate_discrete_kelly(
     if is_positive and frac_k < 1.0:
         growth = win_rate * np.log(1.0 + payoff_ratio * frac_k) + loss_rate * np.log(max(1e-9, 1.0 - frac_k))
 
+    ror = calculate_risk_of_ruin(
+        win_rate=win_rate,
+        payoff_ratio=payoff_ratio,
+        bet_fraction=frac_k if frac_k > 0 else 0.02,
+        loss_limit=ruin_limit,
+    )
+
     return KellyResult(
         full_kelly=full_k_clamped,
         fractional_kelly=frac_k,
@@ -97,6 +166,7 @@ def calculate_discrete_kelly(
         expected_growth_rate=float(growth),
         half_kelly=half_k,
         is_positive_edge=is_positive,
+        risk_of_ruin=ror,
     )
 
 
@@ -256,17 +326,52 @@ def export_kelly_csv(
     df.to_csv(out_path, index=False, encoding="utf-8")
 
 
+def export_portfolio_kelly_csv(
+    weights: pd.Series,
+    filepath: str | Path,
+) -> Path:
+    """Export multi-asset portfolio Kelly weights to a CSV file.
+
+    Parameters
+    ----------
+    weights : pd.Series
+        Asset weights Series with asset tickers/symbols as index.
+    filepath : str | Path
+        Target destination CSV path.
+
+    Returns
+    -------
+    Path
+        Resolved saved CSV filepath.
+    """
+    out_path = Path(filepath)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    df = pd.DataFrame({
+        "asset": weights.index,
+        "weight": weights.values,
+        "allocation_pct": (weights.values * 100.0).round(2),
+    })
+    df.to_csv(out_path, index=False, encoding="utf-8")
+    return out_path
+
+
 def main():
     parser = argparse.ArgumentParser(description="Crypto Kelly Criterion Position Sizer.")
     parser.add_argument("--win-rate", type=float, default=0.55, help="Strategy win rate (e.g. 0.55)")
     parser.add_argument("--payoff", type=float, default=1.8, help="Payoff ratio (win/loss ratio)")
     parser.add_argument("--fraction", type=float, default=0.5, help="Fractional Kelly multiplier (default 0.5)")
+    parser.add_argument("--ruin-limit", type=float, default=0.5, help="Capital drawdown barrier for risk-of-ruin calculation (default 0.5 for 50%%).")
     parser.add_argument("--capital", type=float, default=None, help="Total account capital for position sizing in USD.")
     parser.add_argument("--export-json", type=str, default=None, help="Path to export Kelly sizing results to JSON file.")
     parser.add_argument("--export-csv", type=str, default=None, help="Path to export Kelly sizing results to CSV file.")
     args = parser.parse_args()
 
-    res = calculate_discrete_kelly(args.win_rate, args.payoff, fraction=args.fraction)
+    res = calculate_discrete_kelly(
+        args.win_rate,
+        args.payoff,
+        fraction=args.fraction,
+        ruin_limit=args.ruin_limit,
+    )
     print("================ Crypto Kelly Criterion Sizing ================")
     print(f"  Win Rate           : {args.win_rate * 100:.1f}%")
     print(f"  Payoff Ratio       : {args.payoff:.2f}x")
@@ -274,6 +379,7 @@ def main():
     print(f"  Half Kelly (0.5x)  : {res.half_kelly * 100:.2f}%")
     print(f"  Chosen Frac ({args.fraction}x): {res.fractional_kelly * 100:.2f}%")
     print(f"  Exp. Growth Rate   : {res.expected_growth_rate * 100:.3f}% per trade")
+    print(f"  Risk of Ruin ({args.ruin_limit*100:.0f}% DD): {res.risk_of_ruin * 100:.2f}%")
     print(f"  Positive Edge      : {'YES' if res.is_positive_edge else 'NO'}")
     if args.capital:
         print(f"  Capital            : ${args.capital:,.2f}")

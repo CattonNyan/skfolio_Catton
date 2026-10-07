@@ -8,9 +8,11 @@ import pandas as pd
 
 from scripts.crypto_kelly_sizer import (
     KellyResult,
+    calculate_risk_of_ruin,
     calculate_discrete_kelly,
     calculate_continuous_kelly,
     calculate_portfolio_kelly,
+    export_portfolio_kelly_csv,
     main as kelly_main,
 )
 
@@ -139,5 +141,60 @@ class KellySizerTests(unittest.TestCase):
             self.assertAlmostEqual(float(metrics["full_kelly"]), 0.3333, places=2)
 
 
+    def test_calculate_risk_of_ruin(self):
+        # Positive edge scenario: 60% win rate, 1.5 payoff ratio, 2% risk, 50% drawdown ruin
+        ror_positive = calculate_risk_of_ruin(0.60, 1.5, bet_fraction=0.02, loss_limit=0.5)
+        self.assertGreaterEqual(ror_positive, 0.0)
+        self.assertLess(ror_positive, 0.05)
+
+        # Negative edge scenario: 40% win rate, 1.0 payoff ratio -> guaranteed ruin 1.0
+        ror_negative = calculate_risk_of_ruin(0.40, 1.0, bet_fraction=0.02, loss_limit=0.5)
+        self.assertEqual(ror_negative, 1.0)
+
+        # Zero edge scenario: 50% win rate, 1.0 payoff ratio -> ruin 1.0
+        ror_zero = calculate_risk_of_ruin(0.50, 1.0, bet_fraction=0.02, loss_limit=0.5)
+        self.assertEqual(ror_zero, 1.0)
+
+        # High risk bet fraction should increase probability of ruin
+        ror_small_bet = calculate_risk_of_ruin(0.55, 1.2, bet_fraction=0.02, loss_limit=0.5)
+        ror_large_bet = calculate_risk_of_ruin(0.55, 1.2, bet_fraction=0.10, loss_limit=0.5)
+        self.assertLess(ror_small_bet, ror_large_bet)
+
+        # Boundary & validation checks
+        with self.assertRaises(ValueError):
+            calculate_risk_of_ruin(0.0, 1.5)
+        with self.assertRaises(ValueError):
+            calculate_risk_of_ruin(1.0, 1.5)
+        with self.assertRaises(ValueError):
+            calculate_risk_of_ruin(0.5, 0.0)
+        with self.assertRaises(ValueError):
+            calculate_risk_of_ruin(0.5, 1.5, bet_fraction=0.0)
+        with self.assertRaises(ValueError):
+            calculate_risk_of_ruin(0.5, 1.5, loss_limit=0.0)
+
+    def test_discrete_kelly_includes_risk_of_ruin(self):
+        res = calculate_discrete_kelly(0.60, 1.5, fraction=0.5, ruin_limit=0.5)
+        self.assertTrue(hasattr(res, "risk_of_ruin"))
+        self.assertGreaterEqual(res.risk_of_ruin, 0.0)
+        self.assertLessEqual(res.risk_of_ruin, 1.0)
+        d = res.to_dict()
+        self.assertIn("risk_of_ruin", d)
+        self.assertEqual(d["risk_of_ruin"], round(res.risk_of_ruin, 4))
+
+    def test_export_portfolio_kelly_csv(self):
+        weights = pd.Series([0.45, 0.35, 0.20], index=["BTC/USDT", "ETH/USDT", "SOL/USDT"])
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "portfolio_kelly.csv"
+            saved_path = export_portfolio_kelly_csv(weights, out_file)
+            self.assertTrue(saved_path.exists())
+            df = pd.read_csv(saved_path)
+            self.assertListEqual(list(df.columns), ["asset", "weight", "allocation_pct"])
+            self.assertEqual(len(df), 3)
+            self.assertEqual(df.iloc[0]["asset"], "BTC/USDT")
+            self.assertAlmostEqual(df.iloc[0]["weight"], 0.45)
+            self.assertAlmostEqual(df.iloc[0]["allocation_pct"], 45.0)
+
+
 if __name__ == "__main__":
     unittest.main()
+

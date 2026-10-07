@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v1.7.8 (2026-10-08)
+
+### Features & Improvements
+
+- **kelly-sizer**: Add Risk of Ruin equation, portfolio Kelly CSV export helper, and CLI options (`scripts/crypto_kelly_sizer.py`)
+  - Added `calculate_risk_of_ruin` evaluating probability of reaching account drawdown loss barrier (Ralph Vince & Perry Kaufman formula) based on strategy win rate, payoff ratio, and fraction risked
+  - Added `risk_of_ruin` field to `KellyResult` dataclass and dictionary serialization in `to_dict()`
+  - Integrated theoretical risk of ruin calculation directly into `calculate_discrete_kelly` with customizable `ruin_limit` (default 50% drawdown)
+  - Added `export_portfolio_kelly_csv` exporting multi-asset Kelly weights, tickers, and percentage allocations to CSV
+  - Added `--ruin-limit` CLI argument and formatted terminal output displaying calculated Risk of Ruin
+
+### Testing & Verification
+
+- Added comprehensive unit tests for `calculate_risk_of_ruin`, negative edge certainty, bet fraction scaling, parameter validations, and `export_portfolio_kelly_csv` (`tests/test_kelly_sizer.py`)
+- Maintained 100% test pass rate across all 675 test cases in the test suite
+
 ## v1.7.7 (2026-10-06)
 
 ### Features & Improvements
