@@ -15,6 +15,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -222,13 +223,76 @@ def export_bithumb_prices_csv(
     return path
 
 
+def export_bithumb_orderbook_csv(
+    spread_records: list[dict[str, Any]],
+    output_path: Path | str,
+) -> Path:
+    """Export Bithumb orderbook spread and market depth summary to a CSV file."""
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    df = pd.DataFrame(spread_records)
+    df.to_csv(path, index=False, encoding="utf-8")
+    return path
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Fetch candlestick data from Bithumb public API.")
+    parser = argparse.ArgumentParser(description="Fetch candlestick data and orderbook depth from Bithumb public API.")
     parser.add_argument("--symbols", nargs="+", default=["BTC", "ETH", "SOL", "XRP"], help="List of crypto symbols.")
     parser.add_argument("--interval", default="24h", choices=list(VALID_BITHUMB_INTERVALS), help="Candle interval.")
     parser.add_argument("--count", type=int, default=30, help="Number of candles to fetch.")
-    parser.add_argument("--export-csv", type=str, default="", help="Path to export fetched Bithumb prices to CSV.")
+    parser.add_argument(
+        "--orderbook",
+        action="store_true",
+        help="Fetch and analyze real-time order book, bid/ask spread, and market depth instead of candle history.",
+    )
+    parser.add_argument(
+        "--orderbook-count",
+        type=int,
+        default=30,
+        help="Orderbook depth level count (1 to 50, default: 30).",
+    )
+    parser.add_argument("--export-csv", type=str, default="", help="Path to export fetched Bithumb prices or orderbook metrics to CSV.")
     args = parser.parse_args()
+
+    if args.orderbook:
+        print(f"[*] Fetching Bithumb order book & market depth for {args.symbols} (depth={args.orderbook_count})...")
+        records = []
+        print("\n" + "=" * 115)
+        print(f"{'Symbol':<12} {'Best Bid (KRW)':>16} {'Best Ask (KRW)':>16} {'Mid Price (KRW)':>16} {'Spread (bps)':>14} {'Bid Depth (KRW)':>18} {'Ask Depth (KRW)':>18}")
+        print("-" * 115)
+        for sym in args.symbols:
+            try:
+                order_curr, pay_curr = normalize_bithumb_symbol(sym)
+                ob = fetch_bithumb_orderbook(sym, payment_currency=pay_curr, count=args.orderbook_count)
+                spread = compute_bithumb_spread(ob)
+                rec = {
+                    "symbol": f"{order_curr}/{pay_curr}",
+                    "best_bid": spread["best_bid"],
+                    "best_ask": spread["best_ask"],
+                    "mid_price": spread["mid_price"],
+                    "spread_krw": spread["spread_krw"],
+                    "spread_bps": spread["spread_bps"],
+                    "bid_depth_krw": spread["bid_depth_krw"],
+                    "ask_depth_krw": spread["ask_depth_krw"],
+                }
+                records.append(rec)
+                print(
+                    f"{rec['symbol']:<12} "
+                    f"{rec['best_bid']:>16,.0f} "
+                    f"{rec['best_ask']:>16,.0f} "
+                    f"{rec['mid_price']:>16,.1f} "
+                    f"{rec['spread_bps']:>13.2f}bp "
+                    f"{rec['bid_depth_krw']:>18,.0f} "
+                    f"{rec['ask_depth_krw']:>18,.0f}"
+                )
+            except Exception as e:
+                print(f"[!] Warning: Failed to fetch orderbook for {sym}: {e}")
+        print("=" * 115 + "\n")
+
+        if args.export_csv and records:
+            csv_path = export_bithumb_orderbook_csv(records, args.export_csv)
+            print(f"[+] Saved Bithumb orderbook metrics to {csv_path}")
+        return
 
     print(f"[*] Fetching Bithumb data for {args.symbols} ({args.interval})...")
     df = fetch_bithumb_multi_assets(args.symbols, chart_interval=args.interval, count=args.count)

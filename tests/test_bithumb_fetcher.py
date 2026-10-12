@@ -11,6 +11,8 @@ from scripts.fetch_bithumb_crypto import (
     fetch_bithumb_orderbook,
     compute_bithumb_spread,
     export_bithumb_prices_csv,
+    export_bithumb_orderbook_csv,
+    main,
     VALID_BITHUMB_INTERVALS,
 )
 
@@ -140,6 +142,56 @@ class BithumbFetcherTests(unittest.TestCase):
             loaded = pd.read_csv(out_csv, index_col=0)
             self.assertEqual(list(loaded.columns), ["BTC/KRW", "ETH/KRW"])
             self.assertEqual(len(loaded), 2)
+
+    def test_export_bithumb_orderbook_csv(self):
+        import tempfile
+        from pathlib import Path
+
+        records = [
+            {
+                "symbol": "BTC/KRW",
+                "best_bid": 100000000.0,
+                "best_ask": 100050000.0,
+                "mid_price": 100025000.0,
+                "spread_krw": 50000.0,
+                "spread_bps": 5.0,
+                "bid_depth_krw": 500000000.0,
+                "ask_depth_krw": 600000000.0,
+            }
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_csv = Path(tmpdir) / "orderbook.csv"
+            export_bithumb_orderbook_csv(records, out_csv)
+            self.assertTrue(out_csv.exists())
+            loaded = pd.read_csv(out_csv)
+            self.assertEqual(len(loaded), 1)
+            self.assertEqual(loaded["symbol"].iloc[0], "BTC/KRW")
+            self.assertEqual(loaded["spread_bps"].iloc[0], 5.0)
+
+    @patch("sys.stdout")
+    @patch("scripts.fetch_bithumb_crypto.fetch_bithumb_orderbook")
+    def test_orderbook_cli_execution(self, mock_fetch_ob, mock_stdout):
+        import io
+        import tempfile
+        from pathlib import Path
+
+        mock_fetch_ob.return_value = {
+            "bids": [{"price": "90000000", "quantity": "1.0"}],
+            "asks": [{"price": "90050000", "quantity": "1.0"}],
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_csv = str(Path(tmpdir) / "bithumb_ob.csv")
+            test_args = ["fetch_bithumb_crypto.py", "--symbols", "BTC", "--orderbook", "--orderbook-count", "10", "--export-csv", out_csv]
+            with patch("sys.argv", test_args):
+                captured = io.StringIO()
+                with patch("sys.stdout", captured):
+                    main()
+                output = captured.getvalue()
+                self.assertIn("Bithumb order book & market depth", output)
+                self.assertIn("BTC/KRW", output)
+                self.assertIn("Saved Bithumb orderbook metrics", output)
+                self.assertTrue(Path(out_csv).exists())
 
 
 if __name__ == "__main__":

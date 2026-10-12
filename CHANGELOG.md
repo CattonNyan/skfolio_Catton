@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## v1.7.10 (2026-10-12)
+
+### Features & Improvements
+
+- **bithumb-fetcher**: Add real-time order book analysis CLI interface, depth metrics, and CSV export (`scripts/fetch_bithumb_crypto.py`)
+  - Added `export_bithumb_orderbook_csv` exporting bid/ask spreads, mid prices, and depth aggregates across assets to CSV
+  - Wired `--orderbook` CLI flag to evaluate real-time best bid, best ask, mid price, spread in KRW / bps, and bid/ask volume depth
+  - Added `--orderbook-count` CLI parameter supporting depth level inspection from 1 to 50 levels (default: 30)
+  - Added formatted tabular terminal report displaying spread and depth comparisons across crypto pairs
+
+### Testing & Verification
+
+- Added unit tests for order book CSV export, CLI execution with mocked API calls, and parameter validations (`tests/test_bithumb_fetcher.py`)
+- Maintained 100% test pass rate across all 687 test cases in the test suite
+
 ## v1.7.9 (2026-10-12)
 
 ### Features & Improvements

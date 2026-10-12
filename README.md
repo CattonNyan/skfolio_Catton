@@ -513,6 +513,18 @@ python scripts/crypto_vol_target_allocator.py --target-vol 0.25 --realized-vol 0
 python scripts/crypto_tail_dependence.py --quantile 0.05 --export-json reports/tail_dependence.json --export-csv reports/tail_dependence.csv
 ```
 
+### 36. 빗썸(Bithumb) 실시간 호가창 및 스프레드·호가 깊이 분석기
+
+빗썸 공개 REST API를 통해 실시간 호가창(Order Book) 데이터를 수집하고, 최우선 매수/매도호가, 중간 가격(Mid Price), 원화 스프레드 및 베이시스 포인트(bps) 스프레드, 매수/매도 호가 깊이(Market Depth in KRW)를 계산하여 비교 요약표 및 CSV로 내보냅니다:
+
+```powershell
+# 실시간 호가 스프레드 및 호가창 깊이 분석 (기본 30단계 호가)
+python scripts/fetch_bithumb_crypto.py --symbols BTC ETH SOL XRP --orderbook --orderbook-count 30 --export-csv reports/bithumb_orderbook.csv
+
+# 캔들 데이터 수집 및 CSV 내보내기
+python scripts/fetch_bithumb_crypto.py --symbols BTC ETH --interval 24h --count 100 --export-csv reports/bithumb_prices.csv
+```
+
 ---
 
 ## 📁 프로젝트 구조
@@ -539,6 +551,7 @@ skfolio_Catton/
 │   ├── crypto_krw_fee_calculator.py   # 한국 거래소 수수료 및 Fee Drag 시뮬레이터
 │   ├── crypto_travel_rule_advisor.py  # 한국 특금법 트래블룰 준수 안전 분할 전송기
 │   ├── fetch_upbit_crypto.py          # 업비트 원화(KRW) 마켓 전용 캔들 수집기
+│   ├── fetch_bithumb_crypto.py        # 빗썸 원화(KRW) 마켓 캔들 및 호가창/스프레드 분석기
 │   ├── freqtrade_strategy_optimizer.py # 멀티 전략 간 자금 배분 최적화기
 │   ├── crypto_monte_carlo.py          # 몬테카를로 미래 자산 경로 및 VaR 시뮬레이터
 │   ├── crypto_macro_regime.py         # 공포·탐욕 지수 기반 동적 현금 비중 조절기
