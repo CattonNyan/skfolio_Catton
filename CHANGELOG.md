@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## v1.7.14 (2026-10-13)
+
+### Features & Improvements
+
+- **rebalancing-backtest**: Add Burke Ratio, RoMaD, Time Underwater, Drawdown Guard CLI flag, and time-series NAV CSV export (`scripts/crypto_rebalancing_backtest.py`)
+  - Added Burke Ratio (`Return / sqrt(sum(DD^2))`), RoMaD (`Return / MDD`), and Time Underwater percentage to `simulate_rebalancing` summary metrics and terminal report table
+  - Added `export_rebalancing_nav_csv` exporting walk-forward NAV trajectories (`nav_portfolio`, `nav_benchmark_equal`, `nav_benchmark_bh`, and `drawdown_portfolio_pct`) to CSV
+  - Wired `--drawdown-guard` CLI flag to configure max drawdown tolerance (e.g. 0.15 for 15%) triggering protective cash de-risking
+  - Wired `--export-nav-csv` CLI option for quantitative equity curve downstream analytics
+
+### Testing & Verification
+
+- Added unit tests for time-series NAV CSV export, invalid input handling, Burke Ratio / RoMaD / Time Underwater metrics, and Drawdown Guard protection triggers (`tests/test_rebalancing.py`)
+- Verified 100% test pass rate across all test cases in the test suite
+
 ## v1.7.13 (2026-10-13)
 
 ### Features & Improvements

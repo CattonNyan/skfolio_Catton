@@ -304,6 +304,17 @@ def simulate_rebalancing(
     sum_gains = float(pct_changes[pct_changes > 0].sum()) if len(pct_changes[pct_changes > 0]) > 0 else 0.0
     omega_ratio = (sum_gains / sum_losses) if sum_losses > 1e-6 else (999.0 if sum_gains > 0 else 0.0)
 
+    # Burke Ratio: Annualized return over root-sum-square of percentage drawdowns
+    sum_sq_dd = float(np.sum(np.square(dd_port_pct)))
+    burke_ratio = (ann_return / np.sqrt(sum_sq_dd)) if sum_sq_dd > 1e-6 else (999.0 if ann_return > 0 else 0.0)
+
+    # RoMaD (Return over Maximum Drawdown)
+    abs_mdd_pct = abs(port_mdd * 100.0)
+    romad = (total_return_port / abs_mdd_pct) if abs_mdd_pct > 1e-6 else (999.0 if total_return_port > 0 else 0.0)
+
+    # Time Underwater (% of periods where NAV is below historical peak)
+    time_underwater = float((dd_port_pct < -1e-6).mean() * 100.0) if len(dd_port_pct) > 0 else 0.0
+
     avg_turnover = float(np.mean(turnover_history)) if turnover_history else 0.0
 
     summary = {
@@ -312,9 +323,12 @@ def simulate_rebalancing(
         "Max Drawdown (%)": round(port_mdd * 100, 2),
         "Ulcer Index (%)": round(ulcer_index, 2),
         "Pain Index (%)": round(pain_index, 2),
+        "Time Underwater (%)": round(time_underwater, 2),
         "Martin Ratio": round(martin_ratio, 3),
         "Pain Ratio": round(pain_ratio, 3),
         "Sterling Ratio": round(sterling_ratio, 3),
+        "Burke Ratio": round(burke_ratio, 3),
+        "RoMaD": round(romad, 3),
         "Omega Ratio": round(omega_ratio, 3),
         "Gain-to-Pain Ratio": round(gain_to_pain, 3),
         "Sharpe Ratio (Ann.)": round(sharpe, 3),
@@ -488,15 +502,23 @@ def print_backtest_report(summary: dict[str, object]):
     print(f" - Annualized Sharpe Ratio  : {summary['Sharpe Ratio (Ann.)']}")
     print(f" - Annualized Sortino Ratio : {summary['Sortino Ratio (Ann.)']}")
     print(f" - Calmar Ratio             : {summary['Calmar Ratio']}")
+    print(f" - Burke Ratio              : {summary.get('Burke Ratio', 0.0)}")
+    print(f" - RoMaD                    : {summary.get('RoMaD', 0.0)}")
     print(f" - Ulcer Index (%)          : {summary.get('Ulcer Index (%)', 0.0)}%")
     print(f" - Pain Index (%)           : {summary.get('Pain Index (%)', 0.0)}%")
+    print(f" - Time Underwater (%)      : {summary.get('Time Underwater (%)', 0.0)}%")
     print(f" - Martin Ratio             : {summary.get('Martin Ratio', 0.0)}")
     print(f" - Sterling Ratio           : {summary.get('Sterling Ratio', 0.0)}")
+    print(f" - Omega Ratio              : {summary.get('Omega Ratio', 0.0)}")
+    print(f" - Gain-to-Pain Ratio       : {summary.get('Gain-to-Pain Ratio', 0.0)}")
     print(f" - Average Turnover Rate    : {summary['Average Turnover (%)']}% per rebalance")
     print(f" - Total Rebalance Events   : {summary['Rebalancing Count']} times")
     if summary.get("Skipped Rebalances", 0) > 0 or summary.get("Tolerance Band (%)") != "None":
         print(f" - Tolerance Band Drift     : {summary['Tolerance Band (%)']}%")
         print(f" - Skipped Low-Drift Events : {summary['Skipped Rebalances']} times (fee saved)")
+    if summary.get("Drawdown Guard (%)") != "None":
+        print(f" - Drawdown Guard Threshold : {summary['Drawdown Guard (%)']}%")
+        print(f" - Guard Protective Triggers: {summary.get('Guard Triggers', 0)} times")
     print("================================================================================\n")
 
 
@@ -551,6 +573,31 @@ def export_rebalancing_csv(result: dict[str, object], output_path: Path | str) -
     return path
 
 
+def export_rebalancing_nav_csv(result: dict[str, object], output_path: Path | str) -> Path:
+    """Export time-series NAV trajectories and drawdowns to CSV."""
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    nav_port = result.get("nav_port")
+    nav_eq = result.get("nav_eq")
+    nav_bh = result.get("nav_bh")
+
+    if not isinstance(nav_port, pd.Series):
+        raise ValueError("Result does not contain a valid nav_port pd.Series.")
+
+    peak_port = nav_port.cummax()
+    dd_port_pct = (nav_port - peak_port) / np.where(peak_port > 0, peak_port, 1e-9) * 100.0
+
+    df = pd.DataFrame({
+        "timestamp": nav_port.index,
+        "nav_portfolio": nav_port.values,
+        "nav_benchmark_equal": nav_eq.values if isinstance(nav_eq, pd.Series) else np.nan,
+        "nav_benchmark_bh": nav_bh.values if isinstance(nav_bh, pd.Series) else np.nan,
+        "drawdown_portfolio_pct": dd_port_pct.values,
+    })
+    df.to_csv(path, index=False, encoding="utf-8")
+    return path
+
+
 def main():
     parser = argparse.ArgumentParser(description="Crypto Portfolio Rebalancing Backtest")
     parser.add_argument("--data-dir", type=str, default="", help="Directory with Freqtrade feather files")
@@ -566,9 +613,11 @@ def main():
     parser.add_argument("--rebalance-bars", type=int, default=50, help="Rebalancing frequency in bars")
     parser.add_argument("--fee", type=float, default=0.001, help="Transaction fee rate (0.001 = 0.1%%)")
     parser.add_argument("--tolerance-band", type=float, default=None, help="Drift threshold to execute rebalancing (e.g. 0.05 for 5%%)")
+    parser.add_argument("--drawdown-guard", type=float, default=None, help="Max drawdown threshold (0-1) to temporarily de-risk portfolio (e.g. 0.15 for 15%%)")
     parser.add_argument("--use-synthetic", action="store_true", help="Force synthetic data")
     parser.add_argument("--export-json", type=str, default=None, help="Path to export rebalancing backtest summary to JSON file.")
     parser.add_argument("--export-csv", type=str, default=None, help="Path to export rebalancing backtest summary to CSV file.")
+    parser.add_argument("--export-nav-csv", type=str, default=None, help="Path to export time-series NAV and drawdown trajectory to CSV file.")
     args = parser.parse_args()
 
     try:
@@ -594,6 +643,7 @@ def main():
         fee_rate=args.fee,
         model_choice=args.model,
         tolerance_band=args.tolerance_band,
+        drawdown_guard=args.drawdown_guard,
     )
 
     print_backtest_report(res["summary"])
@@ -605,6 +655,10 @@ def main():
     if args.export_csv:
         out_csv = export_rebalancing_csv(res, args.export_csv)
         print(f"[+] Rebalancing backtest results exported to: {out_csv}")
+
+    if args.export_nav_csv:
+        out_nav = export_rebalancing_nav_csv(res, args.export_nav_csv)
+        print(f"[+] Rebalancing NAV trajectory exported to: {out_nav}")
 
 
 if __name__ == "__main__":

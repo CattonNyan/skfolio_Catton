@@ -237,13 +237,14 @@ streamlit run app_dashboard.py
 일정 주기(예: 50개 캔들 또는 7일)마다 자산 비중을 재조정(Rebalancing)할 때, 단순 보유(Buy & Hold) 대비 수익률과 낙폭(MDD)이 어떻게 개선되는지 워크포워드 시뮬레이션을 수행합니다:
 
 ```powershell
-# 리스크 패리티 모델 기반 롤링 리밸런싱 백테스트 실행 (거래 수수료 0.1% 반영)
-python scripts/crypto_rebalancing_backtest.py --model "Risk Parity" --timeframe 15m --fee 0.001
+# 리스크 패리티 모델 기반 롤링 리밸런싱 백테스트 실행 (거래 수수료 0.1% 반영 및 15% 낙폭 시 현금 방어 보호)
+python scripts/crypto_rebalancing_backtest.py --model "Risk Parity" --timeframe 15m --fee 0.001 --drawdown-guard 0.15 --export-nav-csv reports/rebal_nav.csv
 
-# 합성 데이터로 빠른 검증 실행 및 결과 JSON 파일 내보내기
-python scripts/crypto_rebalancing_backtest.py --use-synthetic --model "Equal Weight" --export-json reports/rebalancing_results.json
+# 합성 데이터로 빠른 검증 실행 및 결과 JSON / CSV 파일 내보내기
+python scripts/crypto_rebalancing_backtest.py --use-synthetic --model "Equal Weight" --export-json reports/rebalancing_results.json --export-csv reports/rebal_metrics.csv
 ```
-- **산출 지표**: 누적 수익률(Total Return), 최대 낙폭(MDD), 연환산 샤프 지수, 회전율(Turnover Rate), 스털링 비율(Sterling Ratio), 페인 지수(Pain Index) 및 페인 비율(Pain Ratio) 비교 요약표 출력
+- **산출 지표**: 누적 수익률(Total Return), 최대 낙폭(MDD), 버크 비율(Burke Ratio), RoMaD(Return over MDD), 수중 시간 비율(Time Underwater %), 연환산 샤프/소르티노 지수, 회전율(Turnover Rate), 스털링 비율(Sterling Ratio), 페인 지수(Pain Index) 및 페인 비율(Pain Ratio) 비교 요약표 출력
+- **NAV 시계열 추적**: `--export-nav-csv` 옵션으로 포트폴리오, 동일비중 벤치마크, Buy&Hold 벤치마크의 일별/캔들별 순자산가치 및 드로다운 궤적을 CSV로 내보내기 지원
 
 ---
 

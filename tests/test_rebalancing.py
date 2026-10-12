@@ -9,6 +9,7 @@ from scripts.crypto_rebalancing_backtest import (
     calculate_drawdown,
     calculate_weight_drift,
     export_rebalancing_csv,
+    export_rebalancing_nav_csv,
     simulate_drift_band_rebalancing,
     simulate_rebalancing,
 )
@@ -282,6 +283,56 @@ class RebalancingTests(unittest.TestCase):
             metrics = set(df["metric"])
             self.assertIn("Omega Ratio", metrics)
             self.assertIn("Gain-to-Pain Ratio", metrics)
+            self.assertIn("Burke Ratio", metrics)
+            self.assertIn("RoMaD", metrics)
+            self.assertIn("Time Underwater (%)", metrics)
+
+    def test_rebalancing_nav_csv_export(self):
+        import tempfile
+        from pathlib import Path
+
+        prices = generate_synthetic_crypto_data(periods=120)
+        res = simulate_rebalancing(
+            prices=prices,
+            train_bars=50,
+            rebalance_freq_bars=15,
+            fee_rate=0.001,
+            model_choice="Equal Weight",
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "nav_trajectory.csv"
+            saved_path = export_rebalancing_nav_csv(res, out_file)
+            self.assertTrue(saved_path.exists())
+            df = pd.read_csv(saved_path)
+            self.assertIn("timestamp", df.columns)
+            self.assertIn("nav_portfolio", df.columns)
+            self.assertIn("nav_benchmark_equal", df.columns)
+            self.assertIn("nav_benchmark_bh", df.columns)
+            self.assertIn("drawdown_portfolio_pct", df.columns)
+            self.assertEqual(len(df), len(res["nav_port"]))
+
+    def test_export_rebalancing_nav_csv_invalid_input(self):
+        with self.assertRaises(ValueError):
+            export_rebalancing_nav_csv({}, "dummy.csv")
+
+    def test_drawdown_guard_protection(self):
+        prices = generate_synthetic_crypto_data(periods=150)
+        # Tight drawdown guard to trigger protection
+        res = simulate_rebalancing(
+            prices=prices,
+            train_bars=50,
+            rebalance_freq_bars=10,
+            fee_rate=0.001,
+            model_choice="Equal Weight",
+            drawdown_guard=0.05,
+        )
+        s = res["summary"]
+        self.assertEqual(s["Drawdown Guard (%)"], 5.0)
+        self.assertIn("Guard Triggers", s)
+        self.assertIsInstance(s["Guard Triggers"], int)
+        self.assertIn("Burke Ratio", s)
+        self.assertIn("RoMaD", s)
+        self.assertIn("Time Underwater (%)", s)
 
 
 
