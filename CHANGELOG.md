@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## v1.7.13 (2026-10-13)
+
+### Features & Improvements
+
+- **upbit-fetcher**: Add real-time order book depth ladder, institutional VWAP execution slippage simulation, and CSV export (`scripts/fetch_upbit_crypto.py`)
+  - Added `compute_upbit_market_impact` calculating VWAP execution price, spread in bps, execution slippage in bps, price impact in bps, and fill percentage for large order sizes in KRW across buy/sell sides
+  - Added `export_upbit_orderbook_csv` exporting order book ladder units (levels, ask/bid prices, quantities, and KRW depths) or market impact execution records to CSV
+  - Wired `--order-size`, `--side` ("buy" / "sell"), `--depth-levels`, and `--export-orderbook-csv` CLI options
+  - Added formatted tabular terminal report displaying the top order book ladder levels and institutional execution simulation results
+
+### Testing & Verification
+
+- Added unit tests for Upbit market impact calculations, order book ladder/impact CSV export, and CLI parameter parsing (`tests/test_upbit_fetcher.py`)
+  - Verified 100% test pass rate across all 701 test cases in the test suite
+
 ## v1.7.12 (2026-10-12)
 
 ### Features & Improvements

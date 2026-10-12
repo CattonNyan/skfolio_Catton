@@ -543,6 +543,20 @@ python scripts/fetch_coinbase_crypto.py --symbols BTC ETH SOL --timeframe 1d --l
 
 ---
 
+### 38. 업비트(Upbit) 실시간 오더북 호가 사다리 및 기관급 체결 슬리피지(Execution Slippage) 분석기
+
+국내 1위 거래소인 업비트(Upbit) 공개 REST API를 활용하여 실시간 오더북(호가창)의 상위 매수/매도 호가 사다리(Ladder Depth)를 10단계 이상 상세 탐색하고, 대규모 주문 금액(예: 5천만 원~10억 원) 집행 시 발생하는 VWAP 체결 단가, 호가 스프레드, 슬리피지(Slippage in bps), 가격 충격도(Market Impact bps) 및 체결률(Fill %)을 정밀 시뮬레이션하여 CSV로 내보냅니다:
+
+```powershell
+# 업비트 KRW-BTC 5천만 원 매수 주문 시뮬레이션 및 호가 사다리 탐색
+python scripts/fetch_upbit_crypto.py --orderbook BTC --order-size 50000000 --side buy --depth-levels 10 --export-orderbook-csv reports/upbit_orderbook.csv
+
+# 1억 원 매도 주문에 대한 호가 스프레드 및 체결 충격도 분석
+python scripts/fetch_upbit_crypto.py --orderbook ETH --order-size 100000000 --side sell
+```
+
+---
+
 ## 📁 프로젝트 구조
 
 ```text
@@ -566,7 +580,7 @@ skfolio_Catton/
 │   ├── crypto_kimchi_regime.py        # 김치 프리미엄 기반 동적 자산배분 레짐 시그널러
 │   ├── crypto_krw_fee_calculator.py   # 한국 거래소 수수료 및 Fee Drag 시뮬레이터
 │   ├── crypto_travel_rule_advisor.py  # 한국 특금법 트래블룰 준수 안전 분할 전송기
-│   ├── fetch_upbit_crypto.py          # 업비트 원화(KRW) 마켓 전용 캔들 수집기
+│   ├── fetch_upbit_crypto.py          # 업비트 원화(KRW) 마켓 캔들 및 호가 사다리/체결 슬리피지 분석기
 │   ├── fetch_bithumb_crypto.py        # 빗썸 원화(KRW) 마켓 캔들 및 호가창/스프레드 분석기
 │   ├── fetch_coinbase_crypto.py       # 코인베이스 USD 마켓 캔들 및 시장충격 슬리피지 분석기
 │   ├── freqtrade_strategy_optimizer.py # 멀티 전략 간 자금 배분 최적화기

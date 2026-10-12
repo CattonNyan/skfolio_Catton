@@ -5,7 +5,9 @@ from __future__ import annotations
 import unittest
 import pandas as pd
 from scripts.fetch_upbit_crypto import (
+    compute_upbit_market_impact,
     compute_upbit_spread,
+    export_upbit_orderbook_csv,
     export_upbit_prices_csv,
     fetch_upbit_candles,
     fetch_upbit_historical_prices,
@@ -13,6 +15,7 @@ from scripts.fetch_upbit_crypto import (
     fetch_upbit_orderbook,
     fetch_upbit_spot_price,
     fetch_upbit_ticker,
+    main,
     normalize_upbit_symbol,
     validate_upbit_market_code,
 )
@@ -185,6 +188,138 @@ class UpbitFetcherTests(unittest.TestCase):
             self.assertEqual(len(loaded), 2)
             self.assertIn("KRW-BTC", loaded.columns)
             self.assertIn("KRW-ETH", loaded.columns)
+
+    def test_compute_upbit_market_impact(self):
+        mock_ob = {
+            "market": "KRW-BTC",
+            "orderbook_units": [
+                {
+                    "ask_price": 100100000.0,
+                    "bid_price": 100000000.0,
+                    "ask_size": 1.0,
+                    "bid_size": 1.0,
+                },
+                {
+                    "ask_price": 100200000.0,
+                    "bid_price": 99900000.0,
+                    "ask_size": 2.0,
+                    "bid_size": 2.0,
+                },
+            ],
+        }
+
+        # 1. Buy small order (50,050,000 KRW = 0.5 BTC at 100,100,000 KRW)
+        res_buy_small = compute_upbit_market_impact(mock_ob, order_size_krw=50050000.0, side="buy")
+        self.assertTrue(res_buy_small["fully_filled"])
+        self.assertAlmostEqual(res_buy_small["vwap_price"], 100100000.0, places=1)
+        self.assertAlmostEqual(res_buy_small["mid_price"], 100050000.0, places=1)
+        self.assertAlmostEqual(res_buy_small["price_impact_bps"], 0.0, places=2)
+        self.assertGreater(res_buy_small["slippage_bps"], 0.0)
+
+        # 2. Buy large order sweeping into level 2 ask (150,000,000 KRW)
+        res_buy_large = compute_upbit_market_impact(mock_ob, order_size_krw=150000000.0, side="buy")
+        self.assertTrue(res_buy_large["fully_filled"])
+        self.assertGreater(res_buy_large["vwap_price"], 100100000.0)
+        self.assertGreater(res_buy_large["price_impact_bps"], 0.0)
+
+        # 3. Sell small order (50,000,000 KRW = 0.5 BTC at 100,000,000 KRW)
+        res_sell_small = compute_upbit_market_impact(mock_ob, order_size_krw=50000000.0, side="sell")
+        self.assertTrue(res_sell_small["fully_filled"])
+        self.assertAlmostEqual(res_sell_small["vwap_price"], 100000000.0, places=1)
+        self.assertAlmostEqual(res_sell_small["price_impact_bps"], 0.0, places=2)
+
+        # 4. Sell large order sweeping into level 2 bid
+        res_sell_large = compute_upbit_market_impact(mock_ob, order_size_krw=150000000.0, side="sell")
+        self.assertTrue(res_sell_large["fully_filled"])
+        self.assertLess(res_sell_large["vwap_price"], 100000000.0)
+        self.assertGreater(res_sell_large["price_impact_bps"], 0.0)
+
+        # 5. Huge order exceeding book depth
+        res_huge = compute_upbit_market_impact(mock_ob, order_size_krw=1000000000.0, side="buy")
+        self.assertFalse(res_huge["fully_filled"])
+        self.assertGreater(res_huge["unfilled_krw"], 0.0)
+        self.assertLess(res_huge["fill_pct"], 100.0)
+
+        # 6. Error handling
+        with self.assertRaises(ValueError):
+            compute_upbit_market_impact(mock_ob, order_size_krw=-100.0)
+        with self.assertRaises(ValueError):
+            compute_upbit_market_impact(mock_ob, order_size_krw=1000.0, side="invalid")
+        with self.assertRaises(ValueError):
+            compute_upbit_market_impact({"orderbook_units": []}, order_size_krw=1000.0)
+
+    def test_export_upbit_orderbook_csv(self):
+        import tempfile
+        from pathlib import Path
+
+        mock_ob = {
+            "market": "KRW-BTC",
+            "orderbook_units": [
+                {
+                    "ask_price": 100100000.0,
+                    "bid_price": 100000000.0,
+                    "ask_size": 1.0,
+                    "bid_size": 1.0,
+                }
+            ],
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # 1. Export ladder
+            ladder_csv = Path(tmpdir) / "ladder.csv"
+            export_upbit_orderbook_csv(mock_ob, ladder_csv)
+            self.assertTrue(ladder_csv.exists())
+            df_ladder = pd.read_csv(ladder_csv)
+            self.assertIn("ask_price", df_ladder.columns)
+            self.assertIn("bid_price", df_ladder.columns)
+
+            # 2. Export impact record
+            impact_res = compute_upbit_market_impact(mock_ob, order_size_krw=50000000.0, side="buy")
+            impact_csv = Path(tmpdir) / "impact.csv"
+            export_upbit_orderbook_csv(impact_res, impact_csv)
+            self.assertTrue(impact_csv.exists())
+            df_impact = pd.read_csv(impact_csv)
+            self.assertEqual(df_impact["market"].iloc[0], "KRW-BTC")
+            self.assertEqual(df_impact["side"].iloc[0], "buy")
+
+    def test_upbit_orderbook_cli(self):
+        import io
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+
+        mock_ob = {
+            "market": "KRW-BTC",
+            "orderbook_units": [
+                {
+                    "ask_price": 100100000.0,
+                    "bid_price": 100000000.0,
+                    "ask_size": 2.0,
+                    "bid_size": 2.0,
+                }
+            ],
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_csv = str(Path(tmpdir) / "upbit_ob.csv")
+            test_args = [
+                "fetch_upbit_crypto.py",
+                "--orderbook", "BTC",
+                "--order-size", "50000000",
+                "--side", "buy",
+                "--depth-levels", "5",
+                "--export-orderbook-csv", out_csv,
+            ]
+            with patch("scripts.fetch_upbit_crypto.fetch_upbit_orderbook", return_value=mock_ob):
+                with patch("sys.argv", test_args):
+                    captured = io.StringIO()
+                    with patch("sys.stdout", captured):
+                        main()
+                    output = captured.getvalue()
+                    self.assertIn("Upbit Order Book & Liquidity Metrics", output)
+                    self.assertIn("Order Book Depth Ladder", output)
+                    self.assertIn("Institutional Market Impact Simulation", output)
+                    self.assertIn("Saved Upbit order book metrics", output)
+                    self.assertTrue(Path(out_csv).exists())
 
 
 if __name__ == "__main__":

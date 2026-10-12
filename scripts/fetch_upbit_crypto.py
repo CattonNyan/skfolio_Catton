@@ -364,6 +364,137 @@ def compute_upbit_spread(orderbook_data: dict[str, object]) -> dict[str, float]:
     }
 
 
+def compute_upbit_market_impact(
+    orderbook_data: dict[str, object],
+    order_size_krw: float,
+    side: str = "buy",
+) -> dict[str, object]:
+    """Calculate institutional VWAP, market impact, and execution slippage in bps for an order in Upbit.
+
+    Parameters
+    ----------
+    orderbook_data : dict[str, object]
+        Upbit order book dictionary containing 'orderbook_units'.
+    order_size_krw : float
+        Target order execution size in KRW (> 0).
+    side : str
+        Execution side: 'buy' (consumes ask ladder) or 'sell' (consumes bid ladder).
+
+    Returns
+    -------
+    dict[str, object]
+        Execution simulation metrics including VWAP price, mid price, spread bps,
+        slippage bps, price impact bps, fill percentage, and fully filled flag.
+    """
+    if isinstance(order_size_krw, bool) or not isinstance(order_size_krw, (int, float)) or not math.isfinite(order_size_krw) or order_size_krw <= 0:
+        raise ValueError("order_size_krw must be a finite, strictly positive number.")
+    side_clean = str(side).strip().lower()
+    if side_clean not in ("buy", "sell"):
+        raise ValueError("side must be either 'buy' or 'sell'.")
+    if not isinstance(orderbook_data, dict):
+        raise ValueError("orderbook_data must be a dictionary.")
+
+    units = orderbook_data.get("orderbook_units", [])
+    if not isinstance(units, list) or not units:
+        raise ValueError("Order book units cannot be empty.")
+
+    best_bid = float(units[0]["bid_price"])
+    best_ask = float(units[0]["ask_price"])
+    mid_price = (best_bid + best_ask) / 2.0
+    spread_krw = max(0.0, best_ask - best_bid)
+    spread_bps = (spread_krw / mid_price * 10000.0) if mid_price > 0 else 0.0
+
+    remaining_krw = float(order_size_krw)
+    executed_krw = 0.0
+    executed_base_qty = 0.0
+
+    for u in units:
+        price = float(u["ask_price"]) if side_clean == "buy" else float(u["bid_price"])
+        qty = float(u["ask_size"]) if side_clean == "buy" else float(u["bid_size"])
+        if price <= 0.0 or qty <= 0.0:
+            continue
+        level_krw = price * qty
+
+        if level_krw <= remaining_krw:
+            fill_krw = level_krw
+            fill_qty = qty
+        else:
+            fill_krw = remaining_krw
+            fill_qty = remaining_krw / price
+
+        executed_krw += fill_krw
+        executed_base_qty += fill_qty
+        remaining_krw -= fill_krw
+
+        if remaining_krw <= 1e-9:
+            break
+
+    benchmark_quote = best_ask if side_clean == "buy" else best_bid
+    vwap_price = (executed_krw / executed_base_qty) if executed_base_qty > 0 else benchmark_quote
+
+    if side_clean == "buy":
+        slippage_bps = ((vwap_price - mid_price) / mid_price * 10000.0) if mid_price > 0 else 0.0
+        price_impact_bps = ((vwap_price - best_ask) / best_ask * 10000.0) if best_ask > 0 else 0.0
+    else:
+        slippage_bps = ((mid_price - vwap_price) / mid_price * 10000.0) if mid_price > 0 else 0.0
+        price_impact_bps = ((best_bid - vwap_price) / best_bid * 10000.0) if best_bid > 0 else 0.0
+
+    unfilled_krw = max(0.0, remaining_krw)
+    fully_filled = unfilled_krw <= 1e-6
+    fill_pct = (executed_krw / order_size_krw * 100.0) if order_size_krw > 0 else 0.0
+
+    return {
+        "market": str(orderbook_data.get("market", "")),
+        "side": side_clean,
+        "order_size_krw": round(float(order_size_krw), 2),
+        "executed_krw": round(executed_krw, 2),
+        "executed_base_qty": round(executed_base_qty, 6),
+        "vwap_price": round(vwap_price, 2),
+        "mid_price": round(mid_price, 2),
+        "best_bid": round(best_bid, 2),
+        "best_ask": round(best_ask, 2),
+        "spread_krw": round(spread_krw, 2),
+        "spread_bps": round(spread_bps, 2),
+        "slippage_bps": round(slippage_bps, 2),
+        "price_impact_bps": round(price_impact_bps, 2),
+        "fully_filled": fully_filled,
+        "unfilled_krw": round(unfilled_krw, 2),
+        "fill_pct": round(fill_pct, 2),
+    }
+
+
+def export_upbit_orderbook_csv(
+    data: dict[str, object] | list[dict[str, object]],
+    output_path: Path | str,
+) -> Path:
+    """Export Upbit order book depth units or market impact records to a CSV file."""
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if isinstance(data, list):
+        df = pd.DataFrame(data)
+    elif isinstance(data, dict):
+        if "orderbook_units" in data:
+            units = data.get("orderbook_units", [])
+            rows = []
+            for i, u in enumerate(units, 1):
+                rows.append({
+                    "level": i,
+                    "ask_price": u.get("ask_price"),
+                    "ask_size": u.get("ask_size"),
+                    "ask_depth_krw": float(u.get("ask_price", 0)) * float(u.get("ask_size", 0)),
+                    "bid_price": u.get("bid_price"),
+                    "bid_size": u.get("bid_size"),
+                    "bid_depth_krw": float(u.get("bid_price", 0)) * float(u.get("bid_size", 0)),
+                })
+            df = pd.DataFrame(rows)
+        else:
+            df = pd.DataFrame([data])
+    else:
+        raise ValueError("data must be a dict or a list of dicts.")
+    df.to_csv(path, index=False, encoding="utf-8")
+    return path
+
+
 def export_upbit_prices_csv(
     df: pd.DataFrame,
     output_path: Path | str,
@@ -376,7 +507,7 @@ def export_upbit_prices_csv(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Fetch Upbit KRW Market Prices for skfolio")
+    parser = argparse.ArgumentParser(description="Fetch Upbit KRW Market Prices and Order Book for skfolio")
     parser.add_argument(
         "--markets",
         nargs="+",
@@ -391,6 +522,10 @@ def main():
         help="Candle timeframe",
     )
     parser.add_argument("--orderbook", type=str, default=None, help="Fetch live orderbook and liquidity metrics for market (e.g. KRW-BTC)")
+    parser.add_argument("--order-size", type=float, default=None, help="Simulate institutional order execution size in KRW (e.g. 50000000)")
+    parser.add_argument("--side", choices=["buy", "sell"], default="buy", help="Simulate execution side ('buy' or 'sell')")
+    parser.add_argument("--depth-levels", type=int, default=10, help="Number of order book depth levels to display (default: 10)")
+    parser.add_argument("--export-orderbook-csv", type=str, default=None, help="Path to export order book ladder or execution impact CSV")
     parser.add_argument("--export-csv", type=str, default="", help="Path to export prices CSV")
     parser.add_argument("--output-csv", type=str, default="", help="Alias for --export-csv")
     args = parser.parse_args()
@@ -410,6 +545,49 @@ def main():
         print(f"  Total Bid Volume   : {metrics['total_bid_size']:,.4f}")
         print(f"  Total Ask Volume   : {metrics['total_ask_size']:,.4f}")
         print("======================================================================")
+
+        units = ob.get("orderbook_units", [])
+        if units and args.depth_levels > 0:
+            show_count = min(args.depth_levels, len(units))
+            print(f"\n[+] Order Book Depth Ladder (Top {show_count} Levels):")
+            print(f"{'Level':<6} {'Ask Price (KRW)':>18} {'Ask Size':>12} {'Ask Depth (KRW)':>20} | {'Bid Price (KRW)':>18} {'Bid Size':>12} {'Bid Depth (KRW)':>20}")
+            print("-" * 115)
+            for i in range(show_count):
+                u = units[i]
+                ask_p = float(u.get("ask_price", 0))
+                ask_s = float(u.get("ask_size", 0))
+                ask_d = ask_p * ask_s
+                bid_p = float(u.get("bid_price", 0))
+                bid_s = float(u.get("bid_size", 0))
+                bid_d = bid_p * bid_s
+                print(f"{i + 1:<6} {ask_p:>18,.0f} {ask_s:>12.4f} {ask_d:>20,.0f} | {bid_p:>18,.0f} {bid_s:>12.4f} {bid_d:>20,.0f}")
+            print("-" * 115)
+
+        impact_res = None
+        if args.order_size is not None and args.order_size > 0:
+            impact_res = compute_upbit_market_impact(ob, order_size_krw=args.order_size, side=args.side)
+            filled_flag = "YES" if impact_res["fully_filled"] else "NO"
+            print(f"\n================ Institutional Market Impact Simulation ================")
+            print(f"  Market             : {impact_res['market']}")
+            print(f"  Order Side         : {impact_res['side'].upper()}")
+            print(f"  Order Size (KRW)   : ₩{impact_res['order_size_krw']:,.0f}")
+            print(f"  Executed (KRW)     : ₩{impact_res['executed_krw']:,.0f} ({impact_res['fill_pct']:.1f}%)")
+            print(f"  Executed Base Qty  : {impact_res['executed_base_qty']:,.6f}")
+            print(f"  Benchmark Mid      : ₩{impact_res['mid_price']:,.0f}")
+            print(f"  Execution VWAP     : ₩{impact_res['vwap_price']:,.0f}")
+            print(f"  Spread             : ₩{impact_res['spread_krw']:,.0f} ({impact_res['spread_bps']:.2f} bps)")
+            print(f"  Execution Slippage : {impact_res['slippage_bps']:+.2f} bps")
+            print(f"  Market Price Impact: {impact_res['price_impact_bps']:+.2f} bps")
+            print(f"  Fully Filled       : {filled_flag}")
+            if not impact_res["fully_filled"]:
+                print(f"  Unfilled (KRW)     : ₩{impact_res['unfilled_krw']:,.0f}")
+            print("========================================================================")
+
+        export_target = args.export_orderbook_csv or args.export_csv or args.output_csv
+        if export_target:
+            payload = impact_res if impact_res is not None else ob
+            saved_path = export_upbit_orderbook_csv(payload, export_target)
+            print(f"[+] Saved Upbit order book metrics to {saved_path}")
         return
 
     print(f"[*] Fetching {args.count} {args.timeframe} candles from Upbit for: {', '.join(args.markets)}")
