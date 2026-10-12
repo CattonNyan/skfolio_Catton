@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v1.7.9 (2026-10-12)
+
+### Features & Improvements
+
+- **triangular-arbitrage**: Add capital stake sizing, dollar profit tracking, and hurdle rate filtering (`scripts/crypto_triangular_arbitrage.py`)
+  - Added `capital` parameter and `profit_dollars` calculation to `ArbitrageOpportunity` dataclass and `calculate_triangular_arbitrage`
+  - Added `filter_profitable_opportunities` helper filtering identified 3-legged arbitrage cycles by net profit percentage threshold (`min_net_pct`)
+  - Extended `scan_triangular_pairs` with `capital` sizing and `min_profit_pct` hurdle rate filtering
+  - Updated `export_triangular_arbitrage_csv` to dynamically include `capital` and `profit_dollars` columns when capital allocation is specified
+  - Added CLI options `--capital`, `--min-profit-pct`, and `--profitable-only` with formatted dollar profit terminal outputs
+
+### Testing & Verification
+
+- Added unit tests for triangular arbitrage capital sizing, dollar profit computation, hurdle rate filtering, parameter validations, and CSV export with capital columns (`tests/test_triangular_arbitrage.py`)
+- Maintained 100% test pass rate across all 679 test cases in the test suite
+
 ## v1.7.8 (2026-10-08)
 
 ### Features & Improvements

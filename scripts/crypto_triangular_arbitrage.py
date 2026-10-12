@@ -36,10 +36,12 @@ class ArbitrageOpportunity:
     net_return_pct: float
     is_profitable: bool
     legs: list[str]
+    capital: float | None = None
+    profit_dollars: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
         """Convert arbitrage opportunity to serializable dictionary."""
-        return {
+        d: dict[str, Any] = {
             "cycle": self.cycle,
             "gross_return_pct": self.gross_return_pct,
             "fee_drag_pct": self.fee_drag_pct,
@@ -47,6 +49,10 @@ class ArbitrageOpportunity:
             "is_profitable": self.is_profitable,
             "legs": list(self.legs),
         }
+        if self.capital is not None:
+            d["capital"] = round(float(self.capital), 2)
+            d["profit_dollars"] = round(float(self.profit_dollars), 2)
+        return d
 
 
 def calculate_triangular_arbitrage(
@@ -58,6 +64,7 @@ def calculate_triangular_arbitrage(
     base_quote: str = "USDT",
     asset_a: str = "BTC",
     asset_b: str = "ETH",
+    capital: float | None = None,
 ) -> list[ArbitrageOpportunity]:
     """Calculate forward and reverse triangular arbitrage between Quote, A, and B.
 
@@ -77,6 +84,8 @@ def calculate_triangular_arbitrage(
         raise ValueError("Prices must be strictly positive.")
     if fee_rate < 0 or slippage < 0:
         raise ValueError("Fees and slippage must be non-negative.")
+    if capital is not None and capital <= 0:
+        raise ValueError("Capital must be strictly positive.")
 
     total_cost_factor = ((1.0 - fee_rate) ** 3) * ((1.0 - slippage) ** 3)
     fee_drag = (1.0 - total_cost_factor) * 100.0
@@ -86,6 +95,7 @@ def calculate_triangular_arbitrage(
     fwd_gross_pct = (fwd_gross_mult - 1.0) * 100.0
     fwd_net_mult = fwd_gross_mult * total_cost_factor
     fwd_net_pct = (fwd_net_mult - 1.0) * 100.0
+    fwd_profit = round(float(capital) * (fwd_net_pct / 100.0), 2) if capital is not None else 0.0
 
     fwd_opp = ArbitrageOpportunity(
         cycle=f"{base_quote} -> {asset_a} -> {asset_b} -> {base_quote}",
@@ -98,6 +108,8 @@ def calculate_triangular_arbitrage(
             f"Convert {asset_a} to {asset_b} @ {p_b_a}",
             f"Sell {asset_b} for {base_quote} @ {p_b_quote}",
         ],
+        capital=capital,
+        profit_dollars=fwd_profit,
     )
 
     # 2. Reverse Cycle
@@ -105,6 +117,7 @@ def calculate_triangular_arbitrage(
     rev_gross_pct = (rev_gross_mult - 1.0) * 100.0
     rev_net_mult = rev_gross_mult * total_cost_factor
     rev_net_pct = (rev_net_mult - 1.0) * 100.0
+    rev_profit = round(float(capital) * (rev_net_pct / 100.0), 2) if capital is not None else 0.0
 
     rev_opp = ArbitrageOpportunity(
         cycle=f"{base_quote} -> {asset_b} -> {asset_a} -> {base_quote}",
@@ -117,15 +130,27 @@ def calculate_triangular_arbitrage(
             f"Convert {asset_b} to {asset_a} @ {p_b_a}",
             f"Sell {asset_a} for {base_quote} @ {p_a_quote}",
         ],
+        capital=capital,
+        profit_dollars=rev_profit,
     )
 
     return [fwd_opp, rev_opp]
+
+
+def filter_profitable_opportunities(
+    opportunities: list[ArbitrageOpportunity],
+    min_net_pct: float = 0.0,
+) -> list[ArbitrageOpportunity]:
+    """Filter arbitrage opportunities satisfying minimum net profitability hurdle."""
+    return [o for o in opportunities if o.net_return_pct >= min_net_pct]
 
 
 def scan_triangular_pairs(
     prices_dict: dict[str, float],
     fee_rate: float = 0.001,
     slippage: float = 0.0005,
+    capital: float | None = None,
+    min_profit_pct: float | None = None,
 ) -> list[ArbitrageOpportunity]:
     """Scan a dictionary of current prices for triangular arbitrage opportunities.
 
@@ -167,8 +192,12 @@ def scan_triangular_pairs(
                     base_quote=settlement,
                     asset_a=quote,
                     asset_b=base,
+                    capital=capital,
                 )
                 opportunities.extend(opps)
+
+    if min_profit_pct is not None:
+        opportunities = filter_profitable_opportunities(opportunities, min_net_pct=min_profit_pct)
 
     return opportunities
 
@@ -179,17 +208,25 @@ def export_triangular_arbitrage_csv(
 ) -> str:
     """Export identified triangular arbitrage opportunities to CSV string or file."""
     rows = []
+    has_capital = any(
+        (o.capital is not None if isinstance(o, ArbitrageOpportunity) else "capital" in o)
+        for o in opportunities
+    )
     for o in opportunities:
         d = o.to_dict() if isinstance(o, ArbitrageOpportunity) else dict(o)
         legs = d.get("legs", [])
-        rows.append({
+        row = {
             "cycle": d.get("cycle", ""),
             "gross_return_pct": d.get("gross_return_pct", 0.0),
             "fee_drag_pct": d.get("fee_drag_pct", 0.0),
             "net_return_pct": d.get("net_return_pct", 0.0),
             "is_profitable": d.get("is_profitable", False),
             "legs": " -> ".join(legs) if isinstance(legs, list) else str(legs),
-        })
+        }
+        if has_capital:
+            row["capital"] = d.get("capital", "")
+            row["profit_dollars"] = d.get("profit_dollars", "")
+        rows.append(row)
     df = pd.DataFrame(rows)
     csv_str = df.to_csv(index=False)
     if filepath:
@@ -205,6 +242,9 @@ def main():
     parser.add_argument("--p-eth-usdt", type=float, default=3500.0, help="ETH/USDT price")
     parser.add_argument("--p-eth-btc", type=float, default=0.0545, help="ETH/BTC price")
     parser.add_argument("--fee", type=float, default=0.00075, help="Fee per leg (default 0.075%%)")
+    parser.add_argument("--capital", type=float, default=None, help="Capital allocated in quote currency (USD/USDT)")
+    parser.add_argument("--min-profit-pct", type=float, default=None, help="Minimum net profit percentage hurdle rate")
+    parser.add_argument("--profitable-only", action="store_true", help="Display only profitable arbitrage opportunities")
     parser.add_argument("--export-json", type=str, default=None, help="Export identified opportunities to JSON file")
     parser.add_argument("--export-csv", type=str, default=None, help="Export identified opportunities to CSV file")
     args = parser.parse_args()
@@ -217,13 +257,22 @@ def main():
         base_quote="USDT",
         asset_a="BTC",
         asset_b="ETH",
+        capital=args.capital,
     )
 
+    if args.min_profit_pct is not None:
+        opps = filter_profitable_opportunities(opps, min_net_pct=args.min_profit_pct)
+    elif args.profitable_only:
+        opps = filter_profitable_opportunities(opps, min_net_pct=0.0)
+
     print("================ Triangular Arbitrage Scanner ================")
+    if args.capital:
+        print(f"  Allocated Capital  : ${args.capital:,.2f}")
     for o in opps:
         status = "[PROFITABLE]" if o.is_profitable else "[NO PROFIT]"
+        dollar_str = f" | Profit: ${o.profit_dollars:+,.2f}" if o.capital is not None else ""
         print(f"{status} Cycle: {o.cycle}")
-        print(f"  Gross Return: {o.gross_return_pct:+.3f}% | Fee Drag: -{o.fee_drag_pct:.3f}% | Net: {o.net_return_pct:+.3f}%")
+        print(f"  Gross Return: {o.gross_return_pct:+.3f}% | Fee Drag: -{o.fee_drag_pct:.3f}% | Net: {o.net_return_pct:+.3f}%{dollar_str}")
         for idx, leg in enumerate(o.legs, 1):
             print(f"    Leg {idx}: {leg}")
 
