@@ -212,6 +212,108 @@ def compute_bithumb_spread(orderbook_data: dict) -> dict[str, float]:
     }
 
 
+def compute_bithumb_market_impact(
+    orderbook_data: dict[str, Any],
+    order_size_krw: float,
+    side: str = "buy",
+) -> dict[str, Any]:
+    """Calculate institutional VWAP, market impact, and execution slippage in bps for an order in Bithumb.
+
+    Parameters
+    ----------
+    orderbook_data : dict[str, Any]
+        Bithumb order book dictionary containing 'bids' and 'asks'.
+    order_size_krw : float
+        Target order execution size in KRW (> 0).
+    side : str
+        Execution side: 'buy' (consumes ask ladder) or 'sell' (consumes bid ladder).
+
+    Returns
+    -------
+    dict[str, Any]
+        Execution simulation metrics including VWAP price, mid price, spread bps,
+        slippage bps, price impact bps, fill percentage, and fully filled flag.
+    """
+    if isinstance(order_size_krw, bool) or not isinstance(order_size_krw, (int, float)) or not np.isfinite(order_size_krw) or order_size_krw <= 0:
+        raise ValueError("order_size_krw must be a finite, strictly positive number.")
+    side_clean = str(side).strip().lower()
+    if side_clean not in ("buy", "sell"):
+        raise ValueError("side must be either 'buy' or 'sell'.")
+    if not isinstance(orderbook_data, dict):
+        raise ValueError("orderbook_data must be a dictionary.")
+
+    bids = orderbook_data.get("bids", [])
+    asks = orderbook_data.get("asks", [])
+    if not isinstance(bids, list) or not isinstance(asks, list) or not bids or not asks:
+        raise ValueError("Order book bids and asks cannot be empty.")
+
+    best_bid = float(bids[0]["price"])
+    best_ask = float(asks[0]["price"])
+    mid_price = (best_bid + best_ask) / 2.0
+    spread_krw = max(0.0, best_ask - best_bid)
+    spread_bps = (spread_krw / mid_price * 10000.0) if mid_price > 0 else 0.0
+
+    remaining_krw = float(order_size_krw)
+    executed_krw = 0.0
+    executed_base_qty = 0.0
+
+    ladder = asks if side_clean == "buy" else bids
+    for level in ladder:
+        price = float(level["price"])
+        qty = float(level["quantity"])
+        if price <= 0.0 or qty <= 0.0:
+            continue
+        level_krw = price * qty
+
+        if level_krw <= remaining_krw:
+            fill_krw = level_krw
+            fill_qty = qty
+        else:
+            fill_krw = remaining_krw
+            fill_qty = remaining_krw / price
+
+        executed_krw += fill_krw
+        executed_base_qty += fill_qty
+        remaining_krw -= fill_krw
+
+        if remaining_krw <= 1e-9:
+            break
+
+    benchmark_quote = best_ask if side_clean == "buy" else best_bid
+    vwap_price = (executed_krw / executed_base_qty) if executed_base_qty > 0 else benchmark_quote
+
+    if side_clean == "buy":
+        slippage_bps = ((vwap_price - mid_price) / mid_price * 10000.0) if mid_price > 0 else 0.0
+        price_impact_bps = ((vwap_price - best_ask) / best_ask * 10000.0) if best_ask > 0 else 0.0
+    else:
+        slippage_bps = ((mid_price - vwap_price) / mid_price * 10000.0) if mid_price > 0 else 0.0
+        price_impact_bps = ((best_bid - vwap_price) / best_bid * 10000.0) if best_bid > 0 else 0.0
+
+    unfilled_krw = max(0.0, remaining_krw)
+    fully_filled = unfilled_krw <= 1e-6
+    fill_pct = (executed_krw / order_size_krw * 100.0) if order_size_krw > 0 else 0.0
+
+    symbol = f"{orderbook_data.get('order_currency', '')}/{orderbook_data.get('payment_currency', 'KRW')}"
+
+    return {
+        "symbol": symbol,
+        "side": side_clean,
+        "order_size_krw": round(float(order_size_krw), 2),
+        "executed_krw": round(executed_krw, 2),
+        "unfilled_krw": round(unfilled_krw, 2),
+        "fill_percentage": round(fill_pct, 2),
+        "fully_filled": fully_filled,
+        "mid_price": round(mid_price, 2),
+        "best_bid": round(best_bid, 2),
+        "best_ask": round(best_ask, 2),
+        "vwap_price": round(vwap_price, 2),
+        "spread_bps": round(spread_bps, 2),
+        "slippage_bps": round(slippage_bps, 2),
+        "price_impact_bps": round(price_impact_bps, 2),
+        "executed_base_qty": round(executed_base_qty, 6),
+    }
+
+
 def export_bithumb_prices_csv(
     df: pd.DataFrame,
     output_path: Path | str,
@@ -224,13 +326,35 @@ def export_bithumb_prices_csv(
 
 
 def export_bithumb_orderbook_csv(
-    spread_records: list[dict[str, Any]],
+    records: list[dict[str, Any]] | dict[str, Any],
     output_path: Path | str,
 ) -> Path:
-    """Export Bithumb orderbook spread and market depth summary to a CSV file."""
+    """Export Bithumb orderbook spread, market depth, ladder, or market impact to a CSV file."""
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    df = pd.DataFrame(spread_records)
+    if isinstance(records, dict):
+        if "bids" in records and "asks" in records:
+            bids = records.get("bids", [])
+            asks = records.get("asks", [])
+            rows = []
+            for i in range(max(len(bids), len(asks))):
+                bid = bids[i] if i < len(bids) else {}
+                ask = asks[i] if i < len(asks) else {}
+                rows.append({
+                    "level": i + 1,
+                    "bid_price": float(bid.get("price", 0.0)) if bid else np.nan,
+                    "bid_quantity": float(bid.get("quantity", 0.0)) if bid else np.nan,
+                    "ask_price": float(ask.get("price", 0.0)) if ask else np.nan,
+                    "ask_quantity": float(ask.get("quantity", 0.0)) if ask else np.nan,
+                })
+            df = pd.DataFrame(rows)
+        else:
+            df = pd.DataFrame([records])
+    elif isinstance(records, list):
+        df = pd.DataFrame(records)
+    else:
+        raise ValueError("records must be a list or dictionary.")
+
     df.to_csv(path, index=False, encoding="utf-8")
     return path
 
@@ -251,15 +375,37 @@ def main():
         default=30,
         help="Orderbook depth level count (1 to 50, default: 30).",
     )
+    parser.add_argument(
+        "--order-size",
+        type=float,
+        default=None,
+        help="Target order execution size in KRW for institutional VWAP and slippage simulation (e.g. 50000000).",
+    )
+    parser.add_argument(
+        "--side",
+        type=str,
+        default="buy",
+        choices=["buy", "sell"],
+        help="Execution side for order simulation ('buy' or 'sell', default: 'buy').",
+    )
+    parser.add_argument(
+        "--depth-levels",
+        type=int,
+        default=5,
+        help="Number of top depth ladder levels to display in terminal view (default: 5).",
+    )
     parser.add_argument("--export-csv", type=str, default="", help="Path to export fetched Bithumb prices or orderbook metrics to CSV.")
     args = parser.parse_args()
 
     if args.orderbook:
-        print(f"[*] Fetching Bithumb order book & market depth for {args.symbols} (depth={args.orderbook_count})...")
+        print(f"[*] Fetching Bithumb order book & market depth for {args.symbols} (count={args.orderbook_count})...")
         records = []
+        impact_records = []
+
         print("\n" + "=" * 115)
         print(f"{'Symbol':<12} {'Best Bid (KRW)':>16} {'Best Ask (KRW)':>16} {'Mid Price (KRW)':>16} {'Spread (bps)':>14} {'Bid Depth (KRW)':>18} {'Ask Depth (KRW)':>18}")
         print("-" * 115)
+
         for sym in args.symbols:
             try:
                 order_curr, pay_curr = normalize_bithumb_symbol(sym)
@@ -285,13 +431,52 @@ def main():
                     f"{rec['bid_depth_krw']:>18,.0f} "
                     f"{rec['ask_depth_krw']:>18,.0f}"
                 )
+
+                if args.order_size is not None and args.order_size > 0:
+                    impact = compute_bithumb_market_impact(ob, order_size_krw=args.order_size, side=args.side)
+                    impact_records.append(impact)
+
+                # Print top depth ladder
+                if args.depth_levels > 0:
+                    bids = ob.get("bids", [])[:args.depth_levels]
+                    asks = ob.get("asks", [])[:args.depth_levels]
+                    print(f"\n    [+] Top {len(bids)} Depth Ladder for {rec['symbol']}:")
+                    print(f"        {'Level':<6} {'Bid Price (KRW)':>16} {'Bid Qty':>12} | {'Ask Price (KRW)':>16} {'Ask Qty':>12}")
+                    print("        " + "-" * 70)
+                    for idx in range(max(len(bids), len(asks))):
+                        b_p = f"{float(bids[idx]['price']):,.0f}" if idx < len(bids) else "-"
+                        b_q = f"{float(bids[idx]['quantity']):,.4f}" if idx < len(bids) else "-"
+                        a_p = f"{float(asks[idx]['price']):,.0f}" if idx < len(asks) else "-"
+                        a_q = f"{float(asks[idx]['quantity']):,.4f}" if idx < len(asks) else "-"
+                        print(f"        #{idx+1:<5} {b_p:>16} {b_q:>12} | {a_p:>16} {a_q:>12}")
+                    print()
             except Exception as e:
                 print(f"[!] Warning: Failed to fetch orderbook for {sym}: {e}")
         print("=" * 115 + "\n")
 
-        if args.export_csv and records:
-            csv_path = export_bithumb_orderbook_csv(records, args.export_csv)
-            print(f"[+] Saved Bithumb orderbook metrics to {csv_path}")
+        if impact_records:
+            print("=" * 115)
+            print(f"[*] Bithumb Institutional Order Execution Simulation ({args.side.upper()} order size: KRW {args.order_size:,.0f})")
+            print("=" * 115)
+            print(f"{'Symbol':<12} {'Side':<6} {'VWAP Fill (KRW)':>18} {'Mid Price (KRW)':>16} {'Slippage (bps)':>16} {'Impact (bps)':>14} {'Fill (%)':>10}")
+            print("-" * 115)
+            for imp in impact_records:
+                print(
+                    f"{imp['symbol']:<12} "
+                    f"{imp['side'].upper():<6} "
+                    f"{imp['vwap_price']:>18,.1f} "
+                    f"{imp['mid_price']:>16,.1f} "
+                    f"{imp['slippage_bps']:>15.2f}bp "
+                    f"{imp['price_impact_bps']:>13.2f}bp "
+                    f"{imp['fill_percentage']:>9.1f}%"
+                )
+            print("=" * 115 + "\n")
+
+        if args.export_csv:
+            export_target = impact_records if impact_records else records
+            if export_target:
+                csv_path = export_bithumb_orderbook_csv(export_target, args.export_csv)
+                print(f"[+] Saved Bithumb orderbook metrics to {csv_path}")
         return
 
     print(f"[*] Fetching Bithumb data for {args.symbols} ({args.interval})...")

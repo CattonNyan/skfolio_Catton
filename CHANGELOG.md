@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## v1.7.15 (2026-10-13)
+
+### Features & Improvements
+
+- **bithumb-fetcher**: Add real-time order book depth ladder, institutional VWAP execution slippage simulation, and CSV export (`scripts/fetch_bithumb_crypto.py`)
+  - Added `compute_bithumb_market_impact` calculating VWAP execution price, mid price, spread bps, execution slippage in bps, price impact in bps, and fill percentage for large order sizes in KRW across buy/sell sides
+  - Enhanced `export_bithumb_orderbook_csv` supporting depth ladder levels, spread summaries, and institutional market impact simulation records
+  - Wired `--order-size`, `--side` ("buy" / "sell"), and `--depth-levels` CLI parameters for institutional order simulation
+  - Added formatted tabular terminal report displaying the top order book ladder levels and institutional execution simulation results
+
+### Testing & Verification
+
+- Added unit tests for Bithumb market impact calculations, order book ladder/impact CSV export, and CLI parameter parsing (`tests/test_bithumb_fetcher.py`)
+- Verified 100% test pass rate across all test cases in the test suite
+
 ## v1.7.14 (2026-10-13)
 
 ### Features & Improvements

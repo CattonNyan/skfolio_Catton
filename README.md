@@ -466,6 +466,21 @@ python scripts/crypto_liquidity_filter.py --min-volume 50000 --max-amihud 2.0 --
 python scripts/crypto_kelly_sizer.py --win-rate 0.58 --payoff 1.75 --capital 20000 --export-json reports/kelly_sizing.json --export-csv reports/kelly_sizing.csv
 ```
 
+### 27. 빗썸(Bithumb) 원화 마켓 전용 캔들 수집기 & 호가창 슬리피지 분석기
+
+빗썸 공개 REST API를 통해 API 키 없이도 KRW 마켓의 OHLCV 캔들 데이터, 실시간 호가 스프레드, 상위 오더북 호가 사다리(Ladder) 및 대량 주문 체결 시의 기관 수준 VWAP 체결가와 슬리피지(bps)를 시뮬레이션하고 CSV로 내보냅니다:
+
+```powershell
+# 빗썸 KRW 마켓 일봉 30개 수집 및 CSV 내보내기
+python scripts/fetch_bithumb_crypto.py --symbols BTC ETH SOL XRP --count 30 --export-csv data/live/bithumb_prices.csv
+
+# 실시간 호가창 스프레드 및 상위 5단계 호가 사다리 조회
+python scripts/fetch_bithumb_crypto.py --symbols BTC ETH --orderbook --depth-levels 5
+
+# 5,000만원 대량 매수 주문에 대한 기관 VWAP 체결 슬리피지 시뮬레이션 및 CSV 내보내기
+python scripts/fetch_bithumb_crypto.py --symbols BTC ETH --orderbook --order-size 50000000 --side buy --export-csv reports/bithumb_impact.csv
+```
+
 ### 28. 3각 차익거래 기회 탐색 및 수수료 잠식 분석기
 
 3개 레그(Quote -> A -> B -> Quote) 환율 경로의 순환 불일치를 탐색하고 거래소 수수료(Fee Drag)와 슬리피지 버퍼를 감안한 무위험 차익 기회를 정형 JSON 및 CSV 데이터로 내보냅니다:

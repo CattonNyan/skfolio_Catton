@@ -10,6 +10,7 @@ from scripts.fetch_bithumb_crypto import (
     fetch_bithumb_multi_assets,
     fetch_bithumb_orderbook,
     compute_bithumb_spread,
+    compute_bithumb_market_impact,
     export_bithumb_prices_csv,
     export_bithumb_orderbook_csv,
     main,
@@ -190,6 +191,122 @@ class BithumbFetcherTests(unittest.TestCase):
                 output = captured.getvalue()
                 self.assertIn("Bithumb order book & market depth", output)
                 self.assertIn("BTC/KRW", output)
+                self.assertIn("Saved Bithumb orderbook metrics", output)
+                self.assertTrue(Path(out_csv).exists())
+
+    def test_compute_bithumb_market_impact(self):
+        mock_ob = {
+            "order_currency": "BTC",
+            "payment_currency": "KRW",
+            "bids": [
+                {"price": "100000000", "quantity": "0.5"},
+                {"price": "99900000", "quantity": "1.0"},
+            ],
+            "asks": [
+                {"price": "100100000", "quantity": "0.5"},
+                {"price": "100200000", "quantity": "1.0"},
+            ],
+        }
+
+        # 1. Buy side partial fill on level 1
+        buy_res = compute_bithumb_market_impact(mock_ob, order_size_krw=25000000.0, side="buy")
+        self.assertEqual(buy_res["symbol"], "BTC/KRW")
+        self.assertEqual(buy_res["side"], "buy")
+        self.assertEqual(buy_res["vwap_price"], 100100000.0)
+        self.assertEqual(buy_res["executed_krw"], 25000000.0)
+        self.assertTrue(buy_res["fully_filled"])
+        self.assertAlmostEqual(buy_res["fill_percentage"], 100.0)
+        self.assertGreater(buy_res["slippage_bps"], 0.0)
+
+        # 2. Buy side multi-level sweep
+        buy_deep = compute_bithumb_market_impact(mock_ob, order_size_krw=100000000.0, side="buy")
+        self.assertGreater(buy_deep["vwap_price"], 100100000.0)
+        self.assertTrue(buy_deep["fully_filled"])
+        self.assertGreater(buy_deep["price_impact_bps"], 0.0)
+
+        # 3. Sell side execution
+        sell_res = compute_bithumb_market_impact(mock_ob, order_size_krw=30000000.0, side="sell")
+        self.assertEqual(sell_res["side"], "sell")
+        self.assertEqual(sell_res["vwap_price"], 100000000.0)
+        self.assertTrue(sell_res["fully_filled"])
+        self.assertGreater(sell_res["slippage_bps"], 0.0)
+
+        # 4. Oversized order resulting in partial fill
+        oversized = compute_bithumb_market_impact(mock_ob, order_size_krw=500000000.0, side="buy")
+        self.assertFalse(oversized["fully_filled"])
+        self.assertLess(oversized["fill_percentage"], 100.0)
+        self.assertGreater(oversized["unfilled_krw"], 0.0)
+
+    def test_compute_bithumb_market_impact_invalid(self):
+        valid_ob = {
+            "bids": [{"price": "100", "quantity": "1"}],
+            "asks": [{"price": "101", "quantity": "1"}],
+        }
+        with self.assertRaises(ValueError):
+            compute_bithumb_market_impact(valid_ob, order_size_krw=-500)
+        with self.assertRaises(ValueError):
+            compute_bithumb_market_impact(valid_ob, order_size_krw=1000, side="invalid")
+        with self.assertRaises(ValueError):
+            compute_bithumb_market_impact("not_dict", order_size_krw=1000)
+        with self.assertRaises(ValueError):
+            compute_bithumb_market_impact({"bids": []}, order_size_krw=1000)
+
+    def test_export_bithumb_orderbook_csv_ladder_and_impact(self):
+        import tempfile
+        from pathlib import Path
+
+        mock_ob = {
+            "bids": [{"price": "100000000", "quantity": "0.5"}],
+            "asks": [{"price": "100100000", "quantity": "0.5"}],
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ladder_csv = Path(tmpdir) / "ladder.csv"
+            export_bithumb_orderbook_csv(mock_ob, ladder_csv)
+            self.assertTrue(ladder_csv.exists())
+            df_ladder = pd.read_csv(ladder_csv)
+            self.assertIn("bid_price", df_ladder.columns)
+            self.assertIn("ask_price", df_ladder.columns)
+
+            impact_data = compute_bithumb_market_impact(mock_ob, order_size_krw=10000000.0, side="buy")
+            impact_csv = Path(tmpdir) / "impact.csv"
+            export_bithumb_orderbook_csv(impact_data, impact_csv)
+            self.assertTrue(impact_csv.exists())
+            df_impact = pd.read_csv(impact_csv)
+            self.assertIn("vwap_price", df_impact.columns)
+            self.assertIn("slippage_bps", df_impact.columns)
+
+    @patch("sys.stdout")
+    @patch("scripts.fetch_bithumb_crypto.fetch_bithumb_orderbook")
+    def test_orderbook_cli_with_order_size_and_depth(self, mock_fetch_ob, mock_stdout):
+        import io
+        import tempfile
+        from pathlib import Path
+
+        mock_fetch_ob.return_value = {
+            "order_currency": "BTC",
+            "payment_currency": "KRW",
+            "bids": [{"price": "90000000", "quantity": "1.0"}],
+            "asks": [{"price": "90050000", "quantity": "1.0"}],
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_csv = str(Path(tmpdir) / "bithumb_impact.csv")
+            test_args = [
+                "fetch_bithumb_crypto.py",
+                "--symbols", "BTC",
+                "--orderbook",
+                "--order-size", "50000000",
+                "--side", "buy",
+                "--depth-levels", "3",
+                "--export-csv", out_csv,
+            ]
+            with patch("sys.argv", test_args):
+                captured = io.StringIO()
+                with patch("sys.stdout", captured):
+                    main()
+                output = captured.getvalue()
+                self.assertIn("Institutional Order Execution Simulation", output)
+                self.assertIn("Depth Ladder for BTC/KRW", output)
                 self.assertIn("Saved Bithumb orderbook metrics", output)
                 self.assertTrue(Path(out_csv).exists())
 
