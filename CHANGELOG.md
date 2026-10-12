@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## v1.7.12 (2026-10-12)
+
+### Features & Improvements
+
+- **coinbase-fetcher**: Add real-time order book market impact slippage analysis CLI and CSV export (`scripts/fetch_coinbase_crypto.py`)
+  - Added `export_coinbase_orderbook_csv` exporting order book VWAP execution prices, slippage (bps), and market impact metrics across crypto pairs
+  - Wired `--orderbook` CLI flag to inspect real-time order books across depth levels (1, 2, or 3)
+  - Added `--order-size`, `--side` ("buy" / "sell"), and `--book-level` CLI parameters for institutional order simulation
+  - Added formatted tabular terminal report displaying mid prices, VWAP fills, spreads, and market impact bps
+
+### Testing & Verification
+
+- Added unit tests for order book CSV export, CLI execution with mocked orderbook data, and parameter validations (`tests/test_coinbase_fetcher.py`)
+- Maintained 100% test pass rate across all 695 test cases in the test suite
+
 ## v1.7.11 (2026-10-12)
 
 ### Features & Improvements

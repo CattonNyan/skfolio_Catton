@@ -15,6 +15,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
@@ -273,13 +274,94 @@ def export_coinbase_prices_csv(
     return path
 
 
+def export_coinbase_orderbook_csv(
+    slippage_results: list[dict[str, Any]],
+    output_path: Path | str,
+) -> Path:
+    """Export Coinbase orderbook slippage and market impact metrics to a CSV file."""
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    df = pd.DataFrame(slippage_results)
+    df.to_csv(path, index=False, encoding="utf-8")
+    return path
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Coinbase Institutional Crypto Price Fetcher.")
+    parser = argparse.ArgumentParser(description="Coinbase Institutional Crypto Price and Order Book Fetcher.")
     parser.add_argument("--symbols", nargs="+", default=["BTC", "ETH", "SOL"], help="Symbols to fetch.")
     parser.add_argument("--timeframe", default="1d", choices=list(GRANULARITY_MAP.keys()), help="Timeframe.")
     parser.add_argument("--limit", type=int, default=30, help="Number of candles.")
-    parser.add_argument("--export-csv", type=str, default="", help="Path to export fetched Coinbase prices to CSV.")
+    parser.add_argument(
+        "--orderbook",
+        action="store_true",
+        help="Fetch real-time Coinbase order book and compute institutional market impact slippage.",
+    )
+    parser.add_argument(
+        "--order-size",
+        type=float,
+        default=50000.0,
+        help="Notional order size in USD to calculate market impact slippage (default: $50,000).",
+    )
+    parser.add_argument(
+        "--side",
+        choices=["buy", "sell"],
+        default="buy",
+        help="Order side to execute against the book (default: 'buy').",
+    )
+    parser.add_argument(
+        "--book-level",
+        type=int,
+        choices=[1, 2, 3],
+        default=2,
+        help="Coinbase order book depth level (1: best, 2: top 50, 3: full, default: 2).",
+    )
+    parser.add_argument("--export-csv", type=str, default="", help="Path to export fetched Coinbase prices or orderbook metrics to CSV.")
     args = parser.parse_args()
+
+    if args.orderbook:
+        print(f"[*] Fetching Coinbase order book for {args.symbols} (side={args.side}, size=${args.order_size:,.0f}, level={args.book_level})...\n")
+        records = []
+        print("=" * 122)
+        print(f"{'Symbol':<12} {'Side':<6} {'Order Size ($)':>16} {'Mid Price':>14} {'VWAP Price':>14} {'Spread (bps)':>14} {'Slippage (bps)':>16} {'Impact (bps)':>14} {'Filled':>8}")
+        print("-" * 122)
+        for sym in args.symbols:
+            try:
+                product = normalize_coinbase_symbol(sym)
+                ob = fetch_coinbase_orderbook(sym, level=args.book_level)
+                impact = calculate_market_impact_slippage(args.order_size, ob["bids"], ob["asks"], side=args.side)
+                rec = {
+                    "symbol": product,
+                    "side": args.side,
+                    "order_size_usd": args.order_size,
+                    "mid_price": round(impact["mid_price"], 2),
+                    "vwap_price": round(impact["vwap_price"], 2),
+                    "spread_usd": round(impact["spread_usd"], 2),
+                    "spread_bps": round(impact["spread_bps"], 2),
+                    "slippage_bps": round(impact["slippage_bps"], 2),
+                    "price_impact_bps": round(impact["price_impact_bps"], 2),
+                    "fully_filled": impact["fully_filled"],
+                    "unfilled_usd": round(impact["unfilled_usd"], 2),
+                }
+                records.append(rec)
+                filled_str = "YES" if rec["fully_filled"] else "NO"
+                print(
+                    f"{rec['symbol']:<12} {rec['side']:<6} "
+                    f"${rec['order_size_usd']:>15,.0f} "
+                    f"${rec['mid_price']:>13,.2f} "
+                    f"${rec['vwap_price']:>13,.2f} "
+                    f"{rec['spread_bps']:>13.2f}bp "
+                    f"{rec['slippage_bps']:>15.2f}bp "
+                    f"{rec['price_impact_bps']:>13.2f}bp "
+                    f"{filled_str:>8}"
+                )
+            except Exception as e:
+                print(f"[!] Warning: Failed to process orderbook for {sym}: {e}")
+        print("=" * 122 + "\n")
+
+        if args.export_csv and records:
+            csv_path = export_coinbase_orderbook_csv(records, args.export_csv)
+            print(f"[+] Saved Coinbase orderbook impact metrics to {csv_path}")
+        return
 
     print(f"[*] Fetching Coinbase data for {args.symbols} ({args.timeframe})...")
     df = fetch_coinbase_multi_assets(args.symbols, timeframe=args.timeframe, limit=args.limit)

@@ -529,6 +529,18 @@ python scripts/fetch_bithumb_crypto.py --symbols BTC ETH SOL XRP --orderbook --o
 python scripts/fetch_bithumb_crypto.py --symbols BTC ETH --interval 24h --count 100 --export-csv reports/bithumb_prices.csv
 ```
 
+### 37. 코인베이스(Coinbase) 기관급 호가창 및 시장 충격 슬리피지(Market Impact Slippage) 분석기
+
+글로벌 USD 기준 거래소인 코인베이스(Coinbase Exchange) 공개 REST API를 통해 실시간 오더북 호가 깊이를 탐색하고, 대규모 주문 금액($50,000~$1,000,000)에 따른 VWAP 체결가, 호가 스프레드, 슬리피지(Slippage in bps) 및 시장 충격 비용(Price Impact)을 산출하여 CSV로 내보냅니다:
+
+```powershell
+# 실시간 오더북 시장 충격 및 슬리피지 계산 ($50,000 매수 주문 기준)
+python scripts/fetch_coinbase_crypto.py --symbols BTC ETH SOL --orderbook --order-size 50000 --side buy --book-level 2 --export-csv reports/coinbase_slippage.csv
+
+# 캔들 데이터 수집 및 CSV 내보내기
+python scripts/fetch_coinbase_crypto.py --symbols BTC ETH SOL --timeframe 1d --limit 100 --export-csv reports/coinbase_prices.csv
+```
+
 ---
 
 ## 📁 프로젝트 구조
@@ -556,6 +568,7 @@ skfolio_Catton/
 │   ├── crypto_travel_rule_advisor.py  # 한국 특금법 트래블룰 준수 안전 분할 전송기
 │   ├── fetch_upbit_crypto.py          # 업비트 원화(KRW) 마켓 전용 캔들 수집기
 │   ├── fetch_bithumb_crypto.py        # 빗썸 원화(KRW) 마켓 캔들 및 호가창/스프레드 분석기
+│   ├── fetch_coinbase_crypto.py       # 코인베이스 USD 마켓 캔들 및 시장충격 슬리피지 분석기
 │   ├── freqtrade_strategy_optimizer.py # 멀티 전략 간 자금 배분 최적화기
 │   ├── crypto_monte_carlo.py          # 몬테카를로 미래 자산 경로 및 VaR 시뮬레이터
 │   ├── crypto_macro_regime.py         # 공포·탐욕 지수 기반 동적 현금 비중 조절기

@@ -6,11 +6,13 @@ import pandas as pd
 from scripts.fetch_coinbase_crypto import (
     calculate_market_impact_slippage,
     export_coinbase_prices_csv,
+    export_coinbase_orderbook_csv,
     fetch_coinbase_candles,
     fetch_coinbase_multi_assets,
     fetch_coinbase_orderbook,
     fetch_coinbase_spot_price,
     normalize_coinbase_symbol,
+    main,
     GRANULARITY_MAP,
 )
 
@@ -156,6 +158,68 @@ class CoinbaseFetcherTests(unittest.TestCase):
             loaded = pd.read_csv(out_csv, index_col=0)
             self.assertEqual(list(loaded.columns), ["BTC-USD", "ETH-USD"])
             self.assertEqual(len(loaded), 2)
+
+    def test_export_coinbase_orderbook_csv(self):
+        import tempfile
+        from pathlib import Path
+
+        records = [
+            {
+                "symbol": "BTC-USD",
+                "side": "buy",
+                "order_size_usd": 50000.0,
+                "mid_price": 60050.0,
+                "vwap_price": 60100.0,
+                "spread_usd": 100.0,
+                "spread_bps": 16.65,
+                "slippage_bps": 8.33,
+                "price_impact_bps": 0.0,
+                "fully_filled": True,
+                "unfilled_usd": 0.0,
+            }
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_csv = Path(tmpdir) / "orderbook.csv"
+            export_coinbase_orderbook_csv(records, out_csv)
+            self.assertTrue(out_csv.exists())
+            loaded = pd.read_csv(out_csv)
+            self.assertEqual(len(loaded), 1)
+            self.assertEqual(loaded["symbol"].iloc[0], "BTC-USD")
+            self.assertEqual(loaded["side"].iloc[0], "buy")
+            self.assertEqual(loaded["slippage_bps"].iloc[0], 8.33)
+
+    @patch("sys.stdout")
+    @patch("scripts.fetch_coinbase_crypto.fetch_coinbase_orderbook")
+    def test_coinbase_orderbook_cli(self, mock_fetch_ob, mock_stdout):
+        import io
+        import tempfile
+        from pathlib import Path
+
+        mock_fetch_ob.return_value = {
+            "bids": [["60000.0", "2.0"]],
+            "asks": [["60100.0", "2.0"]],
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_csv = str(Path(tmpdir) / "cb_ob.csv")
+            test_args = [
+                "fetch_coinbase_crypto.py",
+                "--symbols", "BTC",
+                "--orderbook",
+                "--order-size", "25000",
+                "--side", "buy",
+                "--book-level", "2",
+                "--export-csv", out_csv,
+            ]
+            with patch("sys.argv", test_args):
+                captured = io.StringIO()
+                with patch("sys.stdout", captured):
+                    main()
+                output = captured.getvalue()
+                self.assertIn("Coinbase order book", output)
+                self.assertIn("BTC-USD", output)
+                self.assertIn("Saved Coinbase orderbook impact metrics", output)
+                self.assertTrue(Path(out_csv).exists())
 
 
 if __name__ == "__main__":
