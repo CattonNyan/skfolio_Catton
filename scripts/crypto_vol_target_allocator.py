@@ -256,15 +256,115 @@ def export_vol_target_csv(
     df.to_csv(out_path, index=False, encoding="utf-8")
 
 
+def export_vol_target_backtest_nav_csv(
+    backtest_res: dict[str, object],
+    filepath: str | Path,
+) -> Path:
+    """Export walk-forward simulation NAV time-series (Static vs Vol-Targeted) to a CSV file."""
+    out_path = Path(filepath)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    s_static = backtest_res.get("nav_static")
+    s_targeted = backtest_res.get("nav_targeted")
+    if isinstance(s_static, pd.Series) and isinstance(s_targeted, pd.Series):
+        df = pd.DataFrame({
+            "nav_static": s_static,
+            "nav_targeted": s_targeted,
+        })
+        df.index.name = "date"
+        df.to_csv(out_path, index=True, encoding="utf-8")
+    else:
+        df = pd.DataFrame(columns=["date", "nav_static", "nav_targeted"])
+        df.to_csv(out_path, index=False, encoding="utf-8")
+    return out_path
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Volatility Targeting Allocator.")
+    parser = argparse.ArgumentParser(description="Volatility Targeting Allocator and Walk-Forward Backtester.")
     parser.add_argument("--target-vol", type=float, default=0.30, help="Target annualized volatility (e.g. 0.30 = 30%%).")
     parser.add_argument("--realized-vol", type=float, default=0.60, help="Current realized volatility (e.g. 0.60 = 60%%).")
-    parser.add_argument("--export-json", type=str, default=None, help="Export volatility targeting results to JSON file.")
-    parser.add_argument("--export-csv", type=str, default=None, help="Export volatility targeting results to CSV file.")
+    parser.add_argument(
+        "--simulate",
+        action="store_true",
+        help="Run walk-forward volatility targeting simulation vs unhedged static portfolio.",
+    )
+    parser.add_argument(
+        "--lookback",
+        type=int,
+        default=30,
+        help="Lookback window in bars/days for rolling realized volatility calculation (default: 30).",
+    )
+    parser.add_argument(
+        "--max-leverage",
+        type=float,
+        default=1.0,
+        help="Maximum allowable leverage scalar (default: 1.0).",
+    )
+    parser.add_argument(
+        "--days",
+        type=int,
+        default=180,
+        help="Number of simulation days for synthetic market walk (default: 180).",
+    )
+    parser.add_argument("--export-json", type=str, default=None, help="Export results to JSON file.")
+    parser.add_argument("--export-csv", type=str, default=None, help="Export metrics summary to CSV file.")
+    parser.add_argument("--export-nav-csv", type=str, default=None, help="Export walk-forward daily NAV series to CSV file.")
     args = parser.parse_args()
 
     base_w = {"BTC/USDT": 0.60, "ETH/USDT": 0.40}
+
+    if args.simulate:
+        dates = pd.date_range("2025-01-01", periods=args.days, freq="1D")
+        np.random.seed(42)
+        r_btc = np.random.normal(0.0005, 0.035, len(dates))
+        r_eth = np.random.normal(0.0003, 0.045, len(dates))
+        prices_df = pd.DataFrame({
+            "BTC/USDT": 50000.0 * np.exp(np.cumsum(r_btc)),
+            "ETH/USDT": 3000.0 * np.exp(np.cumsum(r_eth)),
+        }, index=dates)
+
+        sim_res = simulate_vol_targeted_backtest(
+            prices_df,
+            base_weights=base_w,
+            target_vol_ann=args.target_vol,
+            lookback_bars=args.lookback,
+            max_leverage=args.max_leverage,
+        )
+
+        ret_s = float(sim_res["return_static_pct"])
+        ret_t = float(sim_res["return_targeted_pct"])
+        mdd_s = float(sim_res["mdd_static_pct"])
+        mdd_t = float(sim_res["mdd_targeted_pct"])
+        sh_s = float(sim_res["sharpe_static"])
+        sh_t = float(sim_res["sharpe_targeted"])
+        cal_s = float(sim_res["calmar_static"])
+        cal_t = float(sim_res["calmar_targeted"])
+        mean_scalar = float(sim_res["mean_scalar"])
+
+        print("\n================== Walk-Forward Volatility Targeting Simulation ==================")
+        print(f"Target Annual Vol: {args.target_vol * 100:.1f}% | Lookback: {args.lookback} bars | Max Leverage: {args.max_leverage:.2f}x")
+        print("-" * 82)
+        print(f"{'Metric':<28} {'Static (Unhedged)':>24} {'Vol-Targeted (Dynamic)':>26}")
+        print("-" * 82)
+        print(f"{'Total Return':<28} {ret_s:>+23.2f}% {ret_t:>+25.2f}%")
+        print(f"{'Max Drawdown (MDD)':<28} {-abs(mdd_s):>23.2f}% {-abs(mdd_t):>25.2f}%")
+        print(f"{'Annualized Sharpe':<28} {sh_s:>24.3f} {sh_t:>26.3f}")
+        print(f"{'Calmar Ratio':<28} {cal_s:>24.3f} {cal_t:>26.3f}")
+        print(f"{'Mean Leverage Scalar':<28} {'1.000x':>24} {f'{mean_scalar:.3f}x':>26}")
+        print("=" * 82 + "\n")
+
+        if args.export_json:
+            export_vol_target_json(sim_res, args.export_json)
+            print(f"[+] Simulation JSON exported to: {args.export_json}")
+
+        if args.export_csv:
+            export_vol_target_csv(sim_res, args.export_csv)
+            print(f"[+] Simulation summary CSV exported to: {args.export_csv}")
+
+        if args.export_nav_csv:
+            export_vol_target_backtest_nav_csv(sim_res, args.export_nav_csv)
+            print(f"[+] Simulation NAV time-series CSV exported to: {args.export_nav_csv}")
+        return
+
     res = apply_volatility_targeting(base_w, realized_vol_ann=args.realized_vol, target_vol_ann=args.target_vol)
 
     print("================ Constant Volatility Targeting ================")

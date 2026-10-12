@@ -10,8 +10,10 @@ from scripts.crypto_vol_target_allocator import (
     apply_volatility_targeting,
     export_vol_target_json,
     export_vol_target_csv,
+    export_vol_target_backtest_nav_csv,
     simulate_vol_targeted_backtest,
     to_dict_vol_target_backtest,
+    main,
 )
 from scripts.crypto_portfolio_optimizer import generate_synthetic_crypto_data
 
@@ -148,6 +150,62 @@ class VolTargetAllocatorTests(unittest.TestCase):
             metrics_obj = dict(zip(df_obj["metric"], df_obj["value"]))
             self.assertAlmostEqual(float(metrics_obj["target_vol_ann"]), 0.25)
             self.assertAlmostEqual(float(metrics_obj["vol_scalar"]), 0.5)
+
+    def test_export_vol_target_backtest_nav_csv(self):
+        prices = generate_synthetic_crypto_data(periods=50)
+        base_w = {"BTC/USDT": 0.5, "ETH/USDT": 0.5}
+        res = simulate_vol_targeted_backtest(
+            prices[["BTC/USDT", "ETH/USDT"]],
+            base_weights=base_w,
+            target_vol_ann=0.25,
+            lookback_bars=10,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_nav = Path(tmpdir) / "nav.csv"
+            export_vol_target_backtest_nav_csv(res, out_nav)
+            self.assertTrue(out_nav.exists())
+            df_nav = pd.read_csv(out_nav)
+            self.assertIn("date", df_nav.columns)
+            self.assertIn("nav_static", df_nav.columns)
+            self.assertIn("nav_targeted", df_nav.columns)
+            self.assertGreater(len(df_nav), 0)
+
+            # Test empty/partial fallback
+            out_empty = Path(tmpdir) / "empty_nav.csv"
+            export_vol_target_backtest_nav_csv({}, out_empty)
+            self.assertTrue(out_empty.exists())
+
+    def test_vol_target_simulate_cli(self):
+        import io
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_json = str(Path(tmpdir) / "sim.json")
+            out_csv = str(Path(tmpdir) / "sim.csv")
+            out_nav = str(Path(tmpdir) / "nav.csv")
+
+            test_args = [
+                "crypto_vol_target_allocator.py",
+                "--simulate",
+                "--target-vol", "0.25",
+                "--lookback", "20",
+                "--days", "60",
+                "--export-json", out_json,
+                "--export-csv", out_csv,
+                "--export-nav-csv", out_nav,
+            ]
+            captured = io.StringIO()
+            with patch("sys.argv", test_args):
+                with patch("sys.stdout", captured):
+                    main()
+
+            output = captured.getvalue()
+            self.assertIn("Walk-Forward Volatility Targeting Simulation", output)
+            self.assertIn("Total Return", output)
+            self.assertIn("Max Drawdown", output)
+            self.assertTrue(Path(out_json).exists())
+            self.assertTrue(Path(out_csv).exists())
+            self.assertTrue(Path(out_nav).exists())
 
 
 if __name__ == "__main__":

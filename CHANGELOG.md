@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## v1.7.11 (2026-10-12)
+
+### Features & Improvements
+
+- **vol-target-allocator**: Add walk-forward volatility targeting simulation CLI, side-by-side terminal comparison, and NAV time-series export (`scripts/crypto_vol_target_allocator.py`)
+  - Added `export_vol_target_backtest_nav_csv` exporting walk-forward daily NAV series of Static Unhedged vs Vol-Targeted portfolios to CSV
+  - Wired `--simulate` CLI flag comparing rolling realized volatility scaling vs static unhedged buy & hold
+  - Added `--lookback`, `--days`, `--max-leverage`, and `--export-nav-csv` CLI options
+  - Added formatted side-by-side terminal comparison table displaying Total Return, MDD, Sharpe, Calmar, and Mean Leverage Scalar
+
+### Testing & Verification
+
+- Added unit tests for walk-forward simulation CLI execution, NAV time-series CSV export, and empty/partial fallbacks (`tests/test_vol_target_allocator.py`)
+- Maintained 100% test pass rate across all 691 test cases in the test suite
+
 ## v1.7.10 (2026-10-12)
 
 ### Features & Improvements

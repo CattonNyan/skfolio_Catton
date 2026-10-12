@@ -499,10 +499,14 @@ python scripts/crypto_drawdown_metrics.py --rf 2.0 --export-json reports/drawdow
 
 ### 34. 목표 변동성 타겟팅(Vol-Targeting) 및 동적 현금 배분기
 
-포트폴리오의 실현 변동성(Realized Volatility)을 실시간 추적하여, 목표 변동성(Target Volatility, 예: 25%)에 맞추어 포트폴리오의 총 익스포저를 동적으로 스케일링하고 안전자산(USDT 현금) 비중을 조절합니다. 고변동 장세에서는 디리스킹(De-risking)을 실행하고 샤프 지수 및 칼마 비율(Calmar Ratio)을 극대화하며, JSON 및 CSV로 배분 내역을 내보냅니다:
+포트폴리오의 실현 변동성(Realized Volatility)을 실시간 추적하여, 목표 변동성(Target Volatility, 예: 25%)에 맞추어 포트폴리오의 총 익스포저를 동적으로 스케일링하고 안전자산(USDT 현금) 비중을 조절합니다. 고변동 장세에서는 디리스킹(De-risking)을 실행하고 샤프 지수 및 칼마 비율(Calmar Ratio)을 극대화하며, 워크포워드 롤링 시뮬레이션(`--simulate`) 및 JSON/CSV/NAV 시계열 내보내기를 지원합니다:
 
 ```powershell
+# 목표 변동성 단일 시점 비중 사이징 및 결과 내보내기
 python scripts/crypto_vol_target_allocator.py --target-vol 0.25 --realized-vol 0.50 --export-json reports/vol_target.json --export-csv reports/vol_target.csv
+
+# 정적(Unhedged) vs 변동성 타겟팅 동적 배분 워크포워드 시뮬레이션 비교 및 NAV 시계열 내보내기
+python scripts/crypto_vol_target_allocator.py --simulate --target-vol 0.25 --lookback 30 --days 180 --export-csv reports/vol_target_sim.csv --export-nav-csv reports/vol_target_nav.csv
 ```
 
 ### 35. 가상자산 꼬리 의존성(Tail Dependence) 및 동반 급락 분석기
