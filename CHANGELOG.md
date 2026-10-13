@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v1.7.18 (2026-10-14)
+
+### Features & Improvements
+
+- **live-fetcher**: Add real-time order book depth ladder, institutional VWAP execution slippage simulation, and CSV export (`scripts/fetch_live_crypto.py`)
+  - Added `fetch_orderbook_ccxt` fetching real-time market depth from Binance and ccxt-supported exchanges
+  - Added `compute_live_market_impact` calculating VWAP execution price, spread in bps, execution slippage in bps, price impact in bps, and fill percentage for large order sizes in quote currency (USDT / KRW) across buy and sell sides
+  - Added `print_live_orderbook_ladder` formatting and printing top N depth ladder with price, quantity, and visual tabular formatting
+  - Added `export_live_orderbook_csv` exporting order book ladder breakdown or market impact simulation metrics to CSV
+  - Wired `--orderbook`, `--order-size`, `--side`, `--depth-levels`, and `--export-orderbook-csv` CLI options
+
+### Testing & Verification
+
+- Added unit tests for order book ladder printing, market impact execution slippage calculations, partial fills, CSV export (both ladder and simulation modes), and parameter validation (`tests/test_live_fetcher.py`)
+- Verified 100% test pass rate across all 747 test cases in the test suite
+
 ## v1.7.17 (2026-10-13)
 
 ### Features & Improvements

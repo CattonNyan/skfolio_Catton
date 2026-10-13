@@ -133,6 +133,9 @@ python scripts/fetch_live_crypto.py --exchange upbit --pairs BTC/KRW ETH/KRW SOL
 
 # 바이낸스 USDT 마켓 15분봉 수집
 python scripts/fetch_live_crypto.py --exchange binance --pairs BTC/USDT ETH/USDT SOL/USDT --timeframe 15m
+
+# 바이낸스 실시간 호가창 사다리 조회 및 $50,000 매수 체결 슬리피지/시장충격 시뮬레이션
+python scripts/fetch_live_crypto.py --exchange binance --pairs BTC/USDT ETH/USDT --orderbook --order-size 50000 --side buy --depth-levels 5 --export-orderbook-csv reports/binance_orderbook.csv
 ```
 
 ---
