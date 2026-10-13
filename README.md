@@ -458,13 +458,21 @@ python scripts/crypto_kimchi_regime.py --premium 6.5 --export-json reports/kimch
 python scripts/crypto_travel_rule_advisor.py --coin XRP --amount 3000 --price-krw 1900 --export-json reports/travel_rule.json
 ```
 
-### 25. 유동성 리스크 필터 및 Amihud/Corwin-Schultz 측정기
+### 25. 유동성 리스크 필터 및 Amihud/Corwin-Schultz/Roll/Kyle 측정기
 
-Amihud 비유동성 비율, Corwin-Schultz 고저가 실효 스프레드, 주문 규모별 시장 충격 슬리피지를 복합 평가하여 호가가 얇은 알트코인을 포트폴리오 유니버스에서 안전하게 필터링합니다:
+Amihud 비유동성 비율, Corwin-Schultz 고저가 실효 스프레드, Roll(1984) 연속공분산 실효 스프레드, Kyle(1985) 시장 충격 람다(Lambda), 종합 유동성 점수(0~100점) 및 4단계 유동성 등급(Tier 1 초유동성 ~ Tier 4 호가 공백), 포트폴리오 자본금 대비 일평균 거래대금(ADV) 참여율(기본 5%) 기반 최대 안전 편입 비중 한도(Capacity Cap %)를 복합 평가하여 호가가 얇은 알트코인을 포트폴리오 유니버스에서 정밀하게 필터링합니다:
 
 ```powershell
 # 최소 거래대금 $50k, Amihud 2.0 이하, $10,000 주문 기준 최대 슬리피지 1.5% 이하 스크리닝
 python scripts/crypto_liquidity_filter.py --min-volume 50000 --max-amihud 2.0 --trade-size 10000 --max-slippage 1.5 --export-json reports/liquidity_report.json
+
+# 포트폴리오 자본금 $100,000 기준 ADV 5% 참여율 한도 및 종합 유동성 점수 50점 이상 스크리닝
+python scripts/crypto_liquidity_filter.py `
+  --portfolio-nav 100000 `
+  --max-adv 5.0 `
+  --min-score 50.0 `
+  --export-json reports/liquidity_report.json `
+  --export-csv reports/liquidity_report.csv
 ```
 
 ### 26. 켈리 공식 및 하프 켈리 포지션 사이징 계산기

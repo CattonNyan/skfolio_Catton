@@ -3,7 +3,10 @@
 Provides empirical liquidity screening tools for crypto portfolio optimization:
 - Amihud Illiquidity Ratio (price impact per unit of dollar volume)
 - Corwin-Schultz (2012) High-Low Effective Spread estimator
-- Rolling Dollar Volume Screener (filters out thin-book / illiquid altcoins)
+- Roll (1984) Effective Bid-Ask Spread estimator (serial covariance)
+- Kyle (1985) Market Impact Slope (Lambda)
+- Composite Liquidity Scoring & Tier Classification (Tier 1 Ultra-Liquid ~ Tier 4 Thin)
+- Liquidity Capacity Cap & Max Position Weight sizing (based on % ADV participation)
 """
 
 from __future__ import annotations
@@ -37,6 +40,12 @@ class LiquidityMetrics:
     estimated_spread_pct: float
     is_liquid: bool
     estimated_slippage_pct: float = 0.0
+    roll_spread_pct: float = 0.0
+    kyle_lambda: float = 0.0
+    composite_score: float = 0.0
+    liquidity_tier: str = "Tier 4 (Illiquid / Thin)"
+    capacity_cap_usd: float = 0.0
+    max_weight_pct: float = 100.0
     rejection_reason: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -47,6 +56,12 @@ class LiquidityMetrics:
             "median_volume_usd": self.median_volume_usd,
             "amihud_illiquidity": None if (math.isinf(self.amihud_illiquidity) or math.isnan(self.amihud_illiquidity)) else self.amihud_illiquidity,
             "estimated_spread_pct": self.estimated_spread_pct,
+            "roll_spread_pct": self.roll_spread_pct,
+            "kyle_lambda": self.kyle_lambda,
+            "composite_score": self.composite_score,
+            "liquidity_tier": self.liquidity_tier,
+            "capacity_cap_usd": self.capacity_cap_usd,
+            "max_weight_pct": self.max_weight_pct,
             "estimated_slippage_pct": self.estimated_slippage_pct,
             "is_liquid": self.is_liquid,
             "rejection_reason": self.rejection_reason,
@@ -92,7 +107,6 @@ def estimate_corwin_schultz_spread(
     if len(h) != len(l) or len(h) < 2:
         return 0.0
 
-    # Clean non-positive values
     valid = (h > 0) & (l > 0) & (h >= l)
     if np.sum(valid) < 2:
         return 0.0
@@ -109,7 +123,6 @@ def estimate_corwin_schultz_spread(
     l2 = np.minimum(l[:-1], l[1:])
     gamma = np.log(h2 / l2) ** 2
 
-    k2 = 8.0 / np.pi
     alpha = (np.sqrt(2.0 * beta) - np.sqrt(beta)) / (3.0 - 2.0 * np.sqrt(2.0)) - np.sqrt(gamma / (3.0 - 2.0 * np.sqrt(2.0)))
     alpha = np.maximum(0.0, alpha)
 
@@ -119,6 +132,108 @@ def estimate_corwin_schultz_spread(
     return max(0.0, spread_pct)
 
 
+def estimate_roll_spread(
+    prices: pd.Series | np.ndarray,
+) -> float:
+    """Estimate effective bid-ask spread % using Roll (1984) serial covariance model.
+
+    Spread = 2 * sqrt(-Cov(Delta P_t, Delta P_{t-1})) if Cov < 0 else 0.0.
+    """
+    p = np.asarray(prices, dtype=float)
+    valid = np.isfinite(p) & (p > 0)
+    p = p[valid]
+    if len(p) < 3:
+        return 0.0
+
+    dp = np.diff(p)
+    if len(dp) < 2:
+        return 0.0
+
+    # Covariance of adjacent price changes
+    cov_val = float(np.cov(dp[:-1], dp[1:])[0, 1])
+    if cov_val < 0:
+        roll_dollar = 2.0 * math.sqrt(-cov_val)
+        mean_price = float(np.mean(p))
+        roll_pct = (roll_dollar / mean_price) * 100.0 if mean_price > 0 else 0.0
+        return float(round(max(0.0, roll_pct), 4))
+    return 0.0
+
+
+def estimate_kyle_lambda(
+    returns: pd.Series | np.ndarray,
+    dollar_volumes: pd.Series | np.ndarray,
+    scale: float = 1e6,
+) -> float:
+    """Estimate Kyle (1985) market impact slope (Lambda).
+
+    Measures absolute return per unit of sqrt dollar volume.
+    """
+    r = np.asarray(returns, dtype=float)
+    v = np.asarray(dollar_volumes, dtype=float)
+    valid = np.isfinite(r) & np.isfinite(v) & (v > 0)
+    if np.sum(valid) < 5:
+        return 0.0
+
+    abs_r = np.abs(r[valid])
+    sqrt_v = np.sqrt(v[valid])
+    var_v = float(np.var(sqrt_v))
+    if var_v <= 1e-12:
+        return 0.0
+
+    cov_mat = np.cov(abs_r, sqrt_v)
+    slope = float(cov_mat[0, 1] / var_v)
+    return float(round(max(0.0, slope * scale), 4))
+
+
+def calculate_liquidity_tier_and_score(
+    mean_vol_usd: float,
+    amihud: float,
+    spread_pct: float,
+    roll_pct: float,
+) -> tuple[float, str]:
+    """Calculate composite liquidity score (0-100) and institutional liquidity tier."""
+    # Volume score: 0 to 40 pts
+    if mean_vol_usd > 1.0:
+        vol_score = min(40.0, max(0.0, 10.0 * math.log10(mean_vol_usd) - 20.0))
+    else:
+        vol_score = 0.0
+
+    # Amihud score: 0 to 30 pts (lower Amihud is better)
+    ami_val = amihud if (math.isfinite(amihud) and amihud >= 0) else 99.0
+    amihud_score = max(0.0, 30.0 - min(30.0, ami_val * 15.0))
+
+    # Spread score: 0 to 30 pts (lower spread is better)
+    eff_spread = max(spread_pct, roll_pct)
+    spread_score = max(0.0, 30.0 - min(30.0, eff_spread * 15.0))
+
+    composite = round(vol_score + amihud_score + spread_score, 1)
+
+    if composite >= 75.0:
+        tier = "Tier 1 (Ultra-Liquid)"
+    elif composite >= 55.0:
+        tier = "Tier 2 (Liquid)"
+    elif composite >= 35.0:
+        tier = "Tier 3 (Moderate)"
+    else:
+        tier = "Tier 4 (Illiquid / Thin)"
+
+    return composite, tier
+
+
+def compute_liquidity_capacity_cap(
+    mean_volume_usd: float,
+    portfolio_nav_usd: float = 100000.0,
+    max_adv_pct: float = 5.0,
+) -> tuple[float, float]:
+    """Calculate max safe single-position dollar cap and portfolio weight based on ADV participation."""
+    cap_usd = max(0.0, mean_volume_usd * (max_adv_pct / 100.0))
+    if portfolio_nav_usd > 0:
+        max_wt_pct = min(100.0, round((cap_usd / portfolio_nav_usd) * 100.0, 2))
+    else:
+        max_wt_pct = 100.0
+    return round(cap_usd, 2), max_wt_pct
+
+
 def filter_crypto_universe(
     ohlcv_data: dict[str, pd.DataFrame],
     min_mean_volume_usd: float = 10000.0,
@@ -126,8 +241,11 @@ def filter_crypto_universe(
     max_spread_pct: float = 2.0,
     trade_size_usd: float = 10000.0,
     max_slippage_pct: float | None = None,
+    portfolio_nav_usd: float = 100000.0,
+    max_adv_pct: float = 5.0,
+    min_composite_score: float | None = None,
 ) -> tuple[list[str], dict[str, LiquidityMetrics]]:
-    """Screen an OHLCV asset universe by liquidity thresholds.
+    """Screen an OHLCV asset universe by multi-dimensional liquidity thresholds.
 
     Parameters
     ----------
@@ -143,6 +261,12 @@ def filter_crypto_universe(
         Trade size in USD for estimating price impact and execution slippage.
     max_slippage_pct : float | None
         Optional maximum allowed estimated total slippage (half-spread + price impact).
+    portfolio_nav_usd : float
+        Portfolio NAV for sizing capacity weight cap.
+    max_adv_pct : float
+        Maximum safe participation percentage of average daily/bar dollar volume (default 5.0%).
+    min_composite_score : float | None
+        Optional minimum composite liquidity score (0-100).
 
     Returns
     -------
@@ -167,6 +291,12 @@ def filter_crypto_universe(
                 estimated_spread_pct=100.0,
                 is_liquid=False,
                 estimated_slippage_pct=100.0,
+                roll_spread_pct=100.0,
+                kyle_lambda=0.0,
+                composite_score=0.0,
+                liquidity_tier="Tier 4 (Illiquid / Thin)",
+                capacity_cap_usd=0.0,
+                max_weight_pct=0.0,
                 rejection_reason="Insufficient data bars or missing required OHLCV columns.",
             )
             continue
@@ -186,6 +316,11 @@ def filter_crypto_universe(
         else:
             spread = 0.0
 
+        roll_spread = estimate_roll_spread(close)
+        kyle_lam = estimate_kyle_lambda(ret, dollar_vol)
+        comp_score, tier = calculate_liquidity_tier_and_score(mean_vol, amihud, spread, roll_spread)
+        cap_usd, max_wt = compute_liquidity_capacity_cap(mean_vol, portfolio_nav_usd=portfolio_nav_usd, max_adv_pct=max_adv_pct)
+
         # Estimated one-way slippage = half spread + price impact (Amihud * trade_size / 1e6)
         estimated_slippage = (spread / 2.0) + (amihud * (trade_size_usd / 1e6)) if math.isfinite(amihud) else float("inf")
 
@@ -199,16 +334,24 @@ def filter_crypto_universe(
             reasons.append(f"Spread {spread:.2f}% > {max_spread_pct:.2f}%")
         if max_slippage_pct is not None and estimated_slippage > max_slippage_pct:
             reasons.append(f"Est. slippage {estimated_slippage:.2f}% > {max_slippage_pct:.2f}% (for ${trade_size_usd:,.0f} trade)")
+        if min_composite_score is not None and comp_score < min_composite_score:
+            reasons.append(f"Composite score {comp_score:.1f} < {min_composite_score:.1f}")
 
         is_liq = len(reasons) == 0
         metrics_dict[sym] = LiquidityMetrics(
             symbol=sym,
-            mean_volume_usd=mean_vol,
-            median_volume_usd=median_vol,
-            amihud_illiquidity=amihud,
-            estimated_spread_pct=spread,
+            mean_volume_usd=round(mean_vol, 2),
+            median_volume_usd=round(median_vol, 2),
+            amihud_illiquidity=round(amihud, 4) if math.isfinite(amihud) else float("inf"),
+            estimated_spread_pct=round(spread, 4),
             is_liquid=is_liq,
             estimated_slippage_pct=round(estimated_slippage, 4) if math.isfinite(estimated_slippage) else 999.0,
+            roll_spread_pct=round(roll_spread, 4),
+            kyle_lambda=round(kyle_lam, 4),
+            composite_score=comp_score,
+            liquidity_tier=tier,
+            capacity_cap_usd=cap_usd,
+            max_weight_pct=max_wt,
             rejection_reason="; ".join(reasons) if reasons else None,
         )
         if is_liq:
@@ -237,6 +380,9 @@ def main():
     parser.add_argument("--max-spread", type=float, default=1.5, help="Maximum allowed estimated spread percentage.")
     parser.add_argument("--trade-size", type=float, default=10000.0, help="Trade size in USD for slippage estimation.")
     parser.add_argument("--max-slippage", type=float, default=None, help="Maximum allowed estimated total slippage percentage.")
+    parser.add_argument("--portfolio-nav", type=float, default=100000.0, help="Portfolio NAV in USD for sizing capacity caps.")
+    parser.add_argument("--max-adv", type=float, default=5.0, help="Maximum participation percentage of ADV (default 5%%).")
+    parser.add_argument("--min-score", type=float, default=None, help="Minimum composite liquidity score (0-100).")
     parser.add_argument("--export-json", type=str, default=None, help="Export liquidity screening results to JSON file.")
     parser.add_argument("--export-csv", type=str, default=None, help="Export liquidity screening results to CSV file.")
     args = parser.parse_args()
@@ -263,18 +409,27 @@ def main():
         max_spread_pct=args.max_spread,
         trade_size_usd=args.trade_size,
         max_slippage_pct=args.max_slippage,
+        portfolio_nav_usd=args.portfolio_nav,
+        max_adv_pct=args.max_adv,
+        min_composite_score=args.min_score,
     )
 
     print(f"[*] Evaluated {len(demo_data)} assets. Liquid: {len(liquid_syms)}")
     for sym, m in report.items():
         status = "[PASS]" if m.is_liquid else "[FAIL]"
-        print(f"  {status} {sym:<12}: Vol=${m.mean_volume_usd:,.0f} | Amihud={m.amihud_illiquidity:.4f} | Spread={m.estimated_spread_pct:.2f}% | Slippage={m.estimated_slippage_pct:.2f}% | Note: {m.rejection_reason or 'OK'}")
+        print(
+            f"  {status} {sym:<12}: Tier={m.liquidity_tier} (Score: {m.composite_score:.1f}/100) | "
+            f"Vol=${m.mean_volume_usd:,.0f} | Spread={m.estimated_spread_pct:.2f}% | "
+            f"Roll={m.roll_spread_pct:.2f}% | Max Cap=${m.capacity_cap_usd:,.0f} ({m.max_weight_pct:.1f}%)"
+        )
 
     if args.export_json:
         out_path = Path(args.export_json)
         out_path.parent.mkdir(parents=True, exist_ok=True)
         export_payload = {
             "liquid_symbols": liquid_syms,
+            "portfolio_nav_usd": args.portfolio_nav,
+            "max_adv_pct": args.max_adv,
             "metrics": {sym: m.to_dict() for sym, m in report.items()},
         }
         with open(out_path, "w", encoding="utf-8") as f:

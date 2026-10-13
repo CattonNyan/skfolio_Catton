@@ -2,6 +2,23 @@
 
 <!-- version list -->
 
+## v1.7.20 (2026-10-14)
+
+### Features & Improvements
+
+- **liquidity-filter**: Add Roll effective spread, Kyle lambda, composite liquidity tier scoring, and capacity cap allocation (`scripts/crypto_liquidity_filter.py`)
+  - Added `estimate_roll_spread` implementing Roll (1984) serial covariance bid-ask spread estimator
+  - Added `estimate_kyle_lambda` implementing Kyle (1985) market impact slope on square-root dollar volume
+  - Added `calculate_liquidity_tier_and_score` classifying assets into 4 institutional tiers (`Tier 1 Ultra-Liquid` to `Tier 4 Thin`) with a 0~100 composite score
+  - Added `compute_liquidity_capacity_cap` determining max dollar capacity and max portfolio weight based on % ADV participation
+  - Extended CLI options with `--portfolio-nav`, `--max-adv`, and `--min-score`
+  - Updated CSV and JSON exports with all new liquidity metrics
+
+### Testing & Verification
+
+- Added unit tests for Roll spread, Kyle lambda, composite scoring, tier classification, capacity caps, and CLI arguments (`tests/test_liquidity_filter.py`)
+- Verified 100% test pass rate across all 765 test cases in the test suite
+
 ## v1.7.19 (2026-10-14)
 
 ### Features & Improvements
