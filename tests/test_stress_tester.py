@@ -182,6 +182,99 @@ class StressTesterTests(unittest.TestCase):
             self.assertIn("resilience_grade", df.columns)
             self.assertEqual(len(df), len(results))
 
+    def test_new_crash_scenarios_and_severity(self):
+        weights = {"BTC/USDT": 0.5, "ETH/USDT": 0.3, "SOL/USDT": 0.2}
+        results = evaluate_stress_test(weights, total_wallet=10000.0)
+
+        # 3 new historical & exploit scenarios
+        self.assertIn("2018 Jan Crypto Winter Freeze", results)
+        self.assertIn("2021 Nov ATH Liquidation Cascade", results)
+        self.assertIn("DeFi Staking & Bridge Exploit Shock", results)
+
+        # Winter freeze should be deeper than COVID crash
+        freeze_loss = results["2018 Jan Crypto Winter Freeze"]["portfolio_loss_pct"]
+        covid_loss = results["2020 March Covid Crash"]["portfolio_loss_pct"]
+        self.assertLess(freeze_loss, covid_loss)
+
+    def test_asset_level_vulnerability_breakdown(self):
+        weights = {"BTC/USDT": 0.5, "SOL/USDT": 0.5}
+        wallet = 10000.0
+        results = evaluate_stress_test(weights, total_wallet=wallet)
+
+        ftx = results["2022 Nov FTX Insolvency"]
+        self.assertIn("asset_breakdown", ftx)
+        self.assertEqual(ftx["primary_risk_driver"], "SOL/USDT")
+
+        breakdown = ftx["asset_breakdown"]
+        self.assertIn("BTC/USDT", breakdown)
+        self.assertIn("SOL/USDT", breakdown)
+
+        # Contribution sum must equal total portfolio loss
+        total_contrib = sum(b["contribution_pct"] for b in breakdown.values())
+        self.assertAlmostEqual(total_contrib, ftx["portfolio_loss_pct"], places=2)
+
+        # SOL contribution (-29.0%) is greater in magnitude than BTC (-11.5%)
+        self.assertLess(breakdown["SOL/USDT"]["contribution_pct"], breakdown["BTC/USDT"]["contribution_pct"])
+        self.assertGreater(breakdown["SOL/USDT"]["loss_share_pct"], breakdown["BTC/USDT"]["loss_share_pct"])
+
+    def test_cash_buffer_hedging(self):
+        weights = {"BTC/USDT": 0.6, "ETH/USDT": 0.4}
+        wallet = 10000.0
+
+        unhedged = evaluate_stress_test(weights, total_wallet=wallet, cash_buffer=0.0)
+        hedged = evaluate_stress_test(weights, total_wallet=wallet, cash_buffer=0.25)
+
+        for sc_name in unhedged:
+            unh_loss = unhedged[sc_name]["portfolio_loss_pct"]
+            hdg_loss = hedged[sc_name]["portfolio_loss_pct"]
+            # 25% cash buffer should reduce loss by exactly 25%
+            self.assertAlmostEqual(hdg_loss, unh_loss * 0.75, places=2)
+            self.assertGreater(hedged[sc_name]["capital_saved_dollars"], 0.0)
+            self.assertEqual(hedged[sc_name]["cash_buffer_pct"], 25.0)
+
+    def test_invalid_cash_buffer_rejected(self):
+        for bad_buffer in (-0.1, 1.0, 1.5, float("nan"), float("inf"), True, False):
+            if bad_buffer is False:
+                continue  # 0.0 is valid
+            with self.subTest(bad_buffer=bad_buffer), self.assertRaises(ValueError):
+                evaluate_stress_test({"BTC/USDT": 1.0}, cash_buffer=bad_buffer)
+
+    def test_svar_and_ses_summary_metrics(self):
+        weights = {"BTC/USDT": 0.7, "ETH/USDT": 0.3}
+        results = evaluate_stress_test(weights, total_wallet=10000.0)
+        summary = summarize_stress_test_results(results)
+
+        self.assertIn("svar_95_pct", summary)
+        self.assertIn("ses_95_pct", summary)
+        self.assertIn("median_loss_pct", summary)
+        self.assertIn("primary_vulnerability", summary)
+
+        # Expected shortfall in the tail must be as severe or worse than VaR
+        self.assertLessEqual(summary["ses_95_pct"], summary["svar_95_pct"])
+        self.assertLessEqual(summary["svar_95_pct"], summary["avg_loss_pct"])
+        self.assertLess(summary["svar_95_pct"], 0.0)
+
+    def test_export_asset_level_csv(self):
+        weights = {"BTC/USDT": 0.6, "ETH/USDT": 0.4}
+        wallet = 10000.0
+        results = evaluate_stress_test(weights, total_wallet=wallet)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = Path(tmpdir) / "asset_stress.csv"
+            export_stress_test_csv(results, out_file, include_asset_breakdown=True)
+            self.assertTrue(out_file.exists())
+            df = pd.read_csv(out_file)
+
+            self.assertIn("scenario", df.columns)
+            self.assertIn("asset", df.columns)
+            self.assertIn("effective_weight", df.columns)
+            self.assertIn("asset_drop_pct", df.columns)
+            self.assertIn("contribution_pct", df.columns)
+            self.assertIn("dollar_impact", df.columns)
+            self.assertIn("loss_share_pct", df.columns)
+            # 2 assets per scenario
+            self.assertEqual(len(df), len(results) * 2)
+
 
 if __name__ == "__main__":
     unittest.main()

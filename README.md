@@ -323,11 +323,17 @@ python scripts/crypto_black_litterman.py `
 
 ### 12. 역사적 크립토 블랙스완 스트레스 테스트(Stress Testing)
 
-2020 코로나 빔, 2022 루나 폭락, FTX 파산, 2021 중국 채굴 금지 등 크립토 역사상 최악의 쇼크 시나리오를 현재 포트폴리오에 가상 주입하여 자산 방어력과 최대 낙폭을 평가합니다:
+2020 코로나 쇼크, 2018 크립토 윈터, 2022 루나/UST 붕괴, FTX 파산, 2021 중국 채굴 금지 및 역대 브릿지 해킹 등 크립토 역사상 최악의 쇼크 시나리오(총 11개 역사적 시나리오)를 포트폴리오에 가상 주입하여 자산 방어력, 스트레스 VaR(sVaR 95%), 스트레스 기대 숏폴(sES 95%), 주요 리스크 유발 자산(Primary Driver) 및 스테이블코인 헤징 버퍼 효과를 정밀 평가합니다:
 
 ```powershell
-# 현재 포트폴리오 자본금 $10,000 기준 스트레스 테스트 시뮬레이션 및 커스텀 블랙스완 쇼크 주입 (JSON/CSV 내보내기)
-python scripts/crypto_stress_tester.py --wallet-size 10000 --custom-shock BTC:-0.20 ETH:-0.30 --export-json reports/stress_test.json --export-csv reports/stress_test.csv
+# 포트폴리오 자본금 $10,000, 20% 현금/스테이블 헤징 버퍼 시뮬레이션 및 자산별 기여도 출력
+python scripts/crypto_stress_tester.py `
+  --wallet-size 10000 `
+  --cash-buffer 0.20 `
+  --show-assets `
+  --export-json reports/stress_test.json `
+  --export-csv reports/stress_test.csv `
+  --export-asset-csv reports/stress_asset_breakdown.csv
 ```
 
 ---

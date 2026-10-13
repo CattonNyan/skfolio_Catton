@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v1.7.17 (2026-10-13)
+
+### Features & Improvements
+
+- **stress-tester**: Historical crash expansion, cash buffer hedging simulation, asset-level vulnerability breakdown, and sVaR / sES tail risk analytics (`scripts/crypto_stress_tester.py`)
+  - Added 3 new historical and exploit scenarios: `2018 Jan Crypto Winter Freeze`, `2021 Nov ATH Liquidation Cascade`, and `DeFi Staking & Bridge Exploit Shock` (expanding historical library from 8 to 11 scenarios)
+  - Added per-asset vulnerability breakdown (`asset_breakdown`) quantifying each coin's effective weight, individual shock drop %, portfolio contribution %, dollar loss, and share of total drawdown (`loss_share_pct`)
+  - Added automatic detection of scenario `primary_risk_driver` identifying the asset responsible for maximum tail drawdown
+  - Added institutional tail risk metrics to `summarize_stress_test_results`: Stress VaR 95% (`svar_95_pct`), Stress Expected Shortfall 95% (`ses_95_pct`), median drawdown, and most frequent portfolio vulnerability driver
+  - Added cash / stablecoin hedging buffer simulation (`cash_buffer` parameter / `--cash-buffer` CLI option) calculating capital preserved in dollars and risk grade upgrade
+  - Added granular asset-level CSV export support (`--export-asset-csv` and `include_asset_breakdown=True`)
+  - Added `--show-assets` flag for granular terminal output display of asset contributions
+
+### Testing & Verification
+
+- Added unit tests for new crash scenarios, asset-level vulnerability decomposition, cash buffer hedging, sVaR/sES metric relationships, and asset-level CSV exports (`tests/test_stress_tester.py`)
+- Verified 100% test pass rate across all 733 test cases in the test suite
+
 ## v1.7.16 (2026-10-13)
 
 ### Features & Improvements
