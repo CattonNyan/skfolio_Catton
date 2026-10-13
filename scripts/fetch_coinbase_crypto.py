@@ -246,6 +246,10 @@ def calculate_market_impact_slippage(
 
     unfilled_usd = max(0.0, remaining_usd)
     fully_filled = unfilled_usd <= 1e-6
+    fill_pct = (executed_usd / order_size_usd * 100.0) if order_size_usd > 0 else 100.0
+
+    bid_depth_usd = sum(float(b[0]) * float(b[1]) for b in bids if float(b[0]) > 0 and float(b[1]) > 0)
+    ask_depth_usd = sum(float(a[0]) * float(a[1]) for a in asks if float(a[0]) > 0 and float(a[1]) > 0)
 
     return {
         "side": side,
@@ -254,13 +258,43 @@ def calculate_market_impact_slippage(
         "executed_base_qty": executed_base_qty,
         "vwap_price": vwap_price,
         "mid_price": mid_price,
+        "best_bid": best_bid,
+        "best_ask": best_ask,
         "spread_usd": spread_usd,
         "spread_bps": spread_bps,
         "slippage_bps": slippage_bps,
         "price_impact_bps": price_impact_bps,
+        "fill_percentage": fill_pct,
         "fully_filled": fully_filled,
         "unfilled_usd": unfilled_usd,
+        "bid_depth_usd": bid_depth_usd,
+        "ask_depth_usd": ask_depth_usd,
     }
+
+
+def print_coinbase_orderbook_ladder(
+    symbol: str,
+    bids: list,
+    asks: list,
+    depth_levels: int = 5,
+) -> None:
+    """Print a terminal-friendly order book depth ladder for Coinbase asset."""
+    if depth_levels <= 0:
+        return
+    bids_subset = bids[:depth_levels]
+    asks_subset = asks[:depth_levels]
+    product = normalize_coinbase_symbol(symbol)
+
+    print(f"\n    [+] Top {min(len(bids_subset), len(asks_subset))} Depth Ladder for {product}:")
+    print(f"        {'Level':<6} {'Bid Price ($)':>14} {'Bid Qty':>12} | {'Ask Price ($)':>14} {'Ask Qty':>12}")
+    print("        " + "-" * 66)
+    for idx in range(max(len(bids_subset), len(asks_subset))):
+        b_p = f"${float(bids_subset[idx][0]):,.2f}" if idx < len(bids_subset) else "-"
+        b_q = f"{float(bids_subset[idx][1]):,.4f}" if idx < len(bids_subset) else "-"
+        a_p = f"${float(asks_subset[idx][0]):,.2f}" if idx < len(asks_subset) else "-"
+        a_q = f"{float(asks_subset[idx][1]):,.4f}" if idx < len(asks_subset) else "-"
+        print(f"        #{idx+1:<5} {b_p:>14} {b_q:>12} | {a_p:>14} {a_q:>12}")
+    print()
 
 
 def export_coinbase_prices_csv(
@@ -275,13 +309,42 @@ def export_coinbase_prices_csv(
 
 
 def export_coinbase_orderbook_csv(
-    slippage_results: list[dict[str, Any]],
+    records: list[dict[str, Any]] | dict[str, Any],
     output_path: Path | str,
 ) -> Path:
-    """Export Coinbase orderbook slippage and market impact metrics to a CSV file."""
+    """Export Coinbase orderbook slippage, market impact, or ladder breakdown to a CSV file."""
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    df = pd.DataFrame(slippage_results)
+    if isinstance(records, dict):
+        if "bids" in records and "asks" in records:
+            import numpy as np
+            bids = records.get("bids", [])
+            asks = records.get("asks", [])
+            rows = []
+            for i in range(max(len(bids), len(asks))):
+                bid = bids[i] if i < len(bids) else []
+                ask = asks[i] if i < len(asks) else []
+                b_price = float(bid[0]) if len(bid) >= 2 else np.nan
+                b_qty = float(bid[1]) if len(bid) >= 2 else np.nan
+                a_price = float(ask[0]) if len(ask) >= 2 else np.nan
+                a_qty = float(ask[1]) if len(ask) >= 2 else np.nan
+                rows.append({
+                    "level": i + 1,
+                    "bid_price": b_price,
+                    "bid_quantity": b_qty,
+                    "bid_depth_usd": (b_price * b_qty) if (np.isfinite(b_price) and np.isfinite(b_qty)) else np.nan,
+                    "ask_price": a_price,
+                    "ask_quantity": a_qty,
+                    "ask_depth_usd": (a_price * a_qty) if (np.isfinite(a_price) and np.isfinite(a_qty)) else np.nan,
+                })
+            df = pd.DataFrame(rows)
+        else:
+            df = pd.DataFrame([records])
+    elif isinstance(records, list):
+        df = pd.DataFrame(records)
+    else:
+        raise ValueError("records must be a list or dictionary.")
+
     df.to_csv(path, index=False, encoding="utf-8")
     return path
 
@@ -315,6 +378,12 @@ def main():
         default=2,
         help="Coinbase order book depth level (1: best, 2: top 50, 3: full, default: 2).",
     )
+    parser.add_argument(
+        "--depth-levels",
+        type=int,
+        default=5,
+        help="Number of depth ladder levels to display per asset (default: 5, set 0 to disable).",
+    )
     parser.add_argument("--export-csv", type=str, default="", help="Path to export fetched Coinbase prices or orderbook metrics to CSV.")
     args = parser.parse_args()
 
@@ -335,12 +404,17 @@ def main():
                     "order_size_usd": args.order_size,
                     "mid_price": round(impact["mid_price"], 2),
                     "vwap_price": round(impact["vwap_price"], 2),
+                    "best_bid": round(impact["best_bid"], 2),
+                    "best_ask": round(impact["best_ask"], 2),
                     "spread_usd": round(impact["spread_usd"], 2),
                     "spread_bps": round(impact["spread_bps"], 2),
                     "slippage_bps": round(impact["slippage_bps"], 2),
                     "price_impact_bps": round(impact["price_impact_bps"], 2),
+                    "fill_percentage": round(impact["fill_percentage"], 2),
                     "fully_filled": impact["fully_filled"],
                     "unfilled_usd": round(impact["unfilled_usd"], 2),
+                    "bid_depth_usd": round(impact["bid_depth_usd"], 2),
+                    "ask_depth_usd": round(impact["ask_depth_usd"], 2),
                 }
                 records.append(rec)
                 filled_str = "YES" if rec["fully_filled"] else "NO"
@@ -354,6 +428,8 @@ def main():
                     f"{rec['price_impact_bps']:>13.2f}bp "
                     f"{filled_str:>8}"
                 )
+                if args.depth_levels > 0:
+                    print_coinbase_orderbook_ladder(sym, ob["bids"], ob["asks"], depth_levels=args.depth_levels)
             except Exception as e:
                 print(f"[!] Warning: Failed to process orderbook for {sym}: {e}")
         print("=" * 122 + "\n")

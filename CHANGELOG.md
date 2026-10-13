@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v1.7.16 (2026-10-13)
+
+### Features & Improvements
+
+- **coinbase-fetcher**: Add real-time order book depth ladder visualization, flexible ladder/impact CSV export, and execution fill metrics (`scripts/fetch_coinbase_crypto.py`)
+  - Added `print_coinbase_orderbook_ladder` printing terminal-friendly top N depth ladder with price ($), quantity, and visual tabular formatting across bid/ask books
+  - Enhanced `calculate_market_impact_slippage` returning best bid/ask, cumulative bid/ask depth in USD, and execution fill percentage (`fill_percentage`)
+  - Enhanced `export_coinbase_orderbook_csv` supporting both multi-level depth ladder breakdown and institutional order execution simulation records
+  - Wired `--depth-levels` CLI parameter (default: 5) to display real-time depth ladders per asset
+  - Added formatted ladder display to `--orderbook` execution flow
+
+### Testing & Verification
+
+- Added unit tests for Coinbase depth ladder printing, flexible ladder/single-record CSV export, and CLI depth-levels execution (`tests/test_coinbase_fetcher.py`)
+- Verified 100% test pass rate across all 721 test cases in the test suite
+
 ## v1.7.15 (2026-10-13)
 
 ### Features & Improvements

@@ -12,6 +12,7 @@ from scripts.fetch_coinbase_crypto import (
     fetch_coinbase_orderbook,
     fetch_coinbase_spot_price,
     normalize_coinbase_symbol,
+    print_coinbase_orderbook_ladder,
     main,
     GRANULARITY_MAP,
 )
@@ -218,6 +219,92 @@ class CoinbaseFetcherTests(unittest.TestCase):
                 output = captured.getvalue()
                 self.assertIn("Coinbase order book", output)
                 self.assertIn("BTC-USD", output)
+                self.assertIn("Saved Coinbase orderbook impact metrics", output)
+                self.assertTrue(Path(out_csv).exists())
+
+    def test_print_coinbase_orderbook_ladder(self):
+        import io
+        bids = [["60000.0", "1.5"], ["59900.0", "2.0"]]
+        asks = [["60100.0", "1.2"], ["60200.0", "2.5"]]
+
+        captured = io.StringIO()
+        with patch("sys.stdout", captured):
+            print_coinbase_orderbook_ladder("BTC-USD", bids, asks, depth_levels=2)
+        out = captured.getvalue()
+        self.assertIn("Depth Ladder for BTC-USD", out)
+        self.assertIn("#1", out)
+        self.assertIn("$60,000.00", out)
+        self.assertIn("$60,100.00", out)
+
+        # depth_levels <= 0 does nothing
+        captured_zero = io.StringIO()
+        with patch("sys.stdout", captured_zero):
+            print_coinbase_orderbook_ladder("BTC-USD", bids, asks, depth_levels=0)
+        self.assertEqual(captured_zero.getvalue(), "")
+
+    def test_export_coinbase_orderbook_csv_ladder(self):
+        import tempfile
+        from pathlib import Path
+
+        ob_data = {
+            "bids": [["60000.0", "1.5"]],
+            "asks": [["60100.0", "1.2"]],
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_ladder = Path(tmpdir) / "ladder.csv"
+            export_coinbase_orderbook_csv(ob_data, out_ladder)
+            self.assertTrue(out_ladder.exists())
+            loaded = pd.read_csv(out_ladder)
+            self.assertEqual(len(loaded), 1)
+            self.assertIn("level", loaded.columns)
+            self.assertIn("bid_price", loaded.columns)
+            self.assertIn("ask_price", loaded.columns)
+            self.assertIn("bid_depth_usd", loaded.columns)
+            self.assertEqual(loaded["bid_price"].iloc[0], 60000.0)
+
+            # Single dict record
+            out_single = Path(tmpdir) / "single.csv"
+            single_rec = {"symbol": "BTC-USD", "vwap_price": 60050.0}
+            export_coinbase_orderbook_csv(single_rec, out_single)
+            self.assertTrue(out_single.exists())
+            loaded_single = pd.read_csv(out_single)
+            self.assertEqual(len(loaded_single), 1)
+            self.assertEqual(loaded_single["vwap_price"].iloc[0], 60050.0)
+
+            with self.assertRaises(ValueError):
+                export_coinbase_orderbook_csv("invalid_type", Path(tmpdir) / "err.csv")
+
+    @patch("sys.stdout")
+    @patch("scripts.fetch_coinbase_crypto.fetch_coinbase_orderbook")
+    def test_coinbase_orderbook_cli_with_depth_ladder(self, mock_fetch_ob, mock_stdout):
+        import io
+        import tempfile
+        from pathlib import Path
+
+        mock_fetch_ob.return_value = {
+            "bids": [["60000.0", "2.0"], ["59900.0", "3.0"]],
+            "asks": [["60100.0", "2.0"], ["60200.0", "4.0"]],
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_csv = str(Path(tmpdir) / "cb_ladder.csv")
+            test_args = [
+                "fetch_coinbase_crypto.py",
+                "--symbols", "BTC",
+                "--orderbook",
+                "--order-size", "25000",
+                "--side", "buy",
+                "--depth-levels", "2",
+                "--export-csv", out_csv,
+            ]
+            with patch("sys.argv", test_args):
+                captured = io.StringIO()
+                with patch("sys.stdout", captured):
+                    main()
+                output = captured.getvalue()
+                self.assertIn("Coinbase order book", output)
+                self.assertIn("Depth Ladder for BTC-USD", output)
+                self.assertIn("#1", output)
                 self.assertIn("Saved Coinbase orderbook impact metrics", output)
                 self.assertTrue(Path(out_csv).exists())
 

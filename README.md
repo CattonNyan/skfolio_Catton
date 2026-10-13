@@ -545,13 +545,13 @@ python scripts/fetch_bithumb_crypto.py --symbols BTC ETH SOL XRP --orderbook --o
 python scripts/fetch_bithumb_crypto.py --symbols BTC ETH --interval 24h --count 100 --export-csv reports/bithumb_prices.csv
 ```
 
-### 37. 코인베이스(Coinbase) 기관급 호가창 및 시장 충격 슬리피지(Market Impact Slippage) 분석기
+### 37. 코인베이스(Coinbase) 기관급 호가창 및 호가 사다리(Ladder)·시장 충격 슬리피지(Market Impact Slippage) 분석기
 
-글로벌 USD 기준 거래소인 코인베이스(Coinbase Exchange) 공개 REST API를 통해 실시간 오더북 호가 깊이를 탐색하고, 대규모 주문 금액($50,000~$1,000,000)에 따른 VWAP 체결가, 호가 스프레드, 슬리피지(Slippage in bps) 및 시장 충격 비용(Price Impact)을 산출하여 CSV로 내보냅니다:
+글로벌 USD 기준 거래소인 코인베이스(Coinbase Exchange) 공개 REST API를 통해 실시간 오더북 호가 깊이를 탐색하고, 상위 호가 사다리(Top Depth Ladder) 시각화 및 대규모 주문 금액($50,000~$1,000,000)에 따른 VWAP 체결가, 호가 스프레드, 슬리피지(Slippage in bps), 가격 충격도(Price Impact), 체결률(Fill %) 및 총 누적 호가 깊이를 정밀 산출하여 CSV로 내보냅니다:
 
 ```powershell
-# 실시간 오더북 시장 충격 및 슬리피지 계산 ($50,000 매수 주문 기준)
-python scripts/fetch_coinbase_crypto.py --symbols BTC ETH SOL --orderbook --order-size 50000 --side buy --book-level 2 --export-csv reports/coinbase_slippage.csv
+# 실시간 오더북 시장 충격 및 호가 사다리 탐색 ($50,000 매수 주문, 상위 5단계 사다리 기준)
+python scripts/fetch_coinbase_crypto.py --symbols BTC ETH SOL --orderbook --order-size 50000 --side buy --book-level 2 --depth-levels 5 --export-csv reports/coinbase_slippage.csv
 
 # 캔들 데이터 수집 및 CSV 내보내기
 python scripts/fetch_coinbase_crypto.py --symbols BTC ETH SOL --timeframe 1d --limit 100 --export-csv reports/coinbase_prices.csv
