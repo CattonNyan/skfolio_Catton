@@ -534,12 +534,21 @@ python scripts/crypto_vol_target_allocator.py --target-vol 0.25 --realized-vol 0
 python scripts/crypto_vol_target_allocator.py --simulate --target-vol 0.25 --lookback 30 --days 180 --export-csv reports/vol_target_sim.csv --export-nav-csv reports/vol_target_nav.csv
 ```
 
-### 35. 가상자산 꼬리 의존성(Tail Dependence) 및 동반 급락 분석기
+### 35. 가상자산 코퓰러 꼬리 의존성(Tail Dependence) 및 동반 급락 분석기
 
-비선형 극단 상황(하위 5% 폭락 또는 상위 5% 급등)에서의 자산 간 동조화 계수(Tail Dependence Coefficient)를 추정하여, 일반 선형 상관계수로는 포착할 수 없는 시장 붕괴 시의 동반 급락 위험 및 시스템적 취약도(Systemic Crash Vulnerability)를 계산하고 정형 JSON 및 CSV 보고서로 내보냅니다:
+비선형 극단 상황(하위 5% 폭락 또는 상위 5% 급등)에서의 자산 간 동조화 계수(Tail Dependence Coefficient)를 추정하여, 일반 선형 상관계수로는 포착할 수 없는 시장 붕괴 시의 동반 급락 위험 및 시스템적 취약도(Systemic Crash Vulnerability)를 계산합니다. 또한 코퓰러 순위 일치도(켄달 타우 Kendall's Tau, 스피어만 로 Spearman's Rho, 선형 피어슨 상관계수, 극단 꼬리 갭 Tail Dep Gap), 포트폴리오 가중치 기반 꼬리 분산 지수(Tail Diversification Index, TDI), 그리고 극단 동반 급락 시뮬레이션(경험적 코퓰러 동반 폭락 손실 vs 가우시안 모수적 VaR/ES 및 분산 와해 델타 Diversification Delta)을 분석하여 정형 JSON 및 CSV 보고서로 내보냅니다:
 
 ```powershell
+# 기본 극단 동반 급락 및 시스템적 취약도 분석
 python scripts/crypto_tail_dependence.py --quantile 0.05 --export-json reports/tail_dependence.json --export-csv reports/tail_dependence.csv
+
+# 코퓰러 순위 일치도, 꼬리 분산 지수(TDI) 및 포트폴리오 극단 쇼크 시뮬레이션 실행 (비선형 vs 가우시안 ES 비교)
+python scripts/crypto_tail_dependence.py `
+  --quantile 0.05 `
+  --weights "BTC/USDT:0.4,ETH/USDT:0.4,SOL/USDT:0.2" `
+  --simulate-tail-shock `
+  --export-json reports/tail_dependence.json `
+  --export-csv reports/tail_dependence.csv
 ```
 
 ### 36. 빗썸(Bithumb) 실시간 호가창 및 스프레드·호가 깊이 분석기

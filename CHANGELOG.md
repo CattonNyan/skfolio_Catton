@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v1.7.19 (2026-10-14)
+
+### Features & Improvements
+
+- **tail-dependence**: Add copula rank concordance, Tail Diversification Index (TDI), and extreme tail shock portfolio simulation (`scripts/crypto_tail_dependence.py`)
+  - Added `CopulaConcordanceResult` and `compute_copula_rank_concordance` evaluating non-linear co-movement across crypto pairs via Kendall's Tau, Spearman's Rho, Pearson's R, and Tail Dependence Gap (`lower_tail - pearson_corr`)
+  - Added `compute_tail_diversification_index` computing portfolio weights-weighted crash independence score ($0.0 \sim 1.0$)
+  - Added `simulate_tail_shock_portfolio_loss` evaluating conditional joint tail loss against Gaussian parametric VaR/ES and quantifying the diversification breakdown delta
+  - Added CLI flags `--weights` and `--simulate-tail-shock` for rapid terminal analysis
+  - Expanded `export_tail_dependence_json` and `export_tail_dependence_csv` to persist concordance metrics, TDI, and tail stress simulations
+
+### Testing & Verification
+
+- Added unit tests for copula rank concordance, TDI weight boundary conditions, tail shock simulation, CLI options, and JSON/CSV export (`tests/test_tail_dependence.py`)
+- Verified 100% test pass rate across all 753 test cases in the test suite
+
 ## v1.7.18 (2026-10-14)
 
 ### Features & Improvements
