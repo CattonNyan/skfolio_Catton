@@ -634,6 +634,32 @@ python scripts/fetch_upbit_crypto.py --orderbook ETH --order-size 100000000 --si
 
 ---
 
+### 39. 가상자산 공적분(Cointegration) 통계적 차익거래 및 오룬슈타인-울렌벡(OU) 페어 트레이딩 엔진
+
+가상자산 페어 간의 장기 균형 관계를 엥글-그레인저(Engle-Granger) 2단계 공적분 기법으로 검정하고, 오룬슈타인-울렌벡(Ornstein-Uhlenbeck) 평균회귀 과정 모델링을 통해 스프레드의 이론적 반감기(Half-Life $T_{half} = \ln(2)/\theta$) 및 롤링 Z-Score를 산출합니다. 통계적 과매수/과매도 괴리 시점에 롱/숏 페어 진입 및 목표 청산/손절(Stop-loss), 거래소 수수료 및 슬리피지 마찰을 감안한 워크포워드 백테스트와 바스켓 다중 페어 스크리너(`--scan-example`)를 지원하며 정형 JSON 및 CSV 보고서로 내보냅니다:
+
+```powershell
+# 단일 페어(ETH/USDT vs BTC/USDT) 공적분 검정 및 페어 트레이딩 시뮬레이션
+python scripts/crypto_pairs_trading.py `
+  --symbol-a ETH/USDT `
+  --symbol-b BTC/USDT `
+  --entry-z 2.0 `
+  --exit-z 0.5 `
+  --stop-z 3.5 `
+  --window 30 `
+  --capital 10000 `
+  --export-json reports/pairs_trading.json `
+  --export-csv reports/pairs_trading.csv
+
+# 다중 가상자산 바스켓(BTC, ETH, SOL, AVAX 등) 공적분 및 반감기 전수 스크리닝
+python scripts/crypto_pairs_trading.py `
+  --scan-example `
+  --export-json reports/pairs_screener.json `
+  --export-csv reports/pairs_screener.csv
+```
+
+---
+
 ## 📁 프로젝트 구조
 
 ```text

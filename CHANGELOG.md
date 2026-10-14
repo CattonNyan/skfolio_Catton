@@ -2,6 +2,23 @@
 
 <!-- version list -->
 
+## v1.7.24 (2026-10-15)
+
+### Features & Improvements
+
+- **pairs-trading**: Add Engle-Granger cointegration & Ornstein-Uhlenbeck (OU) statistical arbitrage pairs trading engine (`scripts/crypto_pairs_trading.py`)
+  - Added `calculate_cointegration` computing OLS hedge ratio $\beta$, spread intercept $\alpha$, coefficient of determination $R^2$, Augmented Dickey-Fuller (ADF) unit root t-statistic against MacKinnon critical values, and Ornstein-Uhlenbeck mean-reversion rate $\theta$ and half-life $T_{half} = \ln(2)/\theta$
+  - Added `calculate_rolling_zscore` for dynamic spread standard deviation tracking and deviation signal detection
+  - Added `simulate_pairs_trading` backtest engine supporting normalized spread returns, multi-leg taker fees, execution slippage, stop-loss protection, win rate %, profit factor, and annualized Sharpe ratio
+  - Added `scan_crypto_pairs` for multi-asset pairwise cointegration screening across crypto baskets
+  - Added `export_pairs_trading_json` and `export_pairs_trading_csv` for institutional reporting
+  - Added CLI options `--symbol-a`, `--symbol-b`, `--entry-z`, `--exit-z`, `--stop-z`, `--window`, `--fee`, `--capital`, and `--scan-example`
+
+### Testing & Verification
+
+- Added unit tests for cointegration calculation, OU half-life, rolling Z-score, trading simulation, pairwise scanning, parameter validation, JSON/CSV exports, and CLI execution (`tests/test_pairs_trading.py`)
+- Verified 100% test pass rate across all 53 test cases (including 20 subtests)
+
 ## v1.7.23 (2026-10-14)
 
 ### Features & Improvements
