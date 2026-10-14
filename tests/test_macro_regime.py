@@ -128,6 +128,110 @@ class MacroRegimeTests(unittest.TestCase):
             self.assertTrue(any(df["asset"] == "BTC/USDT"))
             self.assertTrue(any(df["asset"] == "market_regime"))
 
+    def test_sentiment_trend_regimes(self):
+        from scripts.crypto_macro_regime import (
+            calculate_sentiment_trend_regime,
+            adjust_weights_by_sentiment_trend,
+        )
+
+        # 1. Bull Overheating: Price > SMA200 and F&G >= 75
+        res_overheating = calculate_sentiment_trend_regime(
+            fng_value=82,
+            btc_price=72000.0,
+            btc_sma200=55000.0,
+        )
+        self.assertEqual(res_overheating["composite_regime"], "Bull Market Overheating")
+        self.assertEqual(res_overheating["cash_ratio"], 0.35)
+        self.assertTrue(res_overheating["is_bullish_trend"])
+        self.assertGreater(res_overheating["trend_distance_pct"], 0.0)
+
+        # 2. Bull Dip: Price > SMA200 and F&G < 45
+        res_dip = calculate_sentiment_trend_regime(
+            fng_value=32,
+            btc_price=60000.0,
+            btc_sma200=55000.0,
+        )
+        self.assertEqual(res_dip["composite_regime"], "Bull Market Dip")
+        self.assertEqual(res_dip["cash_ratio"], 0.0)
+        self.assertEqual(res_dip["crypto_ratio"], 1.0)
+
+        # 3. Bear Market Rally: Price < SMA200 and F&G >= 60
+        res_bear_rally = calculate_sentiment_trend_regime(
+            fng_value=68,
+            btc_price=45000.0,
+            btc_sma200=55000.0,
+        )
+        self.assertEqual(res_bear_rally["composite_regime"], "Bear Market Rally (Dead-Cat Bounce)")
+        self.assertEqual(res_bear_rally["cash_ratio"], 0.50)
+        self.assertFalse(res_bear_rally["is_bullish_trend"])
+
+        # 4. Bear Market Capitulation: Price < SMA200 and F&G < 25
+        res_capitulation = calculate_sentiment_trend_regime(
+            fng_value=18,
+            btc_price=38000.0,
+            btc_sma200=55000.0,
+        )
+        self.assertEqual(res_capitulation["composite_regime"], "Bear Market Capitulation")
+        self.assertEqual(res_capitulation["cash_ratio"], 0.15)
+
+        # 5. Weight adjustment with capital allocation
+        base_w = {"BTC/USDT": 0.6, "ETH/USDT": 0.4}
+        adj_res = adjust_weights_by_sentiment_trend(
+            base_weights=base_w,
+            fng_value=82,
+            btc_price=72000.0,
+            btc_sma200=55000.0,
+            total_wallet=20000.0,
+        )
+        self.assertEqual(adj_res["composite_regime"], "Bull Market Overheating")
+        self.assertEqual(adj_res["adjusted_weights"]["USDT (Cash)"], 0.35)
+        self.assertEqual(adj_res["capital_allocation"]["USDT (Cash)"], 7000.0)
+        self.assertAlmostEqual(sum(adj_res["adjusted_weights"].values()), 1.0, places=3)
+        self.assertNotIn("USDT (Cash)", adj_res["freqtrade_pair_weights"])
+
+    def test_sentiment_trend_validation(self):
+        from scripts.crypto_macro_regime import calculate_sentiment_trend_regime
+
+        with self.assertRaises(ValueError):
+            calculate_sentiment_trend_regime(fng_value=-5, btc_price=60000.0, btc_sma200=55000.0)
+        with self.assertRaises(ValueError):
+            calculate_sentiment_trend_regime(fng_value=50, btc_price=-100.0, btc_sma200=55000.0)
+        with self.assertRaises(ValueError):
+            calculate_sentiment_trend_regime(fng_value=50, btc_price=60000.0, btc_sma200=0.0)
+        with self.assertRaises(ValueError):
+            calculate_sentiment_trend_regime(fng_value=50, btc_price=float("nan"), btc_sma200=55000.0)
+
+    def test_main_cli_trend_regime(self):
+        import tempfile
+        from pathlib import Path
+        import json
+        from unittest.mock import patch
+        from scripts.crypto_macro_regime import main as macro_main
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            json_file = Path(tmpdir) / "trend_out.json"
+            csv_file = Path(tmpdir) / "trend_out.csv"
+            cli_args = [
+                "crypto_macro_regime.py",
+                "--fng", "85",
+                "--btc-price", "72000",
+                "--btc-sma200", "58000",
+                "--use-trend",
+                "--wallet-size", "50000",
+                "--export-json", str(json_file),
+                "--export-csv", str(csv_file),
+            ]
+            with patch("sys.argv", cli_args):
+                macro_main()
+
+            self.assertTrue(json_file.exists())
+            self.assertTrue(csv_file.exists())
+            with open(json_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            self.assertEqual(data["composite_regime"], "Bull Market Overheating")
+            self.assertEqual(data["cash_ratio"], 0.35)
+            self.assertEqual(data["total_wallet"], 50000.0)
+
 
 if __name__ == "__main__":
     unittest.main()

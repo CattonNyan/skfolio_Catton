@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v1.7.22 (2026-10-14)
+
+### Features & Improvements
+
+- **macro-regime**: Add sentiment and 200D SMA trend composite regime cash allocator (`scripts/crypto_macro_regime.py`)
+  - Added `calculate_sentiment_trend_regime` integrating Alternative.me Fear & Greed sentiment index with Bitcoin 200D Simple Moving Average (SMA) trend confirmation
+  - Defined 6-tier composite market regime matrix: Bull Market Overheating (35% cash buffer), Bull Market Healthy Trend (10% cash buffer), Bull Market Dip (0% cash buffer dip buying), Bear Market Rally (50% defensive cash hedge), Bear Market Downtrend (40% cash hedge), and Bear Market Capitulation (15% phased bottom accumulation)
+  - Added `adjust_weights_by_sentiment_trend` dynamically allocating tactical cash reserves and rescaling crypto weights
+  - Extended CLI with `--btc-price`, `--btc-sma200`, and `--use-trend` flags
+  - Enhanced CSV and JSON export to persist trend distance (%), composite regime state, and tactical hedging action
+
+### Testing & Verification
+
+- Added unit tests for composite regime transitions, boundary conditions, invalid inputs, and CLI execution with trend regime (`tests/test_macro_regime.py`)
+- Verified 100% test pass rate across all 13 test cases and 20 subtests
+
 ## v1.7.21 (2026-10-14)
 
 ### Features & Improvements

@@ -373,12 +373,23 @@ python scripts/crypto_monte_carlo.py --days 90 --sims 1000 --capital 10000 --exp
 
 ---
 
-### 16. 공포·탐욕 지수 기반 거시 국면 동적 현금(USDT) 비중 조절기
+### 16. 공포·탐욕 지수 및 200일 이동평균선(200D SMA) 추세 융합 거시 국면 동적 현금(USDT) 조절기
 
-Alternative.me 실시간 공포·탐욕 지수를 읽어와 시장 과열(Extreme Greed) 시 최대 40%의 현금 버퍼를 강제 확보하여 자산을 보호하고, 공포 국면에서는 적극 투자로 스위칭하며 정형 JSON 및 CSV로 내보냅니다:
+Alternative.me 실시간 공포·탐욕 지수와 비트코인 200일 이동평균선(200D SMA) 추세 판정을 융합하여 6대 거시 국면(강세장 과열 익절 35% 현금, 강세장 건전한 추세 지속 10% 현금, 강세장 눌림목 공격적 풀배분 0% 현금, 약세장 베어마켓 랠리 최대 방어 50% 현금, 약세 하락장 자본 보존 40% 현금, 약세장 항복·바닥 분할 매집 15% 현금)을 체계적으로 감지하고 포트폴리오 비중을 리스케일링하여 정형 JSON 및 CSV로 내보냅니다:
 
 ```powershell
+# 1. 공포·탐욕 지수 단독 기반 실시간 현금 버퍼 조절
 python scripts/crypto_macro_regime.py --wallet-size 10000 --export-json reports/macro_regime.json --export-csv reports/macro_regime.csv
+
+# 2. 공포·탐욕 + 비트코인 200일 이평선(SMA) 추세 융합 거시 국면 분석 및 헤징 비중 산출
+python scripts/crypto_macro_regime.py `
+  --fng 85 `
+  --btc-price 72000 `
+  --btc-sma200 58000 `
+  --use-trend `
+  --wallet-size 50000 `
+  --export-json reports/macro_trend_regime.json `
+  --export-csv reports/macro_trend_regime.csv
 ```
 
 ---
