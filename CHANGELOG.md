@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v1.7.23 (2026-10-14)
+
+### Features & Improvements
+
+- **triangular-capacity**: Add order book depth bottleneck capacity & optimal trade sizing simulator (`scripts/crypto_triangular_arbitrage.py`)
+  - Added `TriangularCycleCapacityResult` dataclass modeling liquidity constraints, bottleneck leg identification, optimal sizing, and breakeven capacity
+  - Added `estimate_triangular_cycle_capacity` modeling multi-leg market impact $\text{slippage}(S) = \text{base\_slippage} + \beta (S / C_{\text{bottleneck}})$ across forward and reverse 3-hop cycles (Quote $\to$ A $\to$ B $\to$ Quote)
+  - Implemented analytical optimization finding the optimal dollar trade size $S^*$ that maximizes dollar net profit under non-linear execution slippage and taker fees
+  - Added `export_triangular_capacity_json` and `export_triangular_capacity_csv` for institutional quantitative reporting
+  - Added CLI flags `--estimate-capacity`, `--depth-a`, `--depth-b`, `--depth-cross`, `--export-capacity-json`, and `--export-capacity-csv`
+
+### Testing & Verification
+
+- Added unit tests for triangular arbitrage cycle capacity estimation, bottleneck identification, validation error handling, JSON/CSV exports, and CLI execution (`tests/test_triangular_arbitrage.py`)
+- Verified 100% test pass rate across all 15 test cases (44 passed across recent quant units)
+
 ## v1.7.22 (2026-10-14)
 
 ### Features & Improvements

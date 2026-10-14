@@ -520,12 +520,25 @@ python scripts/fetch_bithumb_crypto.py --symbols BTC ETH --orderbook --depth-lev
 python scripts/fetch_bithumb_crypto.py --symbols BTC ETH --orderbook --order-size 50000000 --side buy --export-csv reports/bithumb_impact.csv
 ```
 
-### 28. 3각 차익거래 기회 탐색 및 수수료 잠식 분석기
+### 28. 3각 차익거래 기회 탐색, 오더북 유동성 캐파 및 수수료 잠식 분석기
 
-3개 레그(Quote -> A -> B -> Quote) 환율 경로의 순환 불일치를 탐색하고 거래소 수수료(Fee Drag)와 슬리피지 버퍼를 감안한 무위험 차익 기회를 정형 JSON 및 CSV 데이터로 내보냅니다:
+3개 레그(Quote -> A -> B -> Quote) 환율 경로의 순환 불일치를 탐색하고 거래소 수수료(Fee Drag)와 슬리피지 버퍼를 감안한 무위험 차익 기회를 정형 JSON 및 CSV 데이터로 내보냅니다. 또한 다중 레그 오더북 깊이(Depth)의 병목(Bottleneck) 유동성 제약과 비선형 시장 충격 슬리피지 모델($\text{slippage}(S) = \text{base\_slippage} + \beta (S / C_{\text{bottleneck}})$)을 바탕으로 순달러 수익을 극대화하는 최적 주문 크기($S^*$) 및 손익분기 캐파를 시뮬레이션합니다:
 
 ```powershell
+# 기본 3각 차익거래 기회 스캔 및 결과 내보내기
 python scripts/crypto_triangular_arbitrage.py --p-btc-usdt 65000 --p-eth-usdt 3500 --p-eth-btc 0.0545 --export-json reports/triangular_arb.json --export-csv reports/triangular_arb.csv
+
+# 3각 오더북 병목 유동성 및 최적 자금 사이징(Capacity & Optimal Sizing) 시뮬레이션
+python scripts/crypto_triangular_arbitrage.py `
+  --estimate-capacity `
+  --p-btc-usdt 65000 `
+  --p-eth-usdt 3500 `
+  --p-eth-btc 0.0545 `
+  --depth-a 100000 `
+  --depth-b 80000 `
+  --depth-cross 30000 `
+  --export-capacity-json reports/triangular_capacity.json `
+  --export-capacity-csv reports/triangular_capacity.csv
 ```
 
 ### 29. 김치 프리미엄 델타 중립 펀딩비 차익 시뮬레이터

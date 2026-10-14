@@ -55,6 +55,34 @@ class ArbitrageOpportunity:
         return d
 
 
+@dataclass
+class TriangularCycleCapacityResult:
+    """Represents triangular arbitrage order book capacity and optimal sizing analytics."""
+    cycle: str
+    bottleneck_capacity_usd: float
+    optimal_trade_size_usd: float
+    max_dollar_profit: float
+    optimal_net_return_pct: float
+    base_net_return_pct: float
+    leg_capacities_usd: dict[str, float]
+    breakeven_capacity_usd: float
+    is_actionable: bool
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert capacity analysis result to serializable dictionary."""
+        return {
+            "cycle": self.cycle,
+            "bottleneck_capacity_usd": round(float(self.bottleneck_capacity_usd), 2),
+            "optimal_trade_size_usd": round(float(self.optimal_trade_size_usd), 2),
+            "max_dollar_profit": round(float(self.max_dollar_profit), 2),
+            "optimal_net_return_pct": round(float(self.optimal_net_return_pct), 4),
+            "base_net_return_pct": round(float(self.base_net_return_pct), 4),
+            "leg_capacities_usd": {k: round(float(v), 2) for k, v in self.leg_capacities_usd.items()},
+            "breakeven_capacity_usd": round(float(self.breakeven_capacity_usd), 2),
+            "is_actionable": self.is_actionable,
+        }
+
+
 def calculate_triangular_arbitrage(
     p_a_quote: float,   # Price of A in Quote (e.g. BTC/USDT)
     p_b_quote: float,   # Price of B in Quote (e.g. ETH/USDT)
@@ -135,6 +163,104 @@ def calculate_triangular_arbitrage(
     )
 
     return [fwd_opp, rev_opp]
+
+
+def estimate_triangular_cycle_capacity(
+    p_a_quote: float,
+    p_b_quote: float,
+    p_b_a: float,
+    depth_a_quote_usd: float,
+    depth_b_quote_usd: float,
+    depth_b_a_usd: float,
+    fee_rate: float = 0.00075,
+    base_slippage: float = 0.0002,
+    slippage_impact_factor: float = 0.005,
+    base_quote: str = "USDT",
+    asset_a: str = "BTC",
+    asset_b: str = "ETH",
+) -> list[TriangularCycleCapacityResult]:
+    """Estimate liquidity capacity, bottleneck leg, and optimal trade sizing for triangular arbitrage.
+
+    Models dynamic market impact across the 3 execution legs as trade size increases:
+      effective_slippage(S) = base_slippage + slippage_impact_factor * (S / bottleneck_capacity)
+    and determines optimal trade size S* that maximizes net dollar profit.
+    """
+    if p_a_quote <= 0 or p_b_quote <= 0 or p_b_a <= 0:
+        raise ValueError("Prices must be strictly positive.")
+    if depth_a_quote_usd <= 0 or depth_b_quote_usd <= 0 or depth_b_a_usd <= 0:
+        raise ValueError("Order book depths must be strictly positive.")
+    if fee_rate < 0 or base_slippage < 0 or slippage_impact_factor < 0:
+        raise ValueError("Fees and slippage parameters must be non-negative.")
+
+    bottleneck = min(depth_a_quote_usd, depth_b_quote_usd, depth_b_a_usd)
+
+    # 1. Forward Cycle: Quote -> A -> B -> Quote
+    # Gross multiplier: p_b_quote / (p_a_quote * p_b_a)
+    fwd_gross_mult = p_b_quote / (p_a_quote * p_b_a)
+    # 2. Reverse Cycle: Quote -> B -> A -> Quote
+    # Gross multiplier: (p_a_quote * p_b_a) / p_b_quote
+    rev_gross_mult = (p_a_quote * p_b_a) / p_b_quote
+
+    results: list[TriangularCycleCapacityResult] = []
+    cycles = [
+        (
+            f"{base_quote} -> {asset_a} -> {asset_b} -> {base_quote}",
+            fwd_gross_mult,
+            {
+                f"Leg 1 ({asset_a}/{base_quote})": depth_a_quote_usd,
+                f"Leg 2 ({asset_b}/{asset_a})": depth_b_a_usd,
+                f"Leg 3 ({asset_b}/{base_quote})": depth_b_quote_usd,
+            },
+        ),
+        (
+            f"{base_quote} -> {asset_b} -> {asset_a} -> {base_quote}",
+            rev_gross_mult,
+            {
+                f"Leg 1 ({asset_b}/{base_quote})": depth_b_quote_usd,
+                f"Leg 2 ({asset_b}/{asset_a})": depth_b_a_usd,
+                f"Leg 3 ({asset_a}/{base_quote})": depth_a_quote_usd,
+            },
+        ),
+    ]
+
+    for cycle_name, gross_mult, leg_caps in cycles:
+        base_cost_factor = ((1.0 - fee_rate) ** 3) * ((1.0 - base_slippage) ** 3)
+        base_net_pct = (gross_mult * base_cost_factor - 1.0) * 100.0
+
+        n_steps = 100
+        best_size = 0.0
+        max_profit = 0.0
+        best_net_pct = 0.0
+        be_capacity = 0.0
+
+        for i in range(1, n_steps + 1):
+            s = (i / n_steps) * bottleneck
+            slip_s = base_slippage + slippage_impact_factor * (s / bottleneck)
+            cost_s = ((1.0 - fee_rate) ** 3) * ((1.0 - slip_s) ** 3)
+            net_pct_s = (gross_mult * cost_s - 1.0) * 100.0
+            profit_s = s * (net_pct_s / 100.0)
+
+            if net_pct_s > 0:
+                be_capacity = s
+                if profit_s > max_profit:
+                    max_profit = profit_s
+                    best_size = s
+                    best_net_pct = net_pct_s
+
+        res = TriangularCycleCapacityResult(
+            cycle=cycle_name,
+            bottleneck_capacity_usd=round(bottleneck, 2),
+            optimal_trade_size_usd=round(best_size, 2),
+            max_dollar_profit=round(max_profit, 2),
+            optimal_net_return_pct=round(best_net_pct, 4),
+            base_net_return_pct=round(base_net_pct, 4),
+            leg_capacities_usd=leg_caps,
+            breakeven_capacity_usd=round(be_capacity, 2),
+            is_actionable=max_profit > 0.0,
+        )
+        results.append(res)
+
+    return results
 
 
 def filter_profitable_opportunities(
@@ -236,8 +362,46 @@ def export_triangular_arbitrage_csv(
     return csv_str
 
 
+def export_triangular_capacity_json(
+    results: list[TriangularCycleCapacityResult],
+    filepath: str | Path,
+) -> Path:
+    """Export triangular arbitrage capacity analysis to a JSON file."""
+    out_path = Path(filepath)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump([r.to_dict() for r in results], f, indent=2, ensure_ascii=False)
+    return out_path
+
+
+def export_triangular_capacity_csv(
+    results: list[TriangularCycleCapacityResult],
+    filepath: str | Path,
+) -> Path:
+    """Export triangular arbitrage capacity analysis to a CSV file."""
+    out_path = Path(filepath)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for r in results:
+        d = r.to_dict()
+        row = {
+            "cycle": d["cycle"],
+            "bottleneck_capacity_usd": d["bottleneck_capacity_usd"],
+            "optimal_trade_size_usd": d["optimal_trade_size_usd"],
+            "max_dollar_profit": d["max_dollar_profit"],
+            "optimal_net_return_pct": d["optimal_net_return_pct"],
+            "base_net_return_pct": d["base_net_return_pct"],
+            "breakeven_capacity_usd": d["breakeven_capacity_usd"],
+            "is_actionable": d["is_actionable"],
+            "leg_capacities": "; ".join(f"{k}: ${v:,.2f}" for k, v in d["leg_capacities_usd"].items()),
+        }
+        rows.append(row)
+    pd.DataFrame(rows).to_csv(out_path, index=False, encoding="utf-8")
+    return out_path
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Triangular Arbitrage Scanner.")
+    parser = argparse.ArgumentParser(description="Triangular Arbitrage Scanner & Capacity Estimator.")
     parser.add_argument("--p-btc-usdt", type=float, default=65000.0, help="BTC/USDT price")
     parser.add_argument("--p-eth-usdt", type=float, default=3500.0, help="ETH/USDT price")
     parser.add_argument("--p-eth-btc", type=float, default=0.0545, help="ETH/BTC price")
@@ -245,9 +409,47 @@ def main():
     parser.add_argument("--capital", type=float, default=None, help="Capital allocated in quote currency (USD/USDT)")
     parser.add_argument("--min-profit-pct", type=float, default=None, help="Minimum net profit percentage hurdle rate")
     parser.add_argument("--profitable-only", action="store_true", help="Display only profitable arbitrage opportunities")
+    parser.add_argument("--estimate-capacity", action="store_true", help="Estimate liquidity bottleneck and optimal trade sizing")
+    parser.add_argument("--depth-a", type=float, default=50000.0, help="Order book depth for Pair A/Quote in USD")
+    parser.add_argument("--depth-b", type=float, default=40000.0, help="Order book depth for Pair B/Quote in USD")
+    parser.add_argument("--depth-cross", type=float, default=30000.0, help="Order book depth for Cross Pair B/A in USD")
+    parser.add_argument("--export-capacity-json", type=str, default=None, help="Export capacity analysis to JSON")
+    parser.add_argument("--export-capacity-csv", type=str, default=None, help="Export capacity analysis to CSV")
     parser.add_argument("--export-json", type=str, default=None, help="Export identified opportunities to JSON file")
     parser.add_argument("--export-csv", type=str, default=None, help="Export identified opportunities to CSV file")
     args = parser.parse_args()
+
+    if args.estimate_capacity:
+        cap_results = estimate_triangular_cycle_capacity(
+            p_a_quote=args.p_btc_usdt,
+            p_b_quote=args.p_eth_usdt,
+            p_b_a=args.p_eth_btc,
+            depth_a_quote_usd=args.depth_a,
+            depth_b_quote_usd=args.depth_b,
+            depth_b_a_usd=args.depth_cross,
+            fee_rate=args.fee,
+        )
+        print("======== Triangular Arbitrage Liquidity Capacity & Sizing ========")
+        for cr in cap_results:
+            status = "[ACTIONABLE]" if cr.is_actionable else "[UNPROFITABLE]"
+            print(f"{status} Cycle: {cr.cycle}")
+            print(f"  Bottleneck Depth   : ${cr.bottleneck_capacity_usd:,.2f}")
+            print(f"  Optimal Trade Size : ${cr.optimal_trade_size_usd:,.2f}")
+            print(f"  Max Dollar Profit  : ${cr.max_dollar_profit:+,.2f} ({cr.optimal_net_return_pct:+.3f}%)")
+            print(f"  Breakeven Capacity : ${cr.breakeven_capacity_usd:,.2f}")
+            print("  Leg Capacities:")
+            for leg_k, leg_v in cr.leg_capacities_usd.items():
+                print(f"    - {leg_k}: ${leg_v:,.2f}")
+        print("==================================================================")
+
+        if args.export_capacity_json:
+            export_triangular_capacity_json(cap_results, args.export_capacity_json)
+            print(f"[+] Capacity analysis exported to {args.export_capacity_json}")
+
+        if args.export_capacity_csv:
+            export_triangular_capacity_csv(cap_results, args.export_capacity_csv)
+            print(f"[+] Capacity CSV exported to {args.export_capacity_csv}")
+        return
 
     opps = calculate_triangular_arbitrage(
         p_a_quote=args.p_btc_usdt,

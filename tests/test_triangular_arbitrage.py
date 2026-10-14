@@ -1,6 +1,11 @@
 import unittest
 from scripts.crypto_triangular_arbitrage import (
+    ArbitrageOpportunity,
+    TriangularCycleCapacityResult,
     calculate_triangular_arbitrage,
+    estimate_triangular_cycle_capacity,
+    export_triangular_capacity_json,
+    export_triangular_capacity_csv,
     filter_profitable_opportunities,
     scan_triangular_pairs,
 )
@@ -156,6 +161,107 @@ class TriangularArbitrageTests(unittest.TestCase):
             self.assertIn("profit_dollars", df.columns)
             self.assertEqual(float(df["capital"].iloc[0]), 10000.0)
 
+    def test_estimate_triangular_cycle_capacity_profitable(self):
+        results = estimate_triangular_cycle_capacity(
+            p_a_quote=50000.0,
+            p_b_quote=3000.0,
+            p_b_a=0.055,
+            depth_a_quote_usd=100000.0,
+            depth_b_quote_usd=50000.0,
+            depth_b_a_usd=25000.0,
+            fee_rate=0.0005,
+            base_slippage=0.0001,
+            slippage_impact_factor=0.002,
+        )
+        self.assertEqual(len(results), 2)
+        # Bottleneck depth should be min(100k, 50k, 25k) = 25000
+        for r in results:
+            self.assertEqual(r.bottleneck_capacity_usd, 25000.0)
+            d = r.to_dict()
+            self.assertIn("cycle", d)
+            self.assertIn("optimal_trade_size_usd", d)
+            self.assertIn("max_dollar_profit", d)
+            self.assertIn("leg_capacities_usd", d)
+
+        # At least one direction should be actionable
+        actionable = [r for r in results if r.is_actionable]
+        self.assertGreaterEqual(len(actionable), 1)
+        best = actionable[0]
+        self.assertGreater(best.optimal_trade_size_usd, 0.0)
+        self.assertLessEqual(best.optimal_trade_size_usd, best.bottleneck_capacity_usd)
+        self.assertGreater(best.max_dollar_profit, 0.0)
+        self.assertGreater(best.breakeven_capacity_usd, 0.0)
+
+    def test_estimate_triangular_cycle_capacity_validation(self):
+        with self.assertRaises(ValueError):
+            estimate_triangular_cycle_capacity(0, 3000, 0.05, 10000, 10000, 10000)
+        with self.assertRaises(ValueError):
+            estimate_triangular_cycle_capacity(50000, 3000, 0.05, -100, 10000, 10000)
+        with self.assertRaises(ValueError):
+            estimate_triangular_cycle_capacity(50000, 3000, 0.05, 10000, 10000, 10000, fee_rate=-0.01)
+
+    def test_export_triangular_capacity_json_and_csv(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        import pandas as pd
+
+        results = estimate_triangular_cycle_capacity(
+            p_a_quote=50000.0,
+            p_b_quote=3000.0,
+            p_b_a=0.055,
+            depth_a_quote_usd=80000.0,
+            depth_b_quote_usd=60000.0,
+            depth_b_a_usd=40000.0,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            json_file = Path(tmpdir) / "capacity.json"
+            csv_file = Path(tmpdir) / "capacity.csv"
+
+            export_triangular_capacity_json(results, json_file)
+            self.assertTrue(json_file.exists())
+            with open(json_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            self.assertEqual(len(data), 2)
+            self.assertIn("bottleneck_capacity_usd", data[0])
+
+            export_triangular_capacity_csv(results, csv_file)
+            self.assertTrue(csv_file.exists())
+            df = pd.read_csv(csv_file)
+            self.assertEqual(len(df), 2)
+            self.assertIn("optimal_trade_size_usd", df.columns)
+            self.assertIn("max_dollar_profit", df.columns)
+            self.assertIn("breakeven_capacity_usd", df.columns)
+
+    def test_main_cli_estimate_capacity(self):
+        import sys
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from scripts.crypto_triangular_arbitrage import main
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            json_path = str(Path(tmpdir) / "test_cap.json")
+            csv_path = str(Path(tmpdir) / "test_cap.csv")
+            test_args = [
+                "crypto_triangular_arbitrage.py",
+                "--estimate-capacity",
+                "--p-btc-usdt", "50000.0",
+                "--p-eth-usdt", "3000.0",
+                "--p-eth-btc", "0.055",
+                "--depth-a", "50000.0",
+                "--depth-b", "40000.0",
+                "--depth-cross", "20000.0",
+                "--export-capacity-json", json_path,
+                "--export-capacity-csv", csv_path,
+            ]
+            with patch.object(sys, "argv", test_args):
+                main()
+
+            self.assertTrue(Path(json_path).exists())
+            self.assertTrue(Path(csv_path).exists())
+
 
 if __name__ == "__main__":
     unittest.main()
+
