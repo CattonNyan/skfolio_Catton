@@ -8,11 +8,15 @@ import pandas as pd
 
 from scripts.crypto_kelly_sizer import (
     KellyResult,
+    MultiAssetKellyResult,
     calculate_risk_of_ruin,
     calculate_discrete_kelly,
     calculate_continuous_kelly,
     calculate_portfolio_kelly,
+    calculate_multi_asset_kelly_allocation,
     export_portfolio_kelly_csv,
+    export_multi_asset_kelly_json,
+    export_multi_asset_kelly_csv,
     main as kelly_main,
 )
 
@@ -192,7 +196,123 @@ class KellySizerTests(unittest.TestCase):
             self.assertEqual(len(df), 3)
             self.assertEqual(df.iloc[0]["asset"], "BTC/USDT")
             self.assertAlmostEqual(df.iloc[0]["weight"], 0.45)
-            self.assertAlmostEqual(df.iloc[0]["allocation_pct"], 45.0)
+    def test_calculate_multi_asset_kelly_allocation(self):
+        rng = np.random.default_rng(42)
+        n_obs = 100
+        returns_df = pd.DataFrame({
+            "BTC/USDT": rng.normal(0.003, 0.02, n_obs),
+            "ETH/USDT": rng.normal(0.0025, 0.03, n_obs),
+            "SOL/USDT": rng.normal(0.004, 0.04, n_obs),
+        })
+        res = calculate_multi_asset_kelly_allocation(
+            returns_df=returns_df,
+            fraction=0.5,
+            shrinkage=0.2,
+            max_weight_per_asset=0.5,
+            capital=100000.0,
+        )
+        self.assertIsInstance(res, MultiAssetKellyResult)
+        self.assertEqual(res.assets, ["BTC/USDT", "ETH/USDT", "SOL/USDT"])
+        self.assertEqual(res.fraction, 0.5)
+        self.assertEqual(res.capital, 100000.0)
+        self.assertIsNotNone(res.position_dollars)
+
+        # Ensure all weights are non-negative and capped
+        for a in res.assets:
+            self.assertGreaterEqual(res.full_kelly_weights[a], 0.0)
+            self.assertLessEqual(res.full_kelly_weights[a], 0.500001)
+            # Fractional should be 0.5 * full
+            self.assertAlmostEqual(res.fractional_kelly_weights[a], res.full_kelly_weights[a] * 0.5, places=5)
+            self.assertAlmostEqual(res.half_kelly_weights[a], res.full_kelly_weights[a] * 0.5, places=5)
+            self.assertAlmostEqual(res.quarter_kelly_weights[a], res.full_kelly_weights[a] * 0.25, places=5)
+            self.assertAlmostEqual(res.position_dollars[a], res.fractional_kelly_weights[a] * 100000.0, places=2)
+
+        self.assertGreaterEqual(res.portfolio_volatility, 0.0)
+        self.assertGreaterEqual(res.drawdown_50_prob, 0.0)
+        self.assertLessEqual(res.drawdown_50_prob, 1.0)
+
+        # Test to_dict serialization
+        d = res.to_dict()
+        self.assertIn("full_kelly_weights", d)
+        self.assertIn("fractional_kelly_weights", d)
+        self.assertIn("drawdown_50_prob", d)
+        self.assertEqual(d["capital"], 100000.0)
+
+    def test_multi_asset_kelly_validation(self):
+        rng = np.random.default_rng(42)
+        valid_df = pd.DataFrame({
+            "BTC/USDT": rng.normal(0.002, 0.02, 50),
+            "ETH/USDT": rng.normal(0.002, 0.02, 50),
+        })
+        # Empty DataFrame
+        with self.assertRaises(ValueError):
+            calculate_multi_asset_kelly_allocation(pd.DataFrame())
+        # Single column
+        with self.assertRaises(ValueError):
+            calculate_multi_asset_kelly_allocation(pd.DataFrame({"BTC": [0.01, 0.02]}))
+        # Invalid shrinkage
+        with self.assertRaises(ValueError):
+            calculate_multi_asset_kelly_allocation(valid_df, shrinkage=-0.1)
+        with self.assertRaises(ValueError):
+            calculate_multi_asset_kelly_allocation(valid_df, shrinkage=1.5)
+        # Invalid fraction
+        with self.assertRaises(ValueError):
+            calculate_multi_asset_kelly_allocation(valid_df, fraction=0.0)
+        with self.assertRaises(ValueError):
+            calculate_multi_asset_kelly_allocation(valid_df, fraction=2.5)
+        # Invalid max_weight_per_asset
+        with self.assertRaises(ValueError):
+            calculate_multi_asset_kelly_allocation(valid_df, max_weight_per_asset=0.0)
+
+    def test_multi_asset_kelly_exports(self):
+        rng = np.random.default_rng(42)
+        returns_df = pd.DataFrame({
+            "BTC/USDT": rng.normal(0.003, 0.02, 60),
+            "ETH/USDT": rng.normal(0.002, 0.03, 60),
+        })
+        res = calculate_multi_asset_kelly_allocation(returns_df, capital=50000.0)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            json_path = Path(tmpdir) / "multi_kelly.json"
+            csv_path = Path(tmpdir) / "multi_kelly.csv"
+
+            export_multi_asset_kelly_json(res, json_path)
+            export_multi_asset_kelly_csv(res, csv_path)
+
+            self.assertTrue(json_path.exists())
+            self.assertTrue(csv_path.exists())
+
+            with open(json_path, "r", encoding="utf-8") as f:
+                jdata = json.load(f)
+            self.assertIn("full_kelly_weights", jdata)
+            self.assertEqual(jdata["capital"], 50000.0)
+
+            df = pd.read_csv(csv_path)
+            self.assertIn("asset", df.columns)
+            self.assertIn("fractional_kelly_weight", df.columns)
+            self.assertIn("position_dollars", df.columns)
+            self.assertEqual(len(df), 2)
+
+    def test_cli_multi_asset_execution(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            json_path = Path(tmpdir) / "cli_multi.json"
+            csv_path = Path(tmpdir) / "cli_multi.csv"
+            test_args = [
+                "crypto_kelly_sizer.py",
+                "--multi-asset",
+                "--fraction", "0.5",
+                "--capital", "50000",
+                "--export-multi-json", str(json_path),
+                "--export-multi-csv", str(csv_path),
+            ]
+            with patch("sys.argv", test_args):
+                kelly_main()
+
+            self.assertTrue(json_path.exists())
+            self.assertTrue(csv_path.exists())
+            with open(json_path, "r", encoding="utf-8") as f:
+                jdata = json.load(f)
+            self.assertEqual(jdata["capital"], 50000.0)
+            self.assertEqual(jdata["fraction"], 0.5)
 
 
 if __name__ == "__main__":

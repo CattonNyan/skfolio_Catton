@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v1.7.21 (2026-10-14)
+
+### Features & Improvements
+
+- **multi-asset-kelly**: Add multi-asset vector Kelly allocator with covariance shrinkage and drawdown risk estimator (`scripts/crypto_kelly_sizer.py`)
+  - Added `MultiAssetKellyResult` dataclass tracking full/fractional/half/quarter Kelly weight vectors, expected daily/annual compound growth rates, portfolio volatility, portfolio Sharpe ratio, and 50% drawdown probability
+  - Added `calculate_multi_asset_kelly_allocation` computing continuous unconstrained vector Kelly allocation $F^* = \Sigma^{-1} (\mu - r_f)$ with Ledoit-Wolf diagonal covariance shrinkage $\Sigma_{shrunk} = (1 - \alpha)\Sigma + \alpha \text{diag}(\Sigma)$, long-only non-negative bounding, and per-asset capacity caps (`max_weight_per_asset`)
+  - Added `export_multi_asset_kelly_json` and `export_multi_asset_kelly_csv` for structured quant portfolio export
+  - Added CLI flags `--multi-asset`, `--shrinkage`, `--max-asset-weight`, `--export-multi-json`, and `--export-multi-csv`
+  - Integrated theoretical 50% drawdown risk estimation $P(\text{Drawdown} \ge 50\%) = \frac{1 - f}{1 + f}$ under fractional Kelly leverage
+
+### Testing & Verification
+
+- Added unit tests for multi-asset Kelly allocation, covariance shrinkage parameter handling, boundary conditions, JSON/CSV exports, and CLI execution (`tests/test_kelly_sizer.py`)
+- Verified 100% test pass rate across the full test suite
+
 ## v1.7.20 (2026-10-14)
 
 ### Features & Improvements

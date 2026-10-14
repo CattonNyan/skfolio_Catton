@@ -475,12 +475,23 @@ python scripts/crypto_liquidity_filter.py `
   --export-csv reports/liquidity_report.csv
 ```
 
-### 26. 켈리 공식 및 하프 켈리 포지션 사이징 계산기
+### 26. 켈리 공식, 하프 켈리 및 다중 자산 벡터 켈리(Multi-Asset Vector Kelly) 배분기
 
-과거 백테스트 승률과 손익비(Payoff Ratio)를 바탕으로 기하급수적 계좌 성장을 달성하는 이산/연속 켈리 비중(f*) 및 암호화폐 변동성 하방 리스크를 50% 완화한 하프 켈리(Half-Kelly) 투자 비중을 계산하고, 자본금 기준 달러 주문 금액을 정형 JSON 및 CSV로 내보냅니다:
+과거 백테스트 승률과 손익비(Payoff Ratio)를 바탕으로 기하급수적 계좌 성장을 달성하는 단일 자산 이산/연속 켈리 비중($f^*$) 및 파산 확률(Risk of Ruin), 암호화폐 변동성 하방 리스크를 50% 완화한 하프 켈리(Half-Kelly) 투자 비중을 계산합니다. 더불어 고차원 가상자산 유니버스에 대한 **다중 자산 연속 벡터 켈리 최적화($F^* = \Sigma^{-1}(\mu - r_f)$)**, 공분산 행렬의 특이성을 방지하는 **Ledoit-Wolf 대각 수축(Covariance Shrinkage)**, 롱온리 비음수 제약 및 개별 자산 투자 한도 캡(`--max-asset-weight`), 레버리지 대비 50% 드로다운 이론적 발생 확률($P(\text{DD} \ge 50\%)$)을 산출하여 콘솔 표, JSON 및 CSV로 내보냅니다:
 
 ```powershell
+# 1. 단일 전략/자산 이산 켈리 및 파산 확률(Risk of Ruin) 계산
 python scripts/crypto_kelly_sizer.py --win-rate 0.58 --payoff 1.75 --capital 20000 --export-json reports/kelly_sizing.json --export-csv reports/kelly_sizing.csv
+
+# 2. 다중 가상자산(BTC, ETH, SOL, BNB 등) 벡터 켈리 최적화 배분 (하프 켈리 0.5x, 공분산 수축 0.15, 단일 자산 최대 40% 캡)
+python scripts/crypto_kelly_sizer.py `
+  --multi-asset `
+  --fraction 0.5 `
+  --shrinkage 0.15 `
+  --max-asset-weight 0.40 `
+  --capital 50000 `
+  --export-multi-json reports/multi_asset_kelly.json `
+  --export-multi-csv reports/multi_asset_kelly.csv
 ```
 
 ### 27. 빗썸(Bithumb) 원화 마켓 전용 캔들 수집기 & 호가창 슬리피지 분석기

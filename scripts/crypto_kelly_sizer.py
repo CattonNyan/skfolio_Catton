@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -50,6 +51,45 @@ class KellyResult:
             "is_positive_edge": self.is_positive_edge,
             "risk_of_ruin": round(float(self.risk_of_ruin), 4),
         }
+
+
+@dataclass
+class MultiAssetKellyResult:
+    """Multi-asset portfolio Kelly optimization results container."""
+    assets: list[str]
+    full_kelly_weights: dict[str, float]
+    fractional_kelly_weights: dict[str, float]
+    half_kelly_weights: dict[str, float]
+    quarter_kelly_weights: dict[str, float]
+    fraction: float
+    expected_growth_rate: float
+    expected_annual_growth_rate: float
+    portfolio_volatility: float
+    portfolio_sharpe: float
+    drawdown_50_prob: float
+    capital: float | None = None
+    position_dollars: dict[str, float] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert multi-asset Kelly result to a serializable dictionary."""
+        res: dict[str, Any] = {
+            "assets": self.assets,
+            "fraction": round(float(self.fraction), 4),
+            "full_kelly_weights": {k: round(float(v), 4) for k, v in self.full_kelly_weights.items()},
+            "fractional_kelly_weights": {k: round(float(v), 4) for k, v in self.fractional_kelly_weights.items()},
+            "half_kelly_weights": {k: round(float(v), 4) for k, v in self.half_kelly_weights.items()},
+            "quarter_kelly_weights": {k: round(float(v), 4) for k, v in self.quarter_kelly_weights.items()},
+            "expected_growth_rate": round(float(self.expected_growth_rate), 6),
+            "expected_annual_growth_rate": round(float(self.expected_annual_growth_rate), 4),
+            "portfolio_volatility": round(float(self.portfolio_volatility), 4),
+            "portfolio_sharpe": round(float(self.portfolio_sharpe), 4),
+            "drawdown_50_prob": round(float(self.drawdown_50_prob), 4),
+        }
+        if self.capital is not None:
+            res["capital"] = float(self.capital)
+        if self.position_dollars is not None:
+            res["position_dollars"] = {k: round(float(v), 2) for k, v in self.position_dollars.items()}
+        return res
 
 
 def calculate_risk_of_ruin(
@@ -259,6 +299,153 @@ def calculate_portfolio_kelly(
     return pd.Series(scaled_weights, index=returns_df.columns, name="Kelly_Weight")
 
 
+def calculate_multi_asset_kelly_allocation(
+    returns_df: pd.DataFrame,
+    fraction: float = 0.5,
+    risk_free_rate: float = 0.0,
+    covariance_shrinkage: float = 0.1,
+    max_weight_per_asset: float = 0.5,
+    capital: float | None = None,
+    periods_per_year: int = 365,
+    shrinkage: float | None = None,
+) -> MultiAssetKellyResult:
+    """Compute multi-asset continuous Kelly allocation with covariance shrinkage and position bounds.
+
+    F* = fraction * Sigma_shrunk^-1 * (mu - r_f)
+    """
+    if shrinkage is not None:
+        covariance_shrinkage = shrinkage
+    if returns_df.empty or len(returns_df) < 2:
+        raise ValueError("Returns DataFrame must have at least 2 observations.")
+    if returns_df.shape[1] < 2:
+        raise ValueError("Multi-asset Kelly requires at least 2 assets.")
+    if not (0.0 < fraction <= 2.0):
+        raise ValueError("Fraction must be strictly positive and <= 2.0.")
+    if not (0.0 <= covariance_shrinkage <= 1.0):
+        raise ValueError("Covariance shrinkage must be between 0.0 and 1.0.")
+    if not (0.0 < max_weight_per_asset <= 1.0):
+        raise ValueError("Max weight per asset must be strictly between 0 and 1.")
+
+    assets = list(returns_df.columns)
+    mu = returns_df.mean().to_numpy(dtype=float)
+    sigma = returns_df.cov().to_numpy(dtype=float)
+    n = len(assets)
+
+    # Covariance shrinkage: (1 - alpha) * Sigma + alpha * diag(Sigma)
+    diag_sigma = np.diag(np.diag(sigma))
+    shrunk_sigma = (1.0 - covariance_shrinkage) * sigma + covariance_shrinkage * diag_sigma
+    reg_sigma = shrunk_sigma + np.eye(n) * 1e-6
+
+    excess_mu = mu - risk_free_rate
+    try:
+        inv_sigma = np.linalg.pinv(reg_sigma)
+        raw_full = inv_sigma @ excess_mu
+    except Exception:
+        raw_full = np.ones(n) / n
+
+    # Long-only non-negative constraint
+    raw_full = np.maximum(0.0, raw_full)
+
+    # Individual asset cap and normalization
+    tot = float(np.sum(raw_full))
+    if tot > 1e-9:
+        w_norm = raw_full / max(1.0, tot)
+    else:
+        w_norm = np.zeros(n)
+
+    # Apply asset cap and re-normalize if needed
+    w_capped = np.minimum(w_norm, max_weight_per_asset)
+    tot_capped = float(np.sum(w_capped))
+    if tot_capped > 1.0:
+        w_full = (w_capped / tot_capped)
+    else:
+        w_full = w_capped
+
+    w_frac = w_full * fraction
+    w_half = w_full * 0.5
+    w_quarter = w_full * 0.25
+
+    # Portfolio metrics under fractional weights
+    port_var = float(w_frac.T @ sigma @ w_frac)
+    port_vol = math.sqrt(max(0.0, port_var))
+    port_excess = float(w_frac.T @ excess_mu)
+
+    # Growth rate: g(w) = r_f + w^T (mu - r_f) - 0.5 * w^T Sigma w
+    growth_rate = risk_free_rate + port_excess - 0.5 * port_var
+    annual_growth = ((1.0 + growth_rate) ** periods_per_year) - 1.0 if (1.0 + growth_rate) > 0 else -1.0
+    port_sharpe = (port_excess / port_vol) if port_vol > 1e-9 else 0.0
+
+    # Theoretical probability of 50% drawdown under fractional Kelly
+    f_val = min(1.0, fraction)
+    dd_50_prob = max(0.0, min(1.0, (1.0 - f_val) / (1.0 + f_val))) if fraction < 1.0 else 1.0
+
+    full_dict = {assets[i]: float(w_full[i]) for i in range(n)}
+    frac_dict = {assets[i]: float(w_frac[i]) for i in range(n)}
+    half_dict = {assets[i]: float(w_half[i]) for i in range(n)}
+    quarter_dict = {assets[i]: float(w_quarter[i]) for i in range(n)}
+
+    pos_dollars = None
+    if capital is not None and capital > 0:
+        pos_dollars = {assets[i]: float(w_frac[i] * capital) for i in range(n)}
+
+    return MultiAssetKellyResult(
+        assets=assets,
+        full_kelly_weights=full_dict,
+        fractional_kelly_weights=frac_dict,
+        half_kelly_weights=half_dict,
+        quarter_kelly_weights=quarter_dict,
+        fraction=fraction,
+        expected_growth_rate=float(growth_rate),
+        expected_annual_growth_rate=float(annual_growth),
+        portfolio_volatility=float(port_vol),
+        portfolio_sharpe=float(port_sharpe),
+        drawdown_50_prob=float(dd_50_prob),
+        capital=capital,
+        position_dollars=pos_dollars,
+    )
+
+
+def export_multi_asset_kelly_json(
+    result: MultiAssetKellyResult,
+    filepath: str | Path,
+) -> Path:
+    """Export multi-asset Kelly optimization results to a JSON file."""
+    out_path = Path(filepath)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(result.to_dict(), f, indent=2, ensure_ascii=False)
+    return out_path
+
+
+def export_multi_asset_kelly_csv(
+    result: MultiAssetKellyResult,
+    filepath: str | Path,
+) -> Path:
+    """Export multi-asset Kelly allocation details to a CSV file."""
+    out_path = Path(filepath)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for asset in result.assets:
+        row = {
+            "asset": asset,
+            "full_kelly_weight": round(result.full_kelly_weights.get(asset, 0.0), 4),
+            "fractional_kelly_weight": round(result.fractional_kelly_weights.get(asset, 0.0), 4),
+            "half_kelly_weight": round(result.half_kelly_weights.get(asset, 0.0), 4),
+            "quarter_kelly_weight": round(result.quarter_kelly_weights.get(asset, 0.0), 4),
+            "fraction": result.fraction,
+            "expected_growth_rate": round(result.expected_growth_rate, 6),
+            "expected_annual_growth_rate": round(result.expected_annual_growth_rate, 4),
+            "portfolio_volatility": round(result.portfolio_volatility, 4),
+            "portfolio_sharpe": round(result.portfolio_sharpe, 4),
+            "drawdown_50_prob": round(result.drawdown_50_prob, 4),
+        }
+        if result.position_dollars:
+            row["position_dollars"] = round(result.position_dollars.get(asset, 0.0), 2)
+        rows.append(row)
+    pd.DataFrame(rows).to_csv(out_path, index=False, encoding="utf-8")
+    return out_path
+
+
 def to_dict_kelly_result(
     result: KellyResult,
     win_rate: float,
@@ -362,9 +549,64 @@ def main():
     parser.add_argument("--fraction", type=float, default=0.5, help="Fractional Kelly multiplier (default 0.5)")
     parser.add_argument("--ruin-limit", type=float, default=0.5, help="Capital drawdown barrier for risk-of-ruin calculation (default 0.5 for 50%%).")
     parser.add_argument("--capital", type=float, default=None, help="Total account capital for position sizing in USD.")
+    parser.add_argument("--multi-asset", action="store_true", help="Run multi-asset Kelly vector allocator.")
+    parser.add_argument("--returns-csv", type=str, default=None, help="Path to asset returns CSV file for multi-asset Kelly.")
+    parser.add_argument("--shrinkage", type=float, default=0.15, help="Covariance matrix shrinkage intensity (default 0.15).")
+    parser.add_argument("--max-asset-weight", type=float, default=0.40, help="Maximum allocation weight cap per single asset (default 0.40).")
+    parser.add_argument("--export-multi-json", type=str, default=None, help="Path to export multi-asset Kelly results to JSON file.")
+    parser.add_argument("--export-multi-csv", type=str, default=None, help="Path to export multi-asset Kelly results to CSV file.")
     parser.add_argument("--export-json", type=str, default=None, help="Path to export Kelly sizing results to JSON file.")
     parser.add_argument("--export-csv", type=str, default=None, help="Path to export Kelly sizing results to CSV file.")
     args = parser.parse_args()
+
+    if args.multi_asset:
+        if args.returns_csv and Path(args.returns_csv).exists():
+            returns_df = pd.read_csv(args.returns_csv, index_col=0)
+        else:
+            rng = np.random.default_rng(42)
+            n_obs = 180
+            assets = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT"]
+            base_noise = rng.normal(0.001, 0.025, (n_obs, len(assets)))
+            market_factor = rng.normal(0.0015, 0.02, (n_obs, 1))
+            ret_data = base_noise + 0.6 * market_factor
+            returns_df = pd.DataFrame(ret_data, columns=assets)
+
+        multi_res = calculate_multi_asset_kelly_allocation(
+            returns_df=returns_df,
+            fraction=args.fraction,
+            shrinkage=args.shrinkage,
+            max_weight_per_asset=args.max_asset_weight,
+            capital=args.capital,
+        )
+        print("=========== Crypto Multi-Asset Vector Kelly Allocation ===========")
+        print(f"  Assets Evaluated     : {', '.join(multi_res.assets)}")
+        print(f"  Shrinkage Intensity  : {args.shrinkage:.2f}")
+        print(f"  Per-Asset Cap        : {args.max_asset_weight * 100:.1f}%")
+        print(f"  Kelly Fraction       : {args.fraction:.2f}x")
+        print(f"  Exp Growth Rate (d)  : {multi_res.expected_growth_rate * 100:.4f}%")
+        print(f"  Exp Annual Growth    : {multi_res.expected_annual_growth_rate * 100:.2f}%")
+        print(f"  Portfolio Volatility : {multi_res.portfolio_volatility * 100:.2f}%")
+        print(f"  Portfolio Sharpe     : {multi_res.portfolio_sharpe:.2f}")
+        print(f"  Prob 50% Drawdown    : {multi_res.drawdown_50_prob * 100:.2f}%")
+        print("------------------------------------------------------------------")
+        header_doll = f" {'Allocation ($)':<16}" if multi_res.capital else ""
+        print(f"  {'Asset':<12} {'Full Kelly':<12} {'Frac Kelly':<12} {'Half Kelly':<12}{header_doll}")
+        for a in multi_res.assets:
+            fw = multi_res.full_kelly_weights[a] * 100
+            rw = multi_res.fractional_kelly_weights[a] * 100
+            hw = multi_res.half_kelly_weights[a] * 100
+            doll_str = f"${multi_res.position_dollars[a]:,.2f}" if multi_res.position_dollars else ""
+            print(f"  {a:<12} {fw:>9.2f}%  {rw:>9.2f}%  {hw:>9.2f}%   {doll_str}")
+        print("==================================================================")
+
+        if args.export_multi_json:
+            export_multi_asset_kelly_json(multi_res, args.export_multi_json)
+            print(f"[+] Multi-asset Kelly results exported to: {args.export_multi_json}")
+
+        if args.export_multi_csv:
+            export_multi_asset_kelly_csv(multi_res, args.export_multi_csv)
+            print(f"[+] Multi-asset Kelly CSV exported to: {args.export_multi_csv}")
+        return
 
     res = calculate_discrete_kelly(
         args.win_rate,
