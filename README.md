@@ -660,6 +660,29 @@ python scripts/crypto_pairs_trading.py `
 
 ---
 
+### 40. 동적 리밸런싱 밴드(Corridors) 및 릴랜드(Leland) 거래비용 최적 무거래 구간(No-Trade Zone) 분석기
+
+가상자산 포트폴리오 운용 시 잦은 주기적 캘린더 리밸런싱으로 인해 발생하는 과도한 회전율(Turnover)과 거래소 수수료·슬리피지 잠식(Cost Drag)을 극소화하기 위해, 자산별 변동성 및 거래비용에 기반한 **동적 리밸런싱 밴드(No-Trade Corridors)**를 산출하고 워크포워드 집행 성과를 시뮬레이션합니다. 릴랜드(Leland 1999) 3제곱근 거래비용 최적화 밴드($\delta_i = [ \frac{3}{4} \frac{c_i \sigma_i^2 w_i^2}{\gamma} ]^{1/3}$), 변동성 비례 밴드, 상대 허용오차 밴드를 지원하며, Buy & Hold, 일간/주간/월간 캘린더 리밸런싱, 복도 이탈 시 목표 비중 회귀(Corridor-to-Target), 복도 이탈 시 경계선 회귀(Corridor-to-Boundary 최소 개입) 등 6대 정책을 비교 벤치마크하여 정형 JSON 및 CSV 보고서로 내보냅니다:
+
+```powershell
+# 릴랜드 최적 밴드 기반 6대 리밸런싱 정책 비교 시뮬레이션 및 결과 내보내기
+python scripts/crypto_rebalancing_corridors.py `
+  --symbols BTC/USDT ETH/USDT SOL/USDT AVAX/USDT `
+  --corridor-type leland `
+  --risk-aversion 3.0 `
+  --fee 0.001 `
+  --slippage 0.0005 `
+  --capital 10000 `
+  --days 365 `
+  --export-json reports/corridor_analysis.json `
+  --export-csv reports/corridor_analysis.csv
+
+# 합성 시장 데이터 예제 즉시 실행
+python scripts/crypto_rebalancing_corridors.py --example
+```
+
+---
+
 ## 📁 프로젝트 구조
 
 ```text
@@ -696,6 +719,8 @@ skfolio_Catton/
 │   ├── crypto_tail_dependence.py      # 극단 꼬리 의존성 및 동반 급락 분석기
 │   ├── freqtrade_stake_allocator.py   # Freqtrade 전략 동적 주문금액 연동 브릿지
 │   ├── fetch_live_crypto.py           # 거래소(바이낸스/업비트) 실시간 시세 수집기
+│   ├── crypto_pairs_trading.py        # 가상자산 공적분 및 OU 페어 트레이딩 엔진
+│   ├── crypto_rebalancing_corridors.py # 릴랜드 최적 밴드 및 동적 리밸런싱 무거래 구간 분석기
 │   └── verify_environment.py          # 환경 검증 스크립트
 ├── strategies/                        # Freqtrade 실전 전략 모음
 │   └── SkfolioEnhancedAtrStrategy.py  # skfolio 동적 비중/리스크 완전 연동 실전 전략
@@ -706,6 +731,8 @@ skfolio_Catton/
 │   ├── test_krw_fee_calculator.py     # 한국 거래소 수수료 계산기 검증
 │   ├── test_kimchi_regime.py          # 김치 프리미엄 레짐 시그널러 검증
 │   ├── test_travel_rule_advisor.py    # 트래블룰 안전 분할 전송기 검증
+│   ├── test_pairs_trading.py          # 공적분 및 OU 페어 트레이딩 검증
+│   ├── test_rebalancing_corridors.py  # 동적 리밸런싱 밴드 및 6대 정책 검증
 │   ├── test_crypto_optimizer.py
 │   ├── test_hrp_clustering.py
 │   ├── test_live_fetcher.py
@@ -746,7 +773,7 @@ skfolio_Catton/
 python tests/test_crypto_suite.py
 ```
 ```text
-Ran 265 tests in 7.502s -> OK
+Ran 408 tests in 8.125s -> OK
 ```
 
 코드가 `main` 브랜치에 푸시될 때마다 **GitHub Actions**가 클라우드에서 위 테스트를 자동으로 수행하여 코드 무결성을 보장합니다.

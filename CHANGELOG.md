@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v1.7.25 (2026-10-15)
+
+### Features & Improvements
+
+- **rebalancing-corridors**: Add dynamic rebalancing corridor & optimal no-trade zone optimizer (`scripts/crypto_rebalancing_corridors.py`)
+  - Added `calculate_proportional_bands` for relative tolerance percentage rebalancing corridors
+  - Added `calculate_volatility_bands` for volatility-adjusted rebalancing bands scaling with individual asset price variance
+  - Added `calculate_leland_cost_optimal_bands` implementing the Leland (1999) cubic-root transaction-cost-optimal no-trade band $\delta_i = \left(\frac{3}{4} \frac{c_i \sigma_i^2 w_i^2}{\gamma}\right)^{1/3}$
+  - Added `simulate_corridor_rebalancing` walk-forward comparative engine benchmarking 6 policies: Buy & Hold, Daily Calendar, Weekly Calendar, Monthly Calendar, Corridor-to-Target, and Corridor-to-Boundary (minimal intervention)
+  - Evaluates turnover, transaction cost drag ($ and %), avoided rebalances (%), net CAGR, net Sharpe, Sortino ratio, and Maximum Drawdown (MDD)
+  - Added `export_corridor_analysis_json` and `export_corridor_analysis_csv` for institutional reporting
+  - Added CLI options `--symbols`, `--corridor-type`, `--relative-tol`, `--risk-aversion`, `--fee`, `--slippage`, `--capital`, `--days`, and `--example`
+
+### Testing & Verification
+
+- Added unit tests for proportional, volatility, and Leland band calculations, input validation errors, 6-policy simulation, CSV/JSON exports, synthetic price paths, and CLI execution (`tests/test_rebalancing_corridors.py`)
+- Registered tests in unified test runner (`tests/test_crypto_suite.py`) and verified 100% test pass rate across all 408 test cases
+
 ## v1.7.24 (2026-10-15)
 
 ### Features & Improvements

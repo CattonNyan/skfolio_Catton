@@ -41,6 +41,8 @@ from tests.test_tail_dependence import TailDependenceTests
 from tests.test_drawdown_metrics import DrawdownMetricsTests
 from tests.test_http_retry import HttpRetryTests
 from tests.test_verify_environment import VerifyEnvironmentTests
+from tests.test_pairs_trading import CryptoPairsTradingTests
+from tests.test_rebalancing_corridors import CryptoRebalancingCorridorsTests
 
 
 def suite():
@@ -82,6 +84,8 @@ def suite():
     s.addTests(loader.loadTestsFromTestCase(DrawdownMetricsTests))
     s.addTests(loader.loadTestsFromTestCase(HttpRetryTests))
     s.addTests(loader.loadTestsFromTestCase(VerifyEnvironmentTests))
+    s.addTests(loader.loadTestsFromTestCase(CryptoPairsTradingTests))
+    s.addTests(loader.loadTestsFromTestCase(CryptoRebalancingCorridorsTests))
     return s
 
 
