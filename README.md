@@ -683,6 +683,27 @@ python scripts/crypto_rebalancing_corridors.py --example
 
 ---
 
+### 41. 다변량 변화점 탐지(Changepoint Detection) 및 레짐 스위칭(Regime-Switching) 동적 자산배분기
+
+가상자산 시장의 급격한 변동성 폭발 및 상관관계 붕괴(Structural Break)를 다변량 마할라노비스 평균 이동(Mahalanobis Mean Shift)과 공분산 대각합 비율(Covariance Trace Ratio) 검정으로 실시간 탐지하고, 변화점 이후의 데이터에 적응형 감쇠 가중치(Recency Weighting)와 르두아-울프(Ledoit-Wolf) 수축을 적용한 조건부 공분산 행렬을 추정합니다. 시장 국면을 6대 레짐(Low-Vol Calm Bull, Low-Vol Drift Bear, High-Vol Momentum Bull, High-Vol Consolidation, Correlated Panic Regime, Systemic Liquidity Shock)으로 분류하고, 구조적 변화점 발생 시에만 선별적으로 최적 비중으로 재조정하는 **적응형 변화점 리밸런싱(Adaptive Changepoint Rebalancing)**과 고정 주기(30일) 리밸런싱 및 Buy & Hold를 비교 백테스트하여 정형 JSON 및 CSV 보고서로 내보냅니다:
+
+```powershell
+# 다변량 변화점 탐지 및 레짐 스위칭 리밸런싱 시뮬레이션
+python scripts/crypto_changepoint_regime.py `
+  --symbols BTC/USDT ETH/USDT SOL/USDT AVAX/USDT `
+  --window 30 `
+  --threshold 2.0 `
+  --fee 0.001 `
+  --capital 10000 `
+  --export-json reports/changepoint_analysis.json `
+  --export-csv reports/changepoint_regimes.csv
+
+# 3대 국면(평온 상승 -> 유동성 충격 폭락 -> 회복) 합성 데이터 벤치마크 즉시 실행
+python scripts/crypto_changepoint_regime.py --example
+```
+
+---
+
 ## 📁 프로젝트 구조
 
 ```text
@@ -721,6 +742,7 @@ skfolio_Catton/
 │   ├── fetch_live_crypto.py           # 거래소(바이낸스/업비트) 실시간 시세 수집기
 │   ├── crypto_pairs_trading.py        # 가상자산 공적분 및 OU 페어 트레이딩 엔진
 │   ├── crypto_rebalancing_corridors.py # 릴랜드 최적 밴드 및 동적 리밸런싱 무거래 구간 분석기
+│   ├── crypto_changepoint_regime.py   # 다변량 변화점 탐지 및 레짐 스위칭 동적 자산배분기
 │   └── verify_environment.py          # 환경 검증 스크립트
 ├── strategies/                        # Freqtrade 실전 전략 모음
 │   └── SkfolioEnhancedAtrStrategy.py  # skfolio 동적 비중/리스크 완전 연동 실전 전략
@@ -733,6 +755,7 @@ skfolio_Catton/
 │   ├── test_travel_rule_advisor.py    # 트래블룰 안전 분할 전송기 검증
 │   ├── test_pairs_trading.py          # 공적분 및 OU 페어 트레이딩 검증
 │   ├── test_rebalancing_corridors.py  # 동적 리밸런싱 밴드 및 6대 정책 검증
+│   ├── test_changepoint_regime.py     # 다변량 변화점 탐지 및 레짐 배분 검증
 │   ├── test_crypto_optimizer.py
 │   ├── test_hrp_clustering.py
 │   ├── test_live_fetcher.py
@@ -773,7 +796,7 @@ skfolio_Catton/
 python tests/test_crypto_suite.py
 ```
 ```text
-Ran 408 tests in 8.125s -> OK
+Ran 418 tests in 8.350s -> OK
 ```
 
 코드가 `main` 브랜치에 푸시될 때마다 **GitHub Actions**가 클라우드에서 위 테스트를 자동으로 수행하여 코드 무결성을 보장합니다.

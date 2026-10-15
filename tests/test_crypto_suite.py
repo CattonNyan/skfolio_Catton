@@ -43,6 +43,7 @@ from tests.test_http_retry import HttpRetryTests
 from tests.test_verify_environment import VerifyEnvironmentTests
 from tests.test_pairs_trading import CryptoPairsTradingTests
 from tests.test_rebalancing_corridors import CryptoRebalancingCorridorsTests
+from tests.test_changepoint_regime import CryptoChangepointRegimeTests
 
 
 def suite():
@@ -86,6 +87,7 @@ def suite():
     s.addTests(loader.loadTestsFromTestCase(VerifyEnvironmentTests))
     s.addTests(loader.loadTestsFromTestCase(CryptoPairsTradingTests))
     s.addTests(loader.loadTestsFromTestCase(CryptoRebalancingCorridorsTests))
+    s.addTests(loader.loadTestsFromTestCase(CryptoChangepointRegimeTests))
     return s
 
 

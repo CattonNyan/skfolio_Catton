@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v1.7.26 (2026-10-15)
+
+### Features & Improvements
+
+- **changepoint-regime**: Add Bayesian & multivariate changepoint detection & regime-switching allocator (`scripts/crypto_changepoint_regime.py`)
+  - Added `detect_multivariate_changepoints` implementing divergence scoring combining Mahalanobis mean shift and covariance trace ratio tests to pinpoint structural market breaks
+  - Added `classify_market_regime` categorizing market segments into 6 quantitative regimes: Low-Vol Calm Bull, Low-Vol Drift Bear, High-Vol Momentum Bull, High-Vol Consolidation, Correlated Panic Regime, and Systemic Liquidity Shock
+  - Added `calculate_regime_covariance_matrix` computing adaptive covariance matrices with post-changepoint recency weighting and Ledoit-Wolf diagonal shrinkage
+  - Added `optimize_min_variance_weights` for dynamic long-only minimum variance allocation recalibration
+  - Added `simulate_changepoint_rebalancing` walk-forward engine benchmarking Adaptive Changepoint Rebalancing against Static 30-Day Rolling Rebalancing and Buy & Hold
+  - Added `export_changepoint_analysis_json` and `export_changepoint_analysis_csv` for institutional reporting
+  - Added CLI options `--symbols`, `--window`, `--threshold`, `--fee`, `--capital`, and `--example`
+
+### Testing & Verification
+
+- Added unit tests for regime classification, multivariate changepoint detection, positive definite adaptive covariance calculation, portfolio optimization, 3-policy simulation, CSV/JSON exports, synthetic regime price generation, and CLI execution (`tests/test_changepoint_regime.py`)
+- Registered tests in unified test runner (`tests/test_crypto_suite.py`) and verified 100% test pass rate across all 418 test cases
+
 ## v1.7.25 (2026-10-15)
 
 ### Features & Improvements
