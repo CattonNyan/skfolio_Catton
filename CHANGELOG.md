@@ -1,6 +1,25 @@
 # CHANGELOG
 
-<!-- version list -->
+## v1.7.27 (2026-10-16)
+
+### Features & Improvements
+
+- **entropy-pooling**: Add Meucci (2008) Fully Flexible Views & Entropy Pooling portfolio optimizer (`scripts/crypto_entropy_pooling.py`)
+  - Added `build_prior_probabilities` generating uniform prior scenario probabilities or exponential decay recency weights
+  - Added `calculate_effective_number_of_scenarios` (ENS) evaluating Meucci scenario entropy concentration
+  - Added `calculate_kl_divergence` measuring Kullback-Leibler relative entropy distance from prior
+  - Added `build_view_linear_constraints` translating absolute return, cross-asset ranking, volatility, and tail-risk threshold views into equality and inequality constraints
+  - Added `compute_entropy_pooling` implementing the exact Meucci dual formulation solved via L-BFGS-B with closed-form gradient for sub-second convergence
+  - Added `compute_scenario_moments` calculating posterior expected returns and positive-definite regularized covariance matrix
+  - Added `optimize_portfolio_weights` for Maximum Sharpe, Minimum Variance, and Equal Weight portfolio allocations
+  - Added `simulate_entropy_pooling_walk_forward` walk-forward comparative engine benchmarking Entropy-Pooled vs Historical Prior vs Equal-Weight portfolios
+  - Added `export_entropy_pooling_json` and `export_entropy_pooling_csv` for institutional reporting
+  - Added CLI options `--symbols`, `--confidence`, `--decay-lambda`, `--capital`, `--example`, `--json`, and `--csv`
+
+### Testing & Verification
+
+- Added comprehensive unit tests for prior probability construction, exponential decay, ENS entropy, KL divergence, linear view constraints, confidence blending, positive definite covariance, portfolio optimization, walk-forward backtest simulation, JSON/CSV exports, and CLI execution (`tests/test_entropy_pooling.py`)
+- Registered tests in unified test runner (`tests/test_crypto_suite.py`) and verified 100% test pass rate across all 432 test cases
 
 ## v1.7.26 (2026-10-15)
 

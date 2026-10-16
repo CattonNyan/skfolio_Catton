@@ -44,6 +44,7 @@ from tests.test_verify_environment import VerifyEnvironmentTests
 from tests.test_pairs_trading import CryptoPairsTradingTests
 from tests.test_rebalancing_corridors import CryptoRebalancingCorridorsTests
 from tests.test_changepoint_regime import CryptoChangepointRegimeTests
+from tests.test_entropy_pooling import CryptoEntropyPoolingTests
 
 
 def suite():
@@ -88,6 +89,7 @@ def suite():
     s.addTests(loader.loadTestsFromTestCase(CryptoPairsTradingTests))
     s.addTests(loader.loadTestsFromTestCase(CryptoRebalancingCorridorsTests))
     s.addTests(loader.loadTestsFromTestCase(CryptoChangepointRegimeTests))
+    s.addTests(loader.loadTestsFromTestCase(CryptoEntropyPoolingTests))
     return s
 
 

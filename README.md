@@ -63,6 +63,10 @@
   - [33. 오메가 비율(Omega) 및 손익통증비율(Gain-to-Pain) 산출기](#33-오메가-비율omega-및-손익통증비율gain-to-pain-산출기)
   - [34. 목표 변동성 타겟팅(Vol-Targeting) 및 동적 현금 배분기](#34-목표-변동성-타겟팅vol-targeting-및-동적-현금-배분기)
   - [35. 가상자산 꼬리 의존성(Tail Dependence) 및 동반 급락 분석기](#35-가상자산-꼬리-의존성tail-dependence-및-동반-급락-분석기)
+  - [39. 통계적 차익거래(Pairs Trading) 공적분 검정 및 오언스타인-울렌벡(OU) 엔진](#39-통계적-차익거래pairs-trading-공적분-검정-및-오언스타인-울렌벡ou-엔진)
+  - [40. 동적 리밸런싱 밴드(Corridors) 및 릴랜드(Leland) 거래비용 최적 무거래 구간 분석기](#40-동적-리밸런싱-밴드corridors-및-릴랜드leland-거래비용-최적-무거래-구간no-trade-zone-분석기)
+  - [41. 다변량 변화점 탐지(Changepoint Detection) 및 레짐 스위칭 동적 자산배분기](#41-다변량-변화점-탐지changepoint-detection-및-레짐-스위칭regime-switching-동적-자산배분기)
+  - [42. 메우치(Meucci 2008) 완전 유연 뷰 및 엔트로피 풀링 최적화기](#42-메우치meucci-2008-완전-유연-뷰fully-flexible-views-및-엔트로피-풀링entropy-pooling-최적화기)
 - [📁 프로젝트 구조](#-프로젝트-구조)
 - [🧪 단위 테스트 및 CI/CD](#-단위-테스트-및-cicd)
 - [📜 라이선스 및 크레딧](#-라이선스-및-크레딧)
@@ -704,6 +708,25 @@ python scripts/crypto_changepoint_regime.py --example
 
 ---
 
+### 42. 메우치(Meucci 2008) 완전 유연 뷰(Fully Flexible Views) 및 엔트로피 풀링(Entropy Pooling) 최적화기
+
+전통적인 블랙-리터만(Black-Litterman) 모델의 정규분포 가정과 선형 등식 제약의 한계를 극복하기 위해, 아틸리오 메우치(Attilio Meucci 2008)의 **엔트로피 풀링(Entropy Pooling / Fully Flexible Views)** 프레임워크를 구현합니다. 과거 경험적 분포 또는 몬테카를로 시나리오($S$)를 사전 확률(Prior Probability)로 설정한 뒤, 절대 수익률, 크로스 자산 랭킹/상대 스프레드, 변동성(2차 모멘트), 꼬리 위험(CVaR/확률 임계치) 등 임의의 비선형·부등식 뷰(View)를 쿨백-라이블러(Kullback-Leibler) 상대 엔트로피 최소화 쌍대 문제(Dual Formulation, L-BFGS-B 밀리초 수렴)로 해결하여 사후 확률(Posterior Probability)과 조건부 모멘트를 도출합니다. 시나리오 유효 엔트로피(ENS), 최대 샤프/최소 분산 포트폴리오 비중 재배분, 120일 롤링 워크포워드 백테스트 벤치마크 및 정형 JSON/CSV 보고서 내보내기를 지원합니다:
+
+```powershell
+# 엔트로피 풀링 분석 및 워크포워드 백테스트 시뮬레이션
+python scripts/crypto_entropy_pooling.py `
+  --symbols BTC ETH SOL AVAX `
+  --confidence 0.8 `
+  --capital 10000 `
+  --export-json reports/entropy_pooling.json `
+  --export-csv reports/entropy_pooling.csv
+
+# 가상 크립토 시나리오 기반 실시간 예제 실행
+python scripts/crypto_entropy_pooling.py --example
+```
+
+---
+
 ## 📁 프로젝트 구조
 
 ```text
@@ -743,6 +766,7 @@ skfolio_Catton/
 │   ├── crypto_pairs_trading.py        # 가상자산 공적분 및 OU 페어 트레이딩 엔진
 │   ├── crypto_rebalancing_corridors.py # 릴랜드 최적 밴드 및 동적 리밸런싱 무거래 구간 분석기
 │   ├── crypto_changepoint_regime.py   # 다변량 변화점 탐지 및 레짐 스위칭 동적 자산배분기
+│   ├── crypto_entropy_pooling.py      # 메우치 완전 유연 뷰 및 엔트로피 풀링 최적화기
 │   └── verify_environment.py          # 환경 검증 스크립트
 ├── strategies/                        # Freqtrade 실전 전략 모음
 │   └── SkfolioEnhancedAtrStrategy.py  # skfolio 동적 비중/리스크 완전 연동 실전 전략
@@ -756,6 +780,7 @@ skfolio_Catton/
 │   ├── test_pairs_trading.py          # 공적분 및 OU 페어 트레이딩 검증
 │   ├── test_rebalancing_corridors.py  # 동적 리밸런싱 밴드 및 6대 정책 검증
 │   ├── test_changepoint_regime.py     # 다변량 변화점 탐지 및 레짐 배분 검증
+│   ├── test_entropy_pooling.py        # 메우치 엔트로피 풀링 및 뷰 조건화 검증
 │   ├── test_crypto_optimizer.py
 │   ├── test_hrp_clustering.py
 │   ├── test_live_fetcher.py
@@ -796,7 +821,7 @@ skfolio_Catton/
 python tests/test_crypto_suite.py
 ```
 ```text
-Ran 418 tests in 8.350s -> OK
+Ran 432 tests in 4.042s -> OK
 ```
 
 코드가 `main` 브랜치에 푸시될 때마다 **GitHub Actions**가 클라우드에서 위 테스트를 자동으로 수행하여 코드 무결성을 보장합니다.
