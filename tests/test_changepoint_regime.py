@@ -139,9 +139,21 @@ class CryptoChangepointRegimeTests(unittest.TestCase):
             self.assertGreater(len(df), 0)
             self.assertIn("regime_id", df.columns)
             self.assertIn("name", df.columns)
+            self.assertIn("weight_BTC/USDT", df.columns)
+            self.assertNotIn("optimal_weights", df.columns)
+
+    def test_custom_symbols_and_threshold(self):
+        five_symbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "AVAX/USDT", "DOT/USDT"]
+        df5 = generate_synthetic_regime_prices(n_bars=180, seed=7, symbols=five_symbols)
+        self.assertEqual(list(df5.columns), five_symbols)
+        sim = simulate_changepoint_rebalancing(
+            df5, fee_rate=0.001, initial_capital=5000.0, window=25, threshold=1.7
+        )
+        self.assertEqual(sim["analysis"]["metadata"]["symbols"], five_symbols)
+        self.assertIn("AdaptiveChangepoint", sim["policies"])
 
     def test_cli_execution_example(self):
-        test_args = ["crypto_changepoint_regime.py", "--example"]
+        test_args = ["crypto_changepoint_regime.py", "--example", "--threshold", "1.9"]
         with patch.object(sys, "argv", test_args):
             changepoint_main()
 

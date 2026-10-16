@@ -388,21 +388,30 @@ def simulate_changepoint_rebalancing(
     fee_rate: float = 0.001,
     initial_capital: float = 10000.0,
     window: int = 30,
+    threshold: float = 2.0,
     annual_days: int = 365,
 ) -> dict[str, Any]:
     """Simulate and compare Adaptive Changepoint Rebalancing vs Static 30-Day Rebalancing and Buy & Hold."""
-    analysis = analyze_changepoint_regimes(prices_df, window=window)
+    analysis = analyze_changepoint_regimes(prices_df, window=window, threshold=threshold)
     symbols = analysis["metadata"]["symbols"]
     n_assets = len(symbols)
     prices = prices_df.to_numpy(dtype=np.float64)
     n_bars = len(prices)
 
     cp_indices = {e["index"] for e in analysis["changepoint_events"]}
+    regimes_list = analysis.get("regimes", [])
+    events_list = analysis.get("changepoint_events", [])
+    cp_to_weights: dict[int, dict[str, float]] = {}
+    for idx_ev, ev in enumerate(events_list):
+        if idx_ev + 1 < len(regimes_list):
+            cp_to_weights[ev["index"]] = regimes_list[idx_ev + 1].get(
+                "optimal_weights", analysis["adaptive_weights"]
+            )
 
     # Policies:
     # 1. BuyAndHold: Day 0 equal weight
     # 2. StaticRolling30: Rebalance every 30 days to equal/naive weight
-    # 3. AdaptiveChangepoint: Rebalance when changepoint occurs to regime weights
+    # 3. AdaptiveChangepoint: Rebalance when changepoint occurs to active regime weights
     policies = ["BuyAndHold", "StaticRolling30", "AdaptiveChangepoint"]
     results = {}
 
@@ -416,8 +425,6 @@ def simulate_changepoint_rebalancing(
         total_turnover = 0.0
         total_fees = initial_capital * fee_rate
 
-        curr_target_w = init_w.copy()
-
         for t in range(1, n_bars):
             curr_prices = prices[t]
             curr_nav = float(np.sum(quantities * curr_prices))
@@ -429,15 +436,17 @@ def simulate_changepoint_rebalancing(
             current_w = (quantities * curr_prices) / curr_nav
 
             should_rebalance = False
+            new_w = current_w
             if pol == "StaticRolling30":
                 should_rebalance = (t % 30 == 0)
                 new_w = np.full(n_assets, 1.0 / n_assets)
             elif pol == "AdaptiveChangepoint":
                 if t in cp_indices:
                     should_rebalance = True
-                    # Look up regime weights active at time t
+                    # Look up regime weights active at changepoint t (falling back to adaptive_weights)
+                    active_weights = cp_to_weights.get(t, analysis["adaptive_weights"])
                     new_w = np.array(
-                        [analysis["adaptive_weights"].get(s, 1.0 / n_assets) for s in symbols]
+                        [active_weights.get(s, 1.0 / n_assets) for s in symbols]
                     )
 
             if should_rebalance:
@@ -487,10 +496,15 @@ def simulate_changepoint_rebalancing(
     }
 
 
-def generate_synthetic_regime_prices(n_bars: int = 300, seed: int = 42) -> pd.DataFrame:
+def generate_synthetic_regime_prices(
+    n_bars: int = 300,
+    seed: int = 42,
+    symbols: list[str] | None = None,
+) -> pd.DataFrame:
     """Generate multi-asset price history with distinct planted structural regime breaks."""
     rng = np.random.default_rng(seed)
-    symbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "AVAX/USDT"]
+    if not symbols:
+        symbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "AVAX/USDT"]
     n_assets = len(symbols)
 
     # 3 Distinct regimes:
@@ -521,7 +535,8 @@ def generate_synthetic_regime_prices(n_bars: int = 300, seed: int = 42) -> pd.Da
         corr_z = chol @ z
         all_rets[t] = drift + vol * corr_z
 
-    start_prices = np.array([60000.0, 3200.0, 140.0, 30.0])
+    base_starts = [60000.0, 3200.0, 140.0, 30.0, 550.0, 1.5]
+    start_prices = np.array([base_starts[i % len(base_starts)] for i in range(n_assets)])
     prices = np.zeros((n_bars, n_assets))
     prices[0] = start_prices
 
@@ -541,14 +556,23 @@ def export_changepoint_analysis_json(result: dict[str, Any], filepath: str | Pat
 
 
 def export_changepoint_analysis_csv(result: dict[str, Any], filepath: str | Path) -> None:
-    """Export detected regimes and changepoint events to CSV."""
+    """Export detected regimes and changepoint events to CSV with flattened asset weights."""
     p = Path(filepath)
     p.parent.mkdir(parents=True, exist_ok=True)
 
     analysis = result.get("analysis", result)
     regimes = analysis.get("regimes", [])
 
-    df = pd.DataFrame(regimes)
+    flat_rows = []
+    for r in regimes:
+        row = {k: v for k, v in r.items() if k != "optimal_weights"}
+        opt_w = r.get("optimal_weights", {})
+        if isinstance(opt_w, dict):
+            for sym, w_val in opt_w.items():
+                row[f"weight_{sym}"] = w_val
+        flat_rows.append(row)
+
+    df = pd.DataFrame(flat_rows)
     df.to_csv(p, index=False, encoding="utf-8")
 
 
@@ -608,13 +632,14 @@ def main() -> None:
     args = parser.parse_args()
 
     print("[*] Generating synthetic multi-regime crypto market data (300 bars)...")
-    prices_df = generate_synthetic_regime_prices(n_bars=300, seed=42)
+    prices_df = generate_synthetic_regime_prices(n_bars=300, seed=42, symbols=args.symbols)
 
     sim = simulate_changepoint_rebalancing(
         prices_df=prices_df,
         fee_rate=args.fee,
         initial_capital=args.capital,
         window=args.window,
+        threshold=args.threshold,
     )
 
     ana = sim["analysis"]

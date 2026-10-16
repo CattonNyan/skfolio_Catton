@@ -502,15 +502,17 @@ def generate_synthetic_crypto_prices(
     seed: int = 42,
 ) -> pd.DataFrame:
     """Generate realistic correlated geometric Brownian motion prices for crypto assets."""
-    if symbols is None:
+    if not symbols:
         symbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "AVAX/USDT"]
 
     rng = np.random.default_rng(seed)
     n_assets = len(symbols)
 
-    # Base drifts and volatilities
-    drifts = np.array([0.0008, 0.0010, 0.0012, 0.0011][:n_assets])
-    vols = np.array([0.025, 0.035, 0.045, 0.048][:n_assets])
+    # Base drifts and volatilities (cycle safely for arbitrary n_assets >= 1)
+    base_drifts = [0.0008, 0.0010, 0.0012, 0.0011, 0.0009, 0.0013]
+    base_vols = [0.025, 0.035, 0.045, 0.048, 0.040, 0.052]
+    drifts = np.array([base_drifts[i % len(base_drifts)] for i in range(n_assets)])
+    vols = np.array([base_vols[i % len(base_vols)] for i in range(n_assets)])
 
     # Correlated returns
     base_corr = 0.65
@@ -523,7 +525,8 @@ def generate_synthetic_crypto_prices(
 
     daily_returns = drifts + vols * correlated_z
 
-    start_prices = [65000.0, 3400.0, 150.0, 35.0][:n_assets]
+    base_starts = [65000.0, 3400.0, 150.0, 35.0, 580.0, 1.25]
+    start_prices = [base_starts[i % len(base_starts)] for i in range(n_assets)]
     price_paths = np.zeros((n_days, n_assets))
 
     for i in range(n_assets):
@@ -684,10 +687,11 @@ def main() -> None:
     print(fmt_hdr)
     print("-" * len(fmt_hdr))
     for pol_name, pol in sim["policies"].items():
+        mdd_str = f"-{pol['max_drawdown_pct']:.2f}%"
         print(
             f"{pol_name:20s} | {pol['rebalance_count']:8d} | {pol['total_turnover']:10.2f} | "
             f"${pol['total_costs_paid']:9.2f} | {pol['avoided_rebalances_pct']:8.1f}% | "
-            f"{pol['cagr_pct']:8.2f}% | {pol['sharpe_ratio']:7.2f} | -{pol['max_drawdown_pct']:6.2f}%"
+            f"{pol['cagr_pct']:8.2f}% | {pol['sharpe_ratio']:7.2f} | {mdd_str:>8s}"
         )
     print("===============================================================")
 

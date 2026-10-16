@@ -611,47 +611,72 @@ def simulate_entropy_pooling_walk_forward(
     return results
 
 
-def generate_synthetic_crypto_scenarios(n_bars: int = 365, seed: int = 42) -> pd.DataFrame:
+def generate_synthetic_crypto_scenarios(
+    n_bars: int = 365,
+    seed: int = 42,
+    symbols: list[str] | None = None,
+) -> pd.DataFrame:
     """Generate multi-asset synthetic crypto prices exhibiting realistic correlations and fat-tailed shocks."""
     rng = np.random.default_rng(seed)
-    symbols = ["BTC", "ETH", "SOL", "AVAX"]
+    if not symbols:
+        symbols = ["BTC", "ETH", "SOL", "AVAX"]
     N = len(symbols)
 
-    base_vols = np.array([0.45, 0.60, 0.75, 0.70]) / math.sqrt(365.0)
-    corr = np.array([
-        [1.0, 0.75, 0.65, 0.60],
-        [0.75, 1.0, 0.70, 0.65],
-        [0.65, 0.70, 1.0, 0.75],
-        [0.60, 0.65, 0.75, 1.0],
-    ])
+    default_vols = [0.45, 0.60, 0.75, 0.70, 0.80, 0.65]
+    base_vols = np.array([default_vols[i % len(default_vols)] for i in range(N)]) / math.sqrt(365.0)
+
+    if N == 4:
+        corr = np.array([
+            [1.0, 0.75, 0.65, 0.60],
+            [0.75, 1.0, 0.70, 0.65],
+            [0.65, 0.70, 1.0, 0.75],
+            [0.60, 0.65, 0.75, 1.0],
+        ])
+    else:
+        corr = np.full((N, N), 0.65)
+        np.fill_diagonal(corr, 1.0)
 
     chol = np.linalg.cholesky(corr)
     daily_shocks = rng.standard_t(df=4.0, size=(n_bars, N))
     correlated_shocks = daily_shocks @ chol.T
 
     # Scale with vol and drift
-    daily_drift = np.array([0.20, 0.15, 0.35, 0.10]) / 365.0
+    default_drifts = [0.20, 0.15, 0.35, 0.10, 0.25, 0.18]
+    daily_drift = np.array([default_drifts[i % len(default_drifts)] for i in range(N)]) / 365.0
     daily_returns = daily_drift + correlated_shocks * base_vols
 
-    start_prices = np.array([65000.0, 3200.0, 150.0, 28.0])
+    default_prices = [65000.0, 3200.0, 150.0, 28.0, 600.0, 1.2]
+    start_prices = np.array([default_prices[i % len(default_prices)] for i in range(N)])
     price_paths = start_prices * np.cumprod(1.0 + daily_returns, axis=0)
 
     dates = pd.date_range("2026-01-01", periods=n_bars, freq="D")
     return pd.DataFrame(price_paths, index=dates, columns=symbols)
 
 
-def export_entropy_pooling_json(result: EntropyPoolingResult, backtest_results: dict[str, Any] | None = None) -> str:
-    """Export entropy pooling analysis to JSON format."""
+def export_entropy_pooling_json(
+    result: EntropyPoolingResult,
+    backtest_results: dict[str, Any] | None = None,
+    filepath: str | Path | None = None,
+) -> str:
+    """Export entropy pooling analysis to JSON format (and optionally save to filepath)."""
     payload = {
         "analysis_timestamp": pd.Timestamp.now().isoformat(),
         "entropy_pooling": result.to_dict(),
         "walk_forward_backtest": backtest_results or {},
     }
-    return json.dumps(payload, indent=2, ensure_ascii=False)
+    json_str = json.dumps(payload, indent=2, ensure_ascii=False)
+    if filepath:
+        p = Path(filepath)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json_str, encoding="utf-8")
+    return json_str
 
 
-def export_entropy_pooling_csv(result: EntropyPoolingResult) -> str:
-    """Export asset moment changes and portfolio weights to CSV format."""
+def export_entropy_pooling_csv(
+    result: EntropyPoolingResult,
+    filepath: str | Path | None = None,
+) -> str:
+    """Export asset moment changes and portfolio weights to CSV format (and optionally save to filepath)."""
     symbols = list(result.prior_expected_returns_ann.keys())
     lines = [
         "symbol,prior_return_ann_pct,posterior_return_ann_pct,prior_vol_ann_pct,posterior_vol_ann_pct,prior_max_sharpe_wt,posterior_max_sharpe_wt,prior_min_var_wt,posterior_min_var_wt,equal_wt"
@@ -669,7 +694,12 @@ def export_entropy_pooling_csv(result: EntropyPoolingResult) -> str:
             f"{result.weights_posterior_min_var[sym]:.4f},"
             f"{result.weights_equal_weight[sym]:.4f}"
         )
-    return "\n".join(lines)
+    csv_str = "\n".join(lines)
+    if filepath:
+        p = Path(filepath)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(csv_str + "\n", encoding="utf-8")
+    return csv_str
 
 
 def main() -> None:
@@ -682,42 +712,62 @@ def main() -> None:
     parser.add_argument("--decay-lambda", type=float, default=1.0, help="Prior exponential decay lambda (1.0 = uniform)")
     parser.add_argument("--capital", type=float, default=10000.0, help="Initial simulation capital USD")
     parser.add_argument("--example", action="store_true", help="Run demonstration with synthetic crypto market paths")
-    parser.add_argument("--json", action="store_true", help="Output results in JSON format")
-    parser.add_argument("--csv", action="store_true", help="Output asset comparison table in CSV format")
+    parser.add_argument("--json", action="store_true", help="Output results in JSON format to stdout")
+    parser.add_argument("--csv", action="store_true", help="Output asset comparison table in CSV format to stdout")
+    parser.add_argument("--export-json", type=str, default="", help="Export full results to JSON file")
+    parser.add_argument("--export-csv", type=str, default="", help="Export asset comparison table to CSV file")
 
     args = parser.parse_args()
+    symbols = list(args.symbols)
 
-    # Generate synthetic price paths
-    prices_df = generate_synthetic_crypto_scenarios(n_bars=365, seed=42)[args.symbols]
+    # Generate synthetic price paths matching requested symbols
+    prices_df = generate_synthetic_crypto_scenarios(n_bars=365, seed=42, symbols=symbols)
     returns_df = prices_df.pct_change().dropna()
 
-    # Define standard quantitative views
-    # 1. SOL expected to outperform ETH by at least 15% annualized
-    # 2. BTC annualized return expected to be at least 30%
-    # 3. AVAX volatility expected to be subdued around 50%
-    sample_views = [
-        EntropyView(
-            view_type="relative_return",
-            assets=["SOL", "ETH"],
-            operator=">=",
-            target_value=0.15,
-            description="SOL outperformance over ETH >= 15% p.a.",
-        ),
+    # Build views dynamically matching available symbols
+    sample_views: list[EntropyView] = []
+    if "SOL" in symbols and "ETH" in symbols:
+        sample_views.append(
+            EntropyView(
+                view_type="relative_return",
+                assets=["SOL", "ETH"],
+                operator=">=",
+                target_value=0.15,
+                description="SOL outperformance over ETH >= 15% p.a.",
+            )
+        )
+    elif len(symbols) >= 2:
+        sample_views.append(
+            EntropyView(
+                view_type="relative_return",
+                assets=[symbols[-1], symbols[1]],
+                operator=">=",
+                target_value=0.15,
+                description=f"{symbols[-1]} outperformance over {symbols[1]} >= 15% p.a.",
+            )
+        )
+
+    first_sym = "BTC" if "BTC" in symbols else symbols[0]
+    sample_views.append(
         EntropyView(
             view_type="absolute_return",
-            assets=["BTC"],
+            assets=[first_sym],
             operator=">=",
             target_value=0.30,
-            description="BTC annualized return >= 30%",
-        ),
+            description=f"{first_sym} annualized return >= 30%",
+        )
+    )
+
+    last_sym = "AVAX" if "AVAX" in symbols else symbols[-1]
+    sample_views.append(
         EntropyView(
             view_type="volatility",
-            assets=["AVAX"],
+            assets=[last_sym],
             operator="<=",
             target_value=0.50,
-            description="AVAX annualized volatility <= 50%",
-        ),
-    ]
+            description=f"{last_sym} annualized volatility <= 50%",
+        )
+    )
 
     ep_res = run_entropy_pooling_analysis(
         returns_df,
@@ -735,6 +785,11 @@ def main() -> None:
         initial_capital=args.capital,
     )
 
+    if args.export_json:
+        export_entropy_pooling_json(ep_res, bt_res, filepath=args.export_json)
+    if args.export_csv:
+        export_entropy_pooling_csv(ep_res, filepath=args.export_csv)
+
     if args.json:
         print(export_entropy_pooling_json(ep_res, bt_res))
     elif args.csv:
@@ -751,19 +806,19 @@ def main() -> None:
         print(f"View Confidence:              {ep_res.confidence * 100.0:.0f}%")
         print("-" * 78)
         print("ASSET MOMENT SHIFTS (PRIOR vs CONDITIONED POSTERIOR):")
-        for sym in args.symbols:
+        for sym in symbols:
             pri_ret = ep_res.prior_expected_returns_ann[sym] * 100.0
             pst_ret = ep_res.posterior_expected_returns_ann[sym] * 100.0
             pri_vol = ep_res.prior_volatilities_ann[sym] * 100.0
             pst_vol = ep_res.posterior_volatilities_ann[sym] * 100.0
-            print(f"  {sym:5s} | Ret: {pri_ret:+6.1f}% -> {pst_ret:+6.1f}% | Vol: {pri_vol:5.1f}% -> {pst_vol:5.1f}%")
+            print(f"  {sym:10s} | Ret: {pri_ret:+6.1f}% -> {pst_ret:+6.1f}% | Vol: {pri_vol:5.1f}% -> {pst_vol:5.1f}%")
 
         print("-" * 78)
         print("MAX SHARPE WEIGHT REALLOCATION:")
-        for sym in args.symbols:
+        for sym in symbols:
             w_pri = ep_res.weights_prior_max_sharpe[sym] * 100.0
             w_pst = ep_res.weights_posterior_max_sharpe[sym] * 100.0
-            print(f"  {sym:5s} | Prior: {w_pri:5.1f}% -> Posterior: {w_pst:5.1f}%")
+            print(f"  {sym:10s} | Prior: {w_pri:5.1f}% -> Posterior: {w_pst:5.1f}%")
 
         print("-" * 78)
         print("WALK-FORWARD BACKTEST BENCHMARK (120-Day Lookback, 15-Day Rebalance):")
@@ -774,6 +829,10 @@ def main() -> None:
                 f"MDD: {m['max_drawdown_pct']:5.1f}% | Fee: ${m['fee_drag_usd']:.1f}"
             )
         print("=" * 78)
+        if args.export_json:
+            print(f"[+] Exported JSON report to: {args.export_json}")
+        if args.export_csv:
+            print(f"[+] Exported CSV report to: {args.export_csv}")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## v1.7.28 (2026-10-16)
+
+### Bug Fixes & Improvements
+
+- **entropy-pooling**: Fix CLI file export flags and dynamic symbol support (`scripts/crypto_entropy_pooling.py`)
+  - Added `--export-json <filepath>` and `--export-csv <filepath>` CLI arguments and `filepath` parameter to `export_entropy_pooling_json` / `export_entropy_pooling_csv` to match documented CLI usage
+  - Updated `generate_synthetic_crypto_scenarios` to accept dynamic `symbols` of arbitrary length ($N \ge 1$) without shape or `KeyError` crashes
+  - Updated `main()` to dynamically adapt default views to user-supplied `--symbols`
+- **changepoint-regime**: Fix regime-specific rebalancing weights, CLI flag propagation, and CSV weight flattening (`scripts/crypto_changepoint_regime.py`)
+  - Updated `simulate_changepoint_rebalancing` to rebalance `AdaptiveChangepoint` to the active regime's `optimal_weights` at each changepoint index $t$ rather than the end-of-sample global weight vector, and added `threshold` parameter propagation
+  - Updated `generate_synthetic_regime_prices` to accept custom `symbols` of arbitrary length ($N \ge 1$) and wired `--symbols` and `--threshold` in `main()`
+  - Updated `export_changepoint_analysis_csv` to flatten `optimal_weights` into `weight_<symbol>` columns instead of serializing raw Python dict strings
+- **rebalancing-corridors**: Fix array broadcast crash for $>4$ symbols and negative MDD formatting (`scripts/crypto_rebalancing_corridors.py`)
+  - Updated `generate_synthetic_crypto_prices` to cycle base drifts, volatilities, and starting prices safely when `len(symbols) > 4`
+  - Fixed console benchmark table negative MDD formatting (`-{mdd:.2f}%`)
+- **docs**: Synchronize `README.md` Table of Contents (restoring sections 30 & 32, adding sections 36–38, fixing anchor typos) and deduplicate/complete the `scripts/` and `tests/` project structure tree
+
+### Testing & Verification
+
+- Added unit tests for `--export-json`, `--export-csv`, 5-asset custom symbols, threshold propagation, and flattened CSV columns across `tests/test_entropy_pooling.py`, `tests/test_changepoint_regime.py`, and `tests/test_rebalancing_corridors.py`
+- Verified 100% test pass rate across all 434 test cases in `tests/test_crypto_suite.py`
+
 ## v1.7.27 (2026-10-16)
 
 ### Features & Improvements

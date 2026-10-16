@@ -168,6 +168,12 @@ class CryptoRebalancingCorridorsTests(unittest.TestCase):
         self.assertEqual(list(df.columns), ["BTC/USDT", "ETH/USDT"])
         self.assertTrue(np.all(df.to_numpy() > 0))
 
+        # Test >4 symbols (5 assets) to ensure no broadcast shape error
+        five_syms = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "AVAX/USDT", "LINK/USDT"]
+        df5 = generate_synthetic_crypto_prices(five_syms, n_days=40, seed=99)
+        self.assertEqual(df5.shape, (40, 5))
+        self.assertEqual(list(df5.columns), five_syms)
+
     def test_cli_execution_example(self):
         test_args = ["crypto_rebalancing_corridors.py", "--example", "--days", "30"]
         with patch.object(sys, "argv", test_args):

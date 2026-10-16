@@ -194,6 +194,36 @@ class CryptoEntropyPoolingTests(unittest.TestCase):
         with patch.object(sys, "argv", test_args):
             entropy_main()
 
+    def test_cli_export_files_and_custom_symbols(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            json_path = Path(tmpdir) / "ep_out.json"
+            csv_path = Path(tmpdir) / "ep_out.csv"
+            test_args = [
+                "crypto_entropy_pooling.py",
+                "--symbols",
+                "BTC/USDT",
+                "ETH/USDT",
+                "SOL/USDT",
+                "AVAX/USDT",
+                "BNB/USDT",
+                "--confidence",
+                "0.8",
+                "--export-json",
+                str(json_path),
+                "--export-csv",
+                str(csv_path),
+            ]
+            with patch.object(sys, "argv", test_args):
+                entropy_main()
+
+            self.assertTrue(json_path.exists())
+            self.assertTrue(csv_path.exists())
+            loaded = json.loads(json_path.read_text(encoding="utf-8"))
+            self.assertIn("entropy_pooling", loaded)
+            self.assertIn("BNB/USDT", loaded["entropy_pooling"]["posterior_expected_returns_ann"])
+            csv_content = csv_path.read_text(encoding="utf-8")
+            self.assertIn("BNB/USDT", csv_content)
+
 
 if __name__ == "__main__":
     unittest.main()

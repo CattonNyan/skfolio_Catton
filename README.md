@@ -52,18 +52,21 @@
   - [22. 한국 거래소 수수료 및 포트폴리오 수익률 잠식 계산기](#22-한국-거래소-수수료-및-포트폴리오-수익률-잠식-계산기)
   - [23. 김치 프리미엄 기반 동적 자산배분 레짐 시그널러](#23-김치-프리미엄-기반-동적-자산배분-레짐-시그널러)
   - [24. 한국 특금법 트래블룰 준수 & 100만원 안전 분할 전송 어드바이저](#24-한국-특금법-트래블룰-준수--100만원-안전-분할-전송-어드바이저)
-  - [25. 유동성 리스크 필터 및 Amihud/Corwin-Schultz 측정기](#25-유동성-리스크-필터-및-amihudcorwin-schultz-측정기)
-  - [26. 켈리 공식 및 하프 켈리 포지션 사이징 계산기](#26-켈리-공식-및-하프-켈리-포지션-사이징-계산기)
-  - [27. 빗썸(Bithumb) 원화 마켓 전용 캔들 수집기](#27-빗썸bithumb-원화-마켓-전용-캔들-수집기)
-  - [28. 3각 차익거래 기회 탐색 및 수수료 잠식 분석기](#28-3각-차익거래-기회-탐색-및-수수료-잠식-분석기)
+  - [25. 유동성 리스크 필터 및 Amihud/Corwin-Schultz/Roll/Kyle 측정기](#25-유동성-리스크-필터-및-amihudcorwin-schultzrollkyle-측정기)
+  - [26. 켈리 공식, 하프 켈리 및 다중 자산 벡터 켈리 배분기](#26-켈리-공식-하프-켈리-및-다중-자산-벡터-켈리multi-asset-vector-kelly-배분기)
+  - [27. 빗썸(Bithumb) 원화 마켓 전용 캔들 수집기 & 호가창 슬리피지 분석기](#27-빗썸bithumb-원화-마켓-전용-캔들-수집기--호가창-슬리피지-분석기)
+  - [28. 3각 차익거래 기회 탐색, 오더북 유동성 캐파 및 수수료 잠식 분석기](#28-3각-차익거래-기회-탐색-오더북-유동성-캐파-및-수수료-잠식-분석기)
   - [29. 김치 프리미엄 델타 중립 펀딩비 차익 시뮬레이터](#29-김치-프리미엄-델타-중립-펀딩비-차익-시뮬레이터)
   - [30. 점프 디퓨전(Merton Jump) 기반 플래시 크래시 가상 시세 생성기](#30-점프-디퓨전merton-jump-기반-플래시-크래시-가상-시세-생성기)
   - [31. Freqtrade 선물 펀딩비 차익 화이트리스트 & 설정 생성기](#31-freqtrade-선물-펀딩비-차익-화이트리스트--설정-생성기)
   - [32. 코인베이스(Coinbase) 기관용 USD 벤치마크 시세 수집기](#32-코인베이스coinbase-기관용-usd-벤치마크-시세-수집기)
-  - [33. 오메가 비율(Omega) 및 손익통증비율(Gain-to-Pain) 산출기](#33-오메가-비율omega-및-손익통증비율gain-to-pain-산출기)
+  - [33. 오메가 비율(Omega) 및 고도화 하방 리스크(Drawdown) 분석기](#33-오메가-비율omega-및-고도화-하방-리스크drawdown-분석기)
   - [34. 목표 변동성 타겟팅(Vol-Targeting) 및 동적 현금 배분기](#34-목표-변동성-타겟팅vol-targeting-및-동적-현금-배분기)
-  - [35. 가상자산 꼬리 의존성(Tail Dependence) 및 동반 급락 분석기](#35-가상자산-꼬리-의존성tail-dependence-및-동반-급락-분석기)
-  - [39. 통계적 차익거래(Pairs Trading) 공적분 검정 및 오언스타인-울렌벡(OU) 엔진](#39-통계적-차익거래pairs-trading-공적분-검정-및-오언스타인-울렌벡ou-엔진)
+  - [35. 가상자산 코퓰러 꼬리 의존성(Tail Dependence) 및 동반 급락 분석기](#35-가상자산-코퓰러-꼬리-의존성tail-dependence-및-동반-급락-분석기)
+  - [36. 빗썸(Bithumb) 실시간 호가창 및 스프레드·호가 깊이 분석기](#36-빗썸bithumb-실시간-호가창-및-스프레드호가-깊이-분석기)
+  - [37. 코인베이스(Coinbase) 기관급 호가창 및 시장 충격 슬리피지 분석기](#37-코인베이스coinbase-기관급-호가창-및-호가-사다리ladder시장-충격-슬리피지market-impact-slippage-분석기)
+  - [38. 업비트(Upbit) 실시간 오더북 호가 사다리 및 기관급 체결 슬리피지 분석기](#38-업비트upbit-실시간-오더북-호가-사다리-및-기관급-체결-슬리피지execution-slippage-분석기)
+  - [39. 가상자산 공적분 통계적 차익거래 및 오룬슈타인-울렌벡(OU) 페어 트레이딩 엔진](#39-가상자산-공적분cointegration-통계적-차익거래-및-오룬슈타인-울렌벡ou-페어-트레이딩-엔진)
   - [40. 동적 리밸런싱 밴드(Corridors) 및 릴랜드(Leland) 거래비용 최적 무거래 구간 분석기](#40-동적-리밸런싱-밴드corridors-및-릴랜드leland-거래비용-최적-무거래-구간no-trade-zone-분석기)
   - [41. 다변량 변화점 탐지(Changepoint Detection) 및 레짐 스위칭 동적 자산배분기](#41-다변량-변화점-탐지changepoint-detection-및-레짐-스위칭regime-switching-동적-자산배분기)
   - [42. 메우치(Meucci 2008) 완전 유연 뷰 및 엔트로피 풀링 최적화기](#42-메우치meucci-2008-완전-유연-뷰fully-flexible-views-및-엔트로피-풀링entropy-pooling-최적화기)
@@ -553,12 +556,28 @@ python scripts/crypto_triangular_arbitrage.py `
 python scripts/crypto_kimchi_hedging.py --capital 50000000 --entry-kp 1.0 --exit-kp 4.0 --days 30 --export-json reports/kimchi_hedging.json --export-csv reports/kimchi_hedging.csv
 ```
 
+### 30. 점프 디퓨전(Merton Jump) 기반 플래시 크래시 가상 시세 생성기
+
+머튼 점프 확산(Merton Jump-Diffusion) 확률 과정과 촐레스키(Cholesky) 다중 자산 상관 행렬을 결합하여, 암호화폐 특유의 팻테일(Fat-tail) 플래시 크래시 충격이 반영된 다중 코인 합성 시계열 데이터를 생성합니다:
+
+```powershell
+python scripts/crypto_synthetic_data.py --bars 365 --jump-intensity 0.05 --jump-mean -0.08 --export-csv data/synthetic/jump_prices.csv
+```
+
 ### 31. Freqtrade 선물 펀딩비 차익 화이트리스트 & 설정 생성기
 
 거래소 선물 무기한 계약의 실시간 펀딩비(Funding Rate)를 분석하여 연환산 APR 기준 고수익 페어 목록을 선별하고, Freqtrade 선물 봇 설정(`config.json`)을 자동으로 생성 및 JSON으로 내보냅니다:
 
 ```powershell
 python scripts/freqtrade_funding_arbitrage.py --min-apr 15.0 --stake 1000 --export-json config/funding_arbitrage.json
+```
+
+### 32. 코인베이스(Coinbase) 기관용 USD 벤치마크 시세 수집기
+
+미국 기관 투자자 기준 거래소인 코인베이스(Coinbase Exchange) 공개 REST API를 통해 API 키 없이도 주요 가상자산(BTC-USD, ETH-USD, SOL-USD 등)의 일봉/시간봉 OHLCV 캔들 시세를 수집하고 CSV로 내보냅니다:
+
+```powershell
+python scripts/fetch_coinbase_crypto.py --symbols BTC ETH SOL --timeframe 1d --limit 100 --export-csv data/live/coinbase_prices.csv
 ```
 
 ### 33. 오메가 비율(Omega) 및 고도화 하방 리스크(Drawdown) 분석기
@@ -748,12 +767,19 @@ skfolio_Catton/
 │   ├── crypto_stress_tester.py        # 역사적 블랙스완 스트레스 테스터
 │   ├── crypto_kimchi_premium.py       # 김치 프리미엄 & 환율 차익 분석기
 │   ├── crypto_kimchi_regime.py        # 김치 프리미엄 기반 동적 자산배분 레짐 시그널러
+│   ├── crypto_kimchi_hedging.py       # 김치 프리미엄 델타 중립 펀딩비 차익 시뮬레이터
 │   ├── crypto_krw_fee_calculator.py   # 한국 거래소 수수료 및 Fee Drag 시뮬레이터
 │   ├── crypto_travel_rule_advisor.py  # 한국 특금법 트래블룰 준수 안전 분할 전송기
+│   ├── crypto_liquidity_filter.py     # 유동성 리스크 필터 및 Amihud/Corwin-Schultz/Roll/Kyle 측정기
+│   ├── crypto_kelly_sizer.py          # 이산/연속 켈리 및 다중 자산 벡터 켈리 배분기
+│   ├── crypto_triangular_arbitrage.py # 3각 차익거래 기회 탐색 및 오더북 병목 유동성 분석기
+│   ├── crypto_synthetic_data.py       # 머튼 점프 확산 기반 플래시 크래시 가상 시세 생성기
+│   ├── crypto_drawdown_metrics.py     # 오메가 비율 및 고도화 하방 리스크(Drawdown) 분석기
 │   ├── fetch_upbit_crypto.py          # 업비트 원화(KRW) 마켓 캔들 및 호가 사다리/체결 슬리피지 분석기
 │   ├── fetch_bithumb_crypto.py        # 빗썸 원화(KRW) 마켓 캔들 및 호가창/스프레드 분석기
 │   ├── fetch_coinbase_crypto.py       # 코인베이스 USD 마켓 캔들 및 시장충격 슬리피지 분석기
 │   ├── freqtrade_strategy_optimizer.py # 멀티 전략 간 자금 배분 최적화기
+│   ├── freqtrade_funding_arbitrage.py # Freqtrade 선물 펀딩비 차익 화이트리스트 & 설정 생성기
 │   ├── crypto_monte_carlo.py          # 몬테카를로 미래 자산 경로 및 VaR 시뮬레이터
 │   ├── crypto_macro_regime.py         # 공포·탐욕 지수 기반 동적 현금 비중 조절기
 │   ├── crypto_factor_analyzer.py      # 퀀트 멀티 팩터 분석 및 스마트 베타 스크리너
@@ -767,20 +793,13 @@ skfolio_Catton/
 │   ├── crypto_rebalancing_corridors.py # 릴랜드 최적 밴드 및 동적 리밸런싱 무거래 구간 분석기
 │   ├── crypto_changepoint_regime.py   # 다변량 변화점 탐지 및 레짐 스위칭 동적 자산배분기
 │   ├── crypto_entropy_pooling.py      # 메우치 완전 유연 뷰 및 엔트로피 풀링 최적화기
+│   ├── http_retry.py                  # 지수 백오프 및 지터(Jitter) 기반 HTTP 재시도 유틸리티
 │   └── verify_environment.py          # 환경 검증 스크립트
 ├── strategies/                        # Freqtrade 실전 전략 모음
 │   └── SkfolioEnhancedAtrStrategy.py  # skfolio 동적 비중/리스크 완전 연동 실전 전략
 ├── src/skfolio/                       # skfolio 핵심 최적화 알고리즘 엔진
 ├── tests/                             # 단위 테스트 모음
 │   ├── test_crypto_suite.py           # 통합 테스트 스위트 러너 (Python 3.10~3.14 호환)
-│   ├── test_upbit_fetcher.py          # 업비트 캔들 수집기 검증
-│   ├── test_krw_fee_calculator.py     # 한국 거래소 수수료 계산기 검증
-│   ├── test_kimchi_regime.py          # 김치 프리미엄 레짐 시그널러 검증
-│   ├── test_travel_rule_advisor.py    # 트래블룰 안전 분할 전송기 검증
-│   ├── test_pairs_trading.py          # 공적분 및 OU 페어 트레이딩 검증
-│   ├── test_rebalancing_corridors.py  # 동적 리밸런싱 밴드 및 6대 정책 검증
-│   ├── test_changepoint_regime.py     # 다변량 변화점 탐지 및 레짐 배분 검증
-│   ├── test_entropy_pooling.py        # 메우치 엔트로피 풀링 및 뷰 조건화 검증
 │   ├── test_crypto_optimizer.py
 │   ├── test_hrp_clustering.py
 │   ├── test_live_fetcher.py
@@ -800,10 +819,27 @@ skfolio_Catton/
 │   ├── test_enhanced_strategy.py
 │   ├── test_correlation_breakdown.py
 │   ├── test_tax_calculator.py
-│   ├── test_upbit_fetcher.py
-│   ├── test_krw_fee_calculator.py
-│   ├── test_kimchi_regime.py
-│   └── test_travel_rule_advisor.py
+│   ├── test_upbit_fetcher.py          # 업비트 캔들 및 오더북 슬리피지 검증
+│   ├── test_krw_fee_calculator.py     # 한국 거래소 수수료 계산기 검증
+│   ├── test_kimchi_regime.py          # 김치 프리미엄 레짐 시그널러 검증
+│   ├── test_travel_rule_advisor.py    # 트래블룰 안전 분할 전송기 검증
+│   ├── test_liquidity_filter.py       # 유동성 리스크 필터 및 ADV 한도 검증
+│   ├── test_kelly_sizer.py            # 이산/연속 및 다중 자산 벡터 켈리 검증
+│   ├── test_bithumb_fetcher.py        # 빗썸 캔들 및 호가창 슬리피지 검증
+│   ├── test_triangular_arbitrage.py   # 3각 차익거래 및 병목 유동성 캐파 검증
+│   ├── test_kimchi_hedging.py         # 김치 프리미엄 델타 중립 헤징 검증
+│   ├── test_synthetic_data.py         # 머튼 점프 확산 가상 시세 검증
+│   ├── test_funding_arbitrage.py      # 선물 펀딩비 차익 화이트리스트 검증
+│   ├── test_coinbase_fetcher.py       # 코인베이스 캔들 및 호가 사다리 검증
+│   ├── test_vol_target_allocator.py   # 목표 변동성 타겟팅 및 시뮬레이션 검증
+│   ├── test_tail_dependence.py        # 코퓰러 꼬리 의존성 및 극단 쇼크 검증
+│   ├── test_drawdown_metrics.py       # 오메가 및 하방 리스크 지표 검증
+│   ├── test_http_retry.py             # HTTP 지수 백오프 재시도 검증
+│   ├── test_verify_environment.py     # 환경 진단 및 CLI 검증
+│   ├── test_pairs_trading.py          # 공적분 및 OU 페어 트레이딩 검증
+│   ├── test_rebalancing_corridors.py  # 동적 리밸런싱 밴드 및 6대 정책 검증
+│   ├── test_changepoint_regime.py     # 다변량 변화점 탐지 및 레짐 배분 검증
+│   └── test_entropy_pooling.py        # 메우치 엔트로피 풀링 및 뷰 조건화 검증
 ├── requirements-local.txt             # 로컬 개발 및 퀀트 연구용 패키지 목록
 ├── setup.ps1                          # Windows PowerShell 원클릭 설치 스크립트
 ├── app_dashboard.py                   # Streamlit 인터랙티브 웹 대시보드 (다크 테마 & 캐싱)
@@ -821,7 +857,7 @@ skfolio_Catton/
 python tests/test_crypto_suite.py
 ```
 ```text
-Ran 432 tests in 4.042s -> OK
+Ran 434 tests in 4.120s -> OK
 ```
 
 코드가 `main` 브랜치에 푸시될 때마다 **GitHub Actions**가 클라우드에서 위 테스트를 자동으로 수행하여 코드 무결성을 보장합니다.
